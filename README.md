@@ -40,7 +40,10 @@ flutter run -d chrome
     *   Source: "Utiliser docker-compose.yml existant".
     *   Suivant > Suivant > Terminé.
 
-L'application sera accessible sur `http://IP_NAS:8090`.
+    *   Suivant > Suivant > Terminé.
+
+L'application sera accessible sur `http://IP_NAS:8097` (si vous avez utilisé le port 8097).
+**Interface Admin PocketBase** : `http://IP_NAS:8097/_/`
 
 ### Troubleshooting Synology
 - **Crash Loop / Redémarrage en boucle** :

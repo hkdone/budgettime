@@ -14,10 +14,17 @@ class DatabaseService {
 
   /// The PocketBase client instance.
   ///
-  /// In development, ensuring your PocketBase server is running on 127.0.0.1:8095.
+  /// In development, ensuring your PocketBase server is running on 127.0.0.1:8090.
   /// When deployed in `pb_public`, this should ideally be relative or the same origin.
-  /// Passing `http://127.0.0.1:8090` works for local dev and often for same-machine access if CORS is handled.
-  final PocketBase pb = PocketBase('http://127.0.0.1:8090');
+  /// Parsing `window.location` requires distinct handling for web vs mobile.
+  /// Using a relative path "/" often works fine if served from same origin (which is our case with pb_public).
+
+  // ignore: unnecessary_const
+  final PocketBase pb = PocketBase(
+    const bool.fromEnvironment('dart.library.js_util')
+        ? '/'
+        : 'http://127.0.0.1:8090',
+  );
 
   /// Returns true if the user is currently authenticated
   bool get isValid => pb.authStore.isValid;
