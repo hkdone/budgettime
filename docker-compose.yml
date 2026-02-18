@@ -4,5 +4,6 @@ services:
     container_name: budget_app
     network_mode: host # Recommandé pour accès facile via Tailscale de l'hôte
     volumes:
-      - /DATA/AppData/budget/pb_data:/pb/pb_data # Persistance des comptes
+      - ./pb_data:/pb/pb_data # Données persistantes dans le dossier courant
+      # - /volume1/docker/budget/pb_data:/pb/pb_data # Exemple Synology absolu
     restart: unless-stopped

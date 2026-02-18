@@ -20,20 +20,27 @@ flutter pub get
 flutter run -d chrome
 ```
 
-### 2. Déploiement (Docker / CasaOS)
+### 2. Déploiement (Synology / Docker Compose)
 
-Le déploiement se fait via une image Docker contenant à la fois le Backend (PocketBase) et le Frontend (Flutter Web).
-
-1.  **Compiler l'application** :
+1.  **Compiler l'application** (sur votre PC) :
     ```powershell
     ./release.ps1 -Version "1.0.1" -Message "Nouvelle version"
     ```
-    *Ce script compile le frontend, met à jour le backend, et prépare les fichiers pour Docker.*
 
-2.  **Construire et Lancer le conteneur** :
-    ```bash
-    docker-compose up -d --build
-    ```
+2.  **Sur votre Synology** :
+    *   Installez **Container Manager** (ou Docker).
+    *   Créez un dossier `budget-app` via File Station.
+    *   Copiez-y tous les fichiers du projet (notamment `Dockerfile`, `docker-compose.yml`, `run.sh` et le dossier `pb_public`).
+    *   **Architecture** : Le `Dockerfile` est par défaut en `linux_amd64` (Intel/AMD). Si vous avez un Synology ARM (ex: DS220j), modifiez la ligne `ARG PB_ARCH=linux_arm64` dans le Dockerfile.
+
+3.  **Lancer via Container Manager** :
+    *   Allez dans **Projet** > **Créer**.
+    *   Nom: `budget-app`.
+    *   Chemin: Sélectionnez votre dossier `budget-app`.
+    *   Source: "Utiliser docker-compose.yml existant".
+    *   Suivant > Suivant > Terminé.
+
+L'application sera accessible sur `http://IP_NAS:8090`.
 
 ### 3. Déploiement (Home Assistant)
 
