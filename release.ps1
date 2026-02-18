@@ -23,7 +23,7 @@ Write-Host "2. Updating config.yaml..."
 Write-Host "3. Building Flutter Web..."
 flutter clean
 flutter pub get
-flutter build web --web-renderer html --release
+flutter build web --release
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Build failed!"
