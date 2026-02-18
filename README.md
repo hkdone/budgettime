@@ -42,6 +42,12 @@ flutter run -d chrome
 
 L'application sera accessible sur `http://IP_NAS:8090`.
 
+### Troubleshooting Synology
+- **Crash Loop / Redémarrage en boucle** :
+  - Vérifiez que vous avez copié le dossier `pb_public` complet.
+  - Le problème vient souvent des retours à la ligne Windows (CRLF) dans `run.sh`. Le Dockerfile utilise `dos2unix` pour régler ça automatiquement, assurez-vous de bien reconstruire l'image.
+  - Vérifiez l'architecture (AMD64 vs ARM64) dans le Dockerfile.
+
 ### 3. Déploiement (Home Assistant)
 
 Pour installer en tant qu'Add-on Home Assistant :
