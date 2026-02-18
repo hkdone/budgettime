@@ -1,0 +1,12 @@
+name: "Budget Assistant"
+version: "1.0.0"
+slug: "budget_assistant"
+description: "Gestion de budget Offline-First basée sur PocketBase"
+arch:
+  - aarch64
+  - amd64
+ports:
+  8090/tcp: 8090
+map:
+  - "share:rw"
+data: true # Obligatoire pour la persistance

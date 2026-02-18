@@ -1,0 +1,8 @@
+services:
+  budget-app:
+    build: . # Ou image: votre-repo/budget:latest
+    container_name: budget_app
+    network_mode: host # Recommandé pour accès facile via Tailscale de l'hôte
+    volumes:
+      - /DATA/AppData/budget/pb_data:/pb/pb_data # Persistance des comptes
+    restart: unless-stopped
