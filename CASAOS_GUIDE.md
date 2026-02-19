@@ -47,7 +47,22 @@ L'image sera automatiquement taguée `ghcr.io/hkdone/budgettime:X.Y.Z` et `lates
 
 ---
 
-## 2. Installation sur CasaOS
+---
+
+## 2. Important : Rendre l'Image Publique (Erreur "Access Denied")
+
+**Par défaut, GitHub crée les images en "Privé".**
+Si CasaOS affiche une erreur lors du pull, c'est qu'il n'a pas le droit d'y accéder.
+
+1. Allez sur votre profil GitHub -> onglet **Packages**.
+2. Cliquez sur `budgettime`.
+3. Cliquez sur **Package Settings** (menu à droite).
+4. Descendez en bas ("Danger Zone") -> **Change visibility**.
+5. Sélectionnez **Public**.
+
+---
+
+## 3. Installation sur CasaOS
 
 Une fois l'image publiée (ex: `jean/budgettime:latest`), allez sur votre interface CasaOS.
 
@@ -55,7 +70,7 @@ Une fois l'image publiée (ex: `jean/budgettime:latest`), allez sur votre interf
 
 1. Cliquez sur le bouton **+** (Install a customized app) en haut à gauche.
 2. Remplissez les champs :
-   - **Docker Image** : `votre-identifiant/budgettime:latest`
+   - **Docker Image** : `ghcr.io/hkdone/budgettime:latest` (Attention : bien mettre `ghcr.io/` au début !)
    - **Title** : `BudgetTime`
    - **Web UI Port** : `8090` (Port interne)
 3. **Network** :
