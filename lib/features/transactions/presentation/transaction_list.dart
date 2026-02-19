@@ -182,7 +182,30 @@ class TransactionList extends ConsumerWidget {
                               .read(transactionRepositoryProvider)
                               .deleteTransaction(transaction['id']);
                         } else if (choice == 'future') {
-                        } else if (choice == 'future') {
+                          // Safe ID extraction
+                          String recurrenceId = '';
+                          final rawRecurrence = transaction['recurrence'];
+                          if (rawRecurrence is String) {
+                            recurrenceId = rawRecurrence;
+                          } else if (rawRecurrence is Map) {
+                            recurrenceId =
+                                rawRecurrence['id']?.toString() ?? '';
+                          }
+
+                          if (recurrenceId.isEmpty) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Erreur: ID de récurrence introuvable',
+                                  ),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                            return;
+                          }
+
                           // 1. Always delete the specific transaction passed (Current)
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -202,7 +225,7 @@ class TransactionList extends ConsumerWidget {
                           await ref
                               .read(transactionRepositoryProvider)
                               .deleteFutureTransactions(
-                                transaction['recurrence'],
+                                recurrenceId,
                                 DateTime.parse(transaction['date']),
                               );
                         }
