@@ -47223,7 +47223,7 @@ return A.aJv(A.Ca(!1,n,n,n,!0,n,n,!0,n,new A.Mx(d,e,n),n,n,!1,n,n,n,l,n,s,A.dO(A
 $S:150}
 A.atY.prototype={
 $1(a){return this.a2W(a)},
-a2W(a){var s=0,r=A.P(t.H),q=this,p,o,n,m,l,k,j,i,h
+a2W(a){var s=0,r=A.P(t.H),q=this,p,o,n,m,l,k,j,i
 var $async$$1=A.Q(function(b,c){if(b===1)return A.M(c,r)
 for(;;)switch(s){case 0:s=a==="edit"?2:4
 break
@@ -47260,18 +47260,17 @@ case 19:s=17
 break
 case 18:s=l==="future"?20:21
 break
-case 20:k=t.Pu
-m.ag(k).f.kC(A.te(null,null,null,null,null,B.K,null,A.b6("Debug: Deleting Future. ID: "+A.n(o.i(p,"id"))+", Status: "+A.n(o.i(p,"status")),null,null,null,null,null,null,null),null,B.YZ,null,null,null,null,null,null,null,null,null,null))
-j=q.c
-i=$.lC()
-h=t.BF
+case 20:if(m.e!=null)m.ag(t.Pu).f.kC(A.te(null,null,null,null,null,B.K,null,A.b6("Debug: Deleting Future. ID: "+A.n(o.i(p,"id"))+", Status: "+A.n(o.i(p,"status")),null,null,null,null,null,null,null),null,B.YZ,null,null,null,null,null,null,null,null,null,null))
+k=q.c
+j=$.lC()
+i=t.BF
 s=22
-return A.H(j.cO(i,h).wU(o.i(p,"recurrence"),A.OZ(o.i(p,"date"))),$async$$1)
+return A.H(k.cO(j,i).wU(o.i(p,"recurrence"),A.OZ(o.i(p,"date"))),$async$$1)
 case 22:s=!J.d(o.i(p,"status"),"projected")?23:24
 break
-case 23:m.ag(k).f.kC(B.aeR)
+case 23:if(m.e!=null)m.ag(t.Pu).f.kC(B.aeR)
 s=25
-return A.H(j.cO(i,h).tf(o.i(p,"id")),$async$$1)
+return A.H(k.cO(j,i).tf(o.i(p,"id")),$async$$1)
 case 25:case 24:case 21:case 17:s=l!=null?26:27
 break
 case 26:s=28
@@ -110654,7 +110653,7 @@ B.akm=new A.aT("\xcates-vous s\xfbr de vouloir tout effacer ? Toutes les donn\xe
 B.akn=new A.aT("Home",null,null,null,null,null,null,null,null,null)
 B.akp=new A.aT("Suppression r\xe9currence",null,null,null,null,null,null,null,null,null)
 B.ahZ=new A.q(!0,B.ph,null,null,null,null,10,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.akq=new A.aT("v1.0.7-debug",null,B.ahZ,null,null,null,null,null,null,null)
+B.akq=new A.aT("v1.0.8-debug",null,B.ahZ,null,null,null,null,null,null,null)
 B.aks=new A.aT("Enregistrer",null,null,null,null,null,null,null,null,null)
 B.akt=new A.aT("Chargement...",null,null,null,null,null,null,null,null,null)
 B.akv=new A.aT("Confirmer la suppression",null,null,null,null,null,null,null,null,null)
