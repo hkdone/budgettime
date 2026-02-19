@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../domain/account.dart';
 import 'account_controller.dart';
 
@@ -159,6 +160,16 @@ class _ManageAccountsPageState extends ConsumerState<ManageAccountsPage> {
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    IconButton(
+                      icon: const Icon(
+                        Icons.calendar_month,
+                        color: Colors.blueGrey,
+                      ),
+                      tooltip: 'Voir les échéances',
+                      onPressed: () {
+                        context.push('/account-recurrences', extra: account.id);
+                      },
+                    ),
                     IconButton(
                       icon: const Icon(Icons.edit, color: Colors.blue),
                       onPressed: () =>

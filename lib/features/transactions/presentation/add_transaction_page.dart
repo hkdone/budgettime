@@ -51,6 +51,17 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
         // Fallback if not expanded but id is there (depends on how we pass data)
         _selectedAccountId = t['account'];
       }
+
+      // Pre-fill Recurrence details
+      if (t['expand'] != null && t['expand']['recurrence'] != null) {
+        final recurrence = t['expand']['recurrence'];
+        _isRecurring = true;
+        _recurrenceFrequency = recurrence['frequency'] ?? 'monthly';
+        // Ensure valid value
+        if (!['weekly', 'monthly', 'yearly'].contains(_recurrenceFrequency)) {
+          _recurrenceFrequency = 'monthly';
+        }
+      }
     }
   }
 

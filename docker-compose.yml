@@ -8,5 +8,6 @@ services:
     volumes:
       - ./pb_data:/pb/pb_data # Données persistantes
       - ./pb_migrations:/pb/pb_migrations # Migrations de schéma (CRUCIAL)
+      - ./pb_public:/pb/pb_public # Fichiers Web (Frontend)
       # - /volume1/docker/budget/pb_data:/pb/pb_data # Exemple Synology absolu
     restart: unless-stopped
