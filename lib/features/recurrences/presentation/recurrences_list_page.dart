@@ -30,7 +30,7 @@ class RecurrencesListPage extends ConsumerWidget {
       body: recurrencesAsync.when(
         data: (allRecurrences) {
           final recurrences = allRecurrences
-              .where((r) => r.accountId == accountId)
+              .where((r) => r.accountId == accountId && r.active)
               .toList();
 
           if (recurrences.isEmpty) {
