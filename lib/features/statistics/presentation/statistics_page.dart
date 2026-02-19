@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import 'statistics_controller.dart';
 import '../../transactions/domain/categories.dart';
 import '../../accounts/presentation/account_controller.dart';
+import '../../members/domain/member.dart';
+import '../../members/presentation/member_controller.dart';
 
 class StatisticsPage extends ConsumerStatefulWidget {
   const StatisticsPage({super.key});
@@ -85,6 +87,22 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
                   const SizedBox(height: 32),
                   // Bar Chart
                   _buildBarChartSection(data),
+                  const SizedBox(height: 32),
+                  // Member Expenses Pie Chart
+                  _buildMemberChartSection(
+                    data.expenseByMember,
+                    'Dépenses par Membre',
+                    data.totalExpense,
+                    ref,
+                  ),
+                  const SizedBox(height: 32),
+                  // Member Income Pie Chart
+                  _buildMemberChartSection(
+                    data.incomeByMember,
+                    'Revenus par Membre',
+                    data.totalIncome,
+                    ref,
+                  ),
                 ],
               ),
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -222,6 +240,122 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildMemberChartSection(
+    List<MemberStats> memberStats,
+    String title,
+    double totalAmount,
+    WidgetRef ref,
+  ) {
+    if (memberStats.isEmpty || totalAmount == 0) {
+      return const SizedBox.shrink();
+    }
+
+    final membersAsync = ref.watch(memberControllerProvider);
+
+    return membersAsync.when(
+      data: (members) {
+        return Card(
+          elevation: 2,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Text(
+                  '$title (${totalAmount.toStringAsFixed(2)} €)',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  height: 250,
+                  child: PieChart(
+                    PieChartData(
+                      sectionsSpace: 2,
+                      centerSpaceRadius: 40,
+                      sections: memberStats.map((stat) {
+                        Color memberColor = Colors.grey;
+
+                        if (stat.memberId != 'common') {
+                          final member = members.firstWhere(
+                            (m) => m.id == stat.memberId,
+                            orElse: () => const Member(
+                              id: 'unknown',
+                              name: 'Inconnu',
+                              icon: Icons.help,
+                            ),
+                          );
+                          // Use a hash of the name for consistant color, or cycle through a palette
+                          memberColor =
+                              Colors.primaries[member.name.hashCode %
+                                  Colors.primaries.length];
+                        }
+
+                        return PieChartSectionData(
+                          color: memberColor,
+                          value: stat.amount,
+                          title: '${stat.percentage.round()}%',
+                          radius: 50,
+                          titleStyle: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Legend
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 8,
+                  children: memberStats.map((stat) {
+                    String memberName = 'Commun';
+                    Color memberColor = Colors.grey;
+
+                    if (stat.memberId != 'common') {
+                      final member = members.firstWhere(
+                        (m) => m.id == stat.memberId,
+                        orElse: () => const Member(
+                          id: 'unknown',
+                          name: 'Inconnu',
+                          icon: Icons.help,
+                        ),
+                      );
+                      memberName = member.name;
+                      memberColor =
+                          Colors.primaries[member.name.hashCode %
+                              Colors.primaries.length];
+                    }
+
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(width: 12, height: 12, color: memberColor),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$memberName (${stat.amount.toStringAsFixed(0)}€)',
+                        ),
+                      ],
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+      loading: () => const SizedBox(
+        height: 200,
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (e, s) => Text('Erreur chargement membres: $e'),
     );
   }
 

@@ -1,3 +1,10 @@
+## v1.3.0
+
+- **Member Statistics**:
+  - Added "Expenses by Member" chart.
+  - Added "Income by Member" chart.
+  - Updated Statistics logic to aggregate data by member.
+
 ## v1.2.2
 - **Build**: Re-build to ensure all assets (icons) are correctly packaged with HTML renderer.
 

@@ -26,14 +26,30 @@ class CategoryStats {
   });
 }
 
+class MemberStats {
+  final String memberId;
+  final double amount;
+  final double percentage;
+
+  MemberStats({
+    required this.memberId,
+    required this.amount,
+    required this.percentage,
+  });
+}
+
 class StatisticsData {
   final List<CategoryStats> expenseByCategory;
+  final List<MemberStats> expenseByMember;
+  final List<MemberStats> incomeByMember;
   final List<MonthlyStats> history;
   final double totalExpense;
   final double totalIncome;
 
   StatisticsData({
     required this.expenseByCategory,
+    required this.expenseByMember,
+    required this.incomeByMember,
     required this.history,
     required this.totalExpense,
     required this.totalIncome,
@@ -52,9 +68,6 @@ class StatisticsController extends StateNotifier<AsyncValue<StatisticsData>> {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       // 1. Fetch data for the target month (for Pie Chart)
-      // Define start/end based on fiscal day (assuming standard 1st for now, can be improved)
-      // Actually, we should use the same logic as Dashboard if possible, but let's stick to calendar month for stats simplicity for now
-      // Or better: ask Settings for fiscal day. For now, calendar month.
       final start = DateTime(targetMonth.year, targetMonth.month, 1);
       final end = DateTime(
         targetMonth.year,
@@ -71,21 +84,28 @@ class StatisticsController extends StateNotifier<AsyncValue<StatisticsData>> {
         accountId: accountId,
       );
 
-      // Aggregate Category Expenses
+      // Aggregate Category Expenses & Member Stats
       final categoryMap = <String, double>{};
+      final memberExpenseMap = <String, double>{};
+      final memberIncomeMap = <String, double>{};
       double totalExpense = 0;
       double totalIncome = 0;
 
       for (final t in transactions) {
         final amount = (t['amount'] as num).toDouble();
         final type = t['type'];
+        final memberId = t['member'] ?? 'common'; // 'common' for Shared/Family
+
         // Filter out transfers if needed? usually yes.
         if (type == 'expense') {
           totalExpense += amount;
           final catId = t['category'] ?? 'other';
           categoryMap[catId] = (categoryMap[catId] ?? 0) + amount;
+          memberExpenseMap[memberId] =
+              (memberExpenseMap[memberId] ?? 0) + amount;
         } else if (type == 'income') {
           totalIncome += amount;
+          memberIncomeMap[memberId] = (memberIncomeMap[memberId] ?? 0) + amount;
         }
       }
 
@@ -99,6 +119,25 @@ class StatisticsController extends StateNotifier<AsyncValue<StatisticsData>> {
 
       // Sort by amount desc
       expenseByCategory.sort((a, b) => b.amount.compareTo(a.amount));
+
+      // Build Member Stats
+      final expenseByMember = memberExpenseMap.entries.map((e) {
+        return MemberStats(
+          memberId: e.key,
+          amount: e.value,
+          percentage: totalExpense > 0 ? (e.value / totalExpense) * 100 : 0,
+        );
+      }).toList();
+      expenseByMember.sort((a, b) => b.amount.compareTo(a.amount));
+
+      final incomeByMember = memberIncomeMap.entries.map((e) {
+        return MemberStats(
+          memberId: e.key,
+          amount: e.value,
+          percentage: totalIncome > 0 ? (e.value / totalIncome) * 100 : 0,
+        );
+      }).toList();
+      incomeByMember.sort((a, b) => b.amount.compareTo(a.amount));
 
       // 2. Fetch history (Last 6 months)
       final history = <MonthlyStats>[];
@@ -133,6 +172,8 @@ class StatisticsController extends StateNotifier<AsyncValue<StatisticsData>> {
 
       return StatisticsData(
         expenseByCategory: expenseByCategory,
+        expenseByMember: expenseByMember,
+        incomeByMember: incomeByMember,
         history: history,
         totalExpense: totalExpense,
         totalIncome: totalIncome,
