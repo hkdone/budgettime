@@ -6,6 +6,7 @@ services:
     ports:
       - "8097:8090" # Port Externe : Port Interne (8090)
     volumes:
-      - ./pb_data:/pb/pb_data # Données persistantes dans le dossier courant
+      - ./pb_data:/pb/pb_data # Données persistantes
+      - ./pb_migrations:/pb/pb_migrations # Migrations de schéma (CRUCIAL)
       # - /volume1/docker/budget/pb_data:/pb/pb_data # Exemple Synology absolu
     restart: unless-stopped

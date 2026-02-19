@@ -8,6 +8,7 @@ import '../../accounts/presentation/account_controller.dart';
 import '../../recurrences/application/recurrence_service.dart';
 import '../../recurrences/presentation/recurrence_controller.dart';
 import '../domain/categories.dart';
+import '../../recurrences/domain/recurrence.dart';
 
 class AddTransactionPage extends ConsumerStatefulWidget {
   final Map<String, dynamic>? transactionToEdit;
@@ -167,9 +168,8 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
             }
           }
         } else {
-          await ref.read(transactionRepositoryProvider).addTransaction(data);
-
-          // Handle Recurrence
+          // 1. Create Recurrence FIRST
+          Recurrence? createdRecurrence;
           if (_isRecurring && _selectedAccountId != null) {
             DateTime nextDueDate = _date;
             if (_recurrenceFrequency == 'weekly') {
@@ -180,7 +180,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
               nextDueDate = DateTime(_date.year + 1, _date.month, _date.day);
             }
 
-            final recurrence = await ref
+            createdRecurrence = await ref
                 .read(recurrenceControllerProvider.notifier)
                 .addRecurrence(
                   _selectedAccountId!,
@@ -193,19 +193,26 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                       ? _date.day
                       : null,
                 );
+          }
 
-            if (recurrence != null) {
-              // Generate projected transactions for the next year
-              final oneYearLater = DateTime.now().add(
-                const Duration(days: 365),
-              );
-              await ref
-                  .read(recurrenceServiceProvider)
-                  .generateProjectedTransactions(
-                    recurrence: recurrence,
-                    periodEnd: oneYearLater,
-                  );
-            }
+          // 2. Link to transaction
+          if (createdRecurrence != null) {
+            data['recurrence'] = createdRecurrence.id;
+          }
+
+          // 3. Create Transaction
+          await ref.read(transactionRepositoryProvider).addTransaction(data);
+
+          // 4. Generate Projections
+          if (createdRecurrence != null) {
+            // Generate projected transactions for the next year
+            final oneYearLater = DateTime.now().add(const Duration(days: 365));
+            await ref
+                .read(recurrenceServiceProvider)
+                .generateProjectedTransactions(
+                  recurrence: createdRecurrence,
+                  periodEnd: oneYearLater,
+                );
           }
         }
 

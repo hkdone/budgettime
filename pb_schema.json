@@ -1,15 +1,12 @@
 [
     {
-        "id": "settings_collection",
-        "created": "2024-05-18 12:00:00.000Z",
-        "updated": "2024-05-18 12:00:00.000Z",
-        "name": "settings",
+        "name": "accounts",
         "type": "base",
         "system": false,
         "schema": [
             {
                 "system": false,
-                "id": "settings_user",
+                "id": "users_relation",
                 "name": "user",
                 "type": "relation",
                 "required": true,
@@ -20,27 +17,58 @@
                     "cascadeDelete": false,
                     "minSelect": null,
                     "maxSelect": 1,
-                    "displayFields": null
+                    "displayFields": []
                 }
             },
             {
                 "system": false,
-                "id": "settings_fiscal",
-                "name": "fiscal_day_start",
-                "type": "number",
+                "id": "name_text",
+                "name": "name",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "type_select",
+                "name": "type",
+                "type": "select",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "checking",
+                        "savings",
+                        "cash"
+                    ]
+                }
+            },
+            {
+                "system": false,
+                "id": "currency_text",
+                "name": "currency",
+                "type": "text",
                 "required": false,
                 "presentable": false,
                 "unique": false,
                 "options": {
-                    "min": 1,
-                    "max": 31,
-                    "noDecimal": true
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
                 }
             },
             {
                 "system": false,
-                "id": "settings_budget",
-                "name": "monthly_budget",
+                "id": "bal_number",
+                "name": "initial_balance",
                 "type": "number",
                 "required": false,
                 "presentable": false,
@@ -61,16 +89,13 @@
         "options": {}
     },
     {
-        "id": "transactions_collection",
-        "created": "2024-05-18 12:00:00.000Z",
-        "updated": "2024-05-18 12:00:00.000Z",
-        "name": "transactions",
+        "name": "recurrences",
         "type": "base",
         "system": false,
         "schema": [
             {
                 "system": false,
-                "id": "trans_user",
+                "id": "rec_user",
                 "name": "user",
                 "type": "relation",
                 "required": true,
@@ -81,12 +106,28 @@
                     "cascadeDelete": false,
                     "minSelect": null,
                     "maxSelect": 1,
-                    "displayFields": null
+                    "displayFields": []
                 }
             },
             {
                 "system": false,
-                "id": "trans_amount",
+                "id": "rec_account",
+                "name": "account",
+                "type": "relation",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "accounts",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": 1,
+                    "displayFields": []
+                }
+            },
+            {
+                "system": false,
+                "id": "rec_amt",
                 "name": "amount",
                 "type": "number",
                 "required": true,
@@ -100,7 +141,7 @@
             },
             {
                 "system": false,
-                "id": "trans_label",
+                "id": "rec_lbl",
                 "name": "label",
                 "type": "text",
                 "required": true,
@@ -114,7 +155,7 @@
             },
             {
                 "system": false,
-                "id": "trans_type",
+                "id": "rec_type",
                 "name": "type",
                 "type": "select",
                 "required": true,
@@ -124,14 +165,47 @@
                     "maxSelect": 1,
                     "values": [
                         "income",
-                        "expense"
+                        "expense",
+                        "transfer"
                     ]
                 }
             },
             {
                 "system": false,
-                "id": "trans_date",
-                "name": "date",
+                "id": "rec_freq",
+                "name": "frequency",
+                "type": "select",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "daily",
+                        "weekly",
+                        "monthly",
+                        "yearly"
+                    ]
+                }
+            },
+            {
+                "system": false,
+                "id": "rec_day",
+                "name": "day_of_month",
+                "type": "number",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "noDecimal": true
+                }
+            },
+            {
+                "system": false,
+                "id": "rec_due",
+                "name": "next_due_date",
                 "type": "date",
                 "required": true,
                 "presentable": false,
@@ -143,22 +217,8 @@
             },
             {
                 "system": false,
-                "id": "trans_category",
-                "name": "category",
-                "type": "text",
-                "required": false,
-                "presentable": false,
-                "unique": false,
-                "options": {
-                    "min": null,
-                    "max": null,
-                    "pattern": ""
-                }
-            },
-            {
-                "system": false,
-                "id": "trans_auto",
-                "name": "is_automatic",
+                "id": "rec_active",
+                "name": "active",
                 "type": "bool",
                 "required": false,
                 "presentable": false,
@@ -175,16 +235,13 @@
         "options": {}
     },
     {
-        "id": "inbox_collection",
-        "created": "2024-05-18 12:00:00.000Z",
-        "updated": "2024-05-18 12:00:00.000Z",
-        "name": "raw_inbox",
+        "name": "transactions",
         "type": "base",
         "system": false,
         "schema": [
             {
                 "system": false,
-                "id": "inbox_user",
+                "id": "tx_user",
                 "name": "user",
                 "type": "relation",
                 "required": true,
@@ -195,12 +252,206 @@
                     "cascadeDelete": false,
                     "minSelect": null,
                     "maxSelect": 1,
-                    "displayFields": null
+                    "displayFields": []
                 }
             },
             {
                 "system": false,
-                "id": "inbox_content",
+                "id": "tx_acc",
+                "name": "account",
+                "type": "relation",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "accounts",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": 1,
+                    "displayFields": []
+                }
+            },
+            {
+                "system": false,
+                "id": "tx_rec",
+                "name": "recurrence",
+                "type": "relation",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "recurrences",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": 1,
+                    "displayFields": []
+                }
+            },
+            {
+                "system": false,
+                "id": "tx_amt",
+                "name": "amount",
+                "type": "number",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "noDecimal": false
+                }
+            },
+            {
+                "system": false,
+                "id": "tx_lbl",
+                "name": "label",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "tx_type",
+                "name": "type",
+                "type": "select",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "income",
+                        "expense",
+                        "transfer"
+                    ]
+                }
+            },
+            {
+                "system": false,
+                "id": "tx_status",
+                "name": "status",
+                "type": "select",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "maxSelect": 1,
+                    "values": [
+                        "effective",
+                        "projected"
+                    ]
+                }
+            },
+            {
+                "system": false,
+                "id": "tx_date",
+                "name": "date",
+                "type": "date",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": "",
+                    "max": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "tx_cat",
+                "name": "category",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            }
+        ],
+        "indexes": [],
+        "listRule": "user = @request.auth.id",
+        "viewRule": "user = @request.auth.id",
+        "createRule": "user = @request.auth.id",
+        "updateRule": "user = @request.auth.id",
+        "deleteRule": "user = @request.auth.id",
+        "options": {}
+    },
+    {
+        "name": "settings",
+        "type": "base",
+        "system": false,
+        "schema": [
+            {
+                "system": false,
+                "id": "set_user",
+                "name": "user",
+                "type": "relation",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "_pb_users_auth_",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": 1,
+                    "displayFields": []
+                }
+            },
+            {
+                "system": false,
+                "id": "set_day",
+                "name": "fiscal_day_start",
+                "type": "number",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": 1,
+                    "max": 31,
+                    "noDecimal": true
+                }
+            }
+        ],
+        "indexes": [],
+        "listRule": "user = @request.auth.id",
+        "viewRule": "user = @request.auth.id",
+        "createRule": "user = @request.auth.id",
+        "updateRule": "user = @request.auth.id",
+        "deleteRule": "user = @request.auth.id",
+        "options": {}
+    },
+    {
+        "name": "raw_inbox",
+        "type": "base",
+        "system": false,
+        "schema": [
+            {
+                "system": false,
+                "id": "raw_user",
+                "name": "user",
+                "type": "relation",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "_pb_users_auth_",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": 1,
+                    "displayFields": []
+                }
+            },
+            {
+                "system": false,
+                "id": "raw_content",
                 "name": "content",
                 "type": "text",
                 "required": true,
@@ -214,7 +465,7 @@
             },
             {
                 "system": false,
-                "id": "inbox_source",
+                "id": "raw_src",
                 "name": "source",
                 "type": "text",
                 "required": false,
@@ -228,7 +479,7 @@
             },
             {
                 "system": false,
-                "id": "inbox_rec",
+                "id": "raw_at",
                 "name": "received_at",
                 "type": "date",
                 "required": true,
@@ -241,7 +492,7 @@
             },
             {
                 "system": false,
-                "id": "inbox_proc",
+                "id": "raw_proc",
                 "name": "is_processed",
                 "type": "bool",
                 "required": false,
@@ -251,7 +502,7 @@
             },
             {
                 "system": false,
-                "id": "inbox_err",
+                "id": "raw_err",
                 "name": "error_message",
                 "type": "text",
                 "required": false,
