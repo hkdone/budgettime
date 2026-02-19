@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/services/database_service.dart';
 import 'auth_controller.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -117,15 +118,23 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   TextButton(
                     onPressed: () async {
                       // ignore: unused_local_variable
-                      const url = 'http://127.0.0.1:8090/_/';
-                      // Use url_launcher
-                      // Check if we can import it or need to add import
-                      // Will add import in separate step if not present
+                      final dbService = ref.read(databaseServiceProvider);
+                      final baseUrl = dbService.pb.baseURL;
+                      final adminUrl = baseUrl.endsWith('/')
+                          ? '${baseUrl}_/'
+                          : '$baseUrl/_/';
+
                       try {
                         // ignore: deprecated_member_use
-                        await launchUrl(Uri.parse(url));
+                        await launchUrl(Uri.parse(adminUrl));
                       } catch (e) {
-                        // ignore
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Impossible d\'ouvrir le lien: $e'),
+                            ),
+                          );
+                        }
                       }
                     },
                     child: const Text('Interface Admin (PocketBase)'),

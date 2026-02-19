@@ -71,10 +71,15 @@ class SettingsPage extends ConsumerWidget {
             leading: const Icon(Icons.admin_panel_settings),
             title: const Text('Administration (PocketBase)'),
             onTap: () async {
-              const url = 'http://127.0.0.1:8090/_/';
+              final dbService = ref.read(databaseServiceProvider);
+              final baseUrl = dbService.pb.baseURL;
+              final adminUrl = baseUrl.endsWith('/')
+                  ? '${baseUrl}_/'
+                  : '$baseUrl/_/';
+
               try {
                 // ignore: deprecated_member_use
-                await launchUrl(Uri.parse(url));
+                await launchUrl(Uri.parse(adminUrl));
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
