@@ -39,6 +39,23 @@ class AccountController extends StateNotifier<AsyncValue<List<Account>>> {
     });
   }
 
+  Future<void> updateAccount(
+    String id,
+    String name,
+    String type,
+    double initialBalance,
+  ) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await _repository.updateAccount(id, {
+        'name': name,
+        'type': type,
+        'initial_balance': initialBalance,
+      });
+      return _repository.getAccounts();
+    });
+  }
+
   Future<void> deleteAccount(String id) async {
     state = const AsyncValue.loading();
     await AsyncValue.guard(() async {

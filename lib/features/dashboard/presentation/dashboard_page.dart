@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../auth/presentation/auth_controller.dart';
 import 'dashboard_controller.dart';
@@ -143,110 +144,129 @@ class DashboardPage extends ConsumerWidget {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  color: Colors.white,
-                  surfaceTintColor: Colors.white,
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      children: [
-                        Text(
-                          state.selectedAccount != null
-                              ? 'Solde actuel (${state.selectedAccount!.name})'
-                              : 'Solde actuel',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                color: Colors.grey[600],
-                                fontWeight: FontWeight.w500,
-                              ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '${state.effectiveBalance.toStringAsFixed(2)} €',
-                          style: Theme.of(context).textTheme.displayMedium
-                              ?.copyWith(
-                                color: state.effectiveBalance >= 0
-                                    ? Colors.black
-                                    : Colors.red,
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                        const SizedBox(height: 16),
-                        // Projected Balance
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.trending_up,
-                                size: 16,
-                                color: Colors.blue,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Prévisionnel (fin de mois) : ',
-                                style: TextStyle(
-                                  color: Colors.blue[800],
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              Text(
-                                '${state.projectedBalance.toStringAsFixed(2)} €',
-                                style: TextStyle(
-                                  color: Colors.blue[800],
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                child: Column(
+                  children: [
+                    Text(
+                      DateFormat(
+                        'EEEE d MMMM yyyy',
+                        'fr_FR',
+                      ).format(DateTime.now()),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey[600],
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      color: Colors.white,
+                      surfaceTintColor: Colors.white,
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
                           children: [
-                            Column(
-                              children: [
-                                const Text(
-                                  'Revenus',
-                                  style: TextStyle(color: Colors.green),
-                                ),
-                                Text(
-                                  '+${totalIncome.toStringAsFixed(2)} €',
-                                  style: Theme.of(context).textTheme.titleLarge
-                                      ?.copyWith(color: Colors.green),
-                                ),
-                              ],
+                            Text(
+                              state.selectedAccount != null
+                                  ? 'Solde actuel (${state.selectedAccount!.name})'
+                                  : 'Solde actuel',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(
+                                    color: Colors.grey[600],
+                                    fontWeight: FontWeight.w500,
+                                  ),
                             ),
-                            Column(
+                            const SizedBox(height: 8),
+                            Text(
+                              '${state.effectiveBalance.toStringAsFixed(2)} €',
+                              style: Theme.of(context).textTheme.displayMedium
+                                  ?.copyWith(
+                                    color: state.effectiveBalance >= 0
+                                        ? Colors.black
+                                        : Colors.red,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ),
+                            const SizedBox(height: 16),
+                            // Projected Balance
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.trending_up,
+                                    size: 16,
+                                    color: Colors.blue,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Prévisionnel (fin de mois) : ',
+                                    style: TextStyle(
+                                      color: Colors.blue[800],
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${state.projectedBalance.toStringAsFixed(2)} €',
+                                    style: TextStyle(
+                                      color: Colors.blue[800],
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
-                                const Text(
-                                  'Dépenses',
-                                  style: TextStyle(color: Colors.red),
+                                Column(
+                                  children: [
+                                    const Text(
+                                      'Revenus',
+                                      style: TextStyle(color: Colors.green),
+                                    ),
+                                    Text(
+                                      '+${totalIncome.toStringAsFixed(2)} €',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleLarge
+                                          ?.copyWith(color: Colors.green),
+                                    ),
+                                  ],
                                 ),
-                                Text(
-                                  '-${totalExpense.toStringAsFixed(2)} €',
-                                  style: Theme.of(context).textTheme.titleLarge
-                                      ?.copyWith(color: Colors.red),
+                                Column(
+                                  children: [
+                                    const Text(
+                                      'Dépenses',
+                                      style: TextStyle(color: Colors.red),
+                                    ),
+                                    Text(
+                                      '-${totalExpense.toStringAsFixed(2)} €',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleLarge
+                                          ?.copyWith(color: Colors.red),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),

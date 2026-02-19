@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../domain/account.dart';
 import 'account_controller.dart';
 
 class ManageAccountsPage extends ConsumerStatefulWidget {
@@ -10,16 +11,19 @@ class ManageAccountsPage extends ConsumerStatefulWidget {
 }
 
 class _ManageAccountsPageState extends ConsumerState<ManageAccountsPage> {
-  void _showAddAccountDialog(BuildContext context) {
-    final nameController = TextEditingController();
-    final balanceController = TextEditingController();
-    String selectedType = 'checking';
+  void _showAccountDialog(BuildContext context, {Account? accountToEdit}) {
+    final isEditing = accountToEdit != null;
+    final nameController = TextEditingController(text: accountToEdit?.name);
+    final balanceController = TextEditingController(
+      text: accountToEdit?.initialBalance.toString(),
+    );
+    String selectedType = accountToEdit?.type ?? 'checking';
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Ajouter un compte'),
+          title: Text(isEditing ? 'Modifier le compte' : 'Ajouter un compte'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -74,18 +78,25 @@ class _ManageAccountsPageState extends ConsumerState<ManageAccountsPage> {
 
                 if (name.isNotEmpty) {
                   try {
-                    // Show a simple loading approach if needed, or just await
-                    // Here we await the controller method
-                    await ref
-                        .read(accountControllerProvider.notifier)
-                        .addAccount(name, selectedType, balance);
+                    if (isEditing) {
+                      await ref
+                          .read(accountControllerProvider.notifier)
+                          .updateAccount(
+                            accountToEdit.id,
+                            name,
+                            selectedType,
+                            balance,
+                          );
+                    } else {
+                      await ref
+                          .read(accountControllerProvider.notifier)
+                          .addAccount(name, selectedType, balance);
+                    }
 
                     if (context.mounted) {
                       Navigator.pop(context);
                     }
                   } catch (e) {
-                    // The controller handles state, which updates the UI behind the dialog.
-                    // But we can also show a snackbar
                     if (context.mounted) {
                       ScaffoldMessenger.of(
                         context,
@@ -94,7 +105,7 @@ class _ManageAccountsPageState extends ConsumerState<ManageAccountsPage> {
                   }
                 }
               },
-              child: const Text('Ajouter'),
+              child: Text(isEditing ? 'Enregistrer' : 'Ajouter'),
             ),
           ],
         ),
@@ -118,7 +129,7 @@ class _ManageAccountsPageState extends ConsumerState<ManageAccountsPage> {
                   const Text('Aucun compte configuré.'),
                   const SizedBox(height: 16),
                   FilledButton.icon(
-                    onPressed: () => _showAddAccountDialog(context),
+                    onPressed: () => _showAccountDialog(context),
                     icon: const Icon(Icons.add),
                     label: const Text('Créer un compte'),
                   ),
@@ -131,6 +142,8 @@ class _ManageAccountsPageState extends ConsumerState<ManageAccountsPage> {
             itemBuilder: (context, index) {
               final account = accounts[index];
               return ListTile(
+                onTap: () =>
+                    _showAccountDialog(context, accountToEdit: account),
                 leading: Icon(
                   account.type == 'savings'
                       ? Icons.savings
@@ -141,40 +154,50 @@ class _ManageAccountsPageState extends ConsumerState<ManageAccountsPage> {
                 ),
                 title: Text(account.name),
                 subtitle: Text(
-                  '${account.initialBalance.toStringAsFixed(2)} €',
+                  'Solde initial: ${account.initialBalance.toStringAsFixed(2)} €',
                 ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.grey),
-                  onPressed: () {
-                    // Confirm delete
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Supprimer ?'),
-                        content: const Text(
-                          'Voulez-vous vraiment supprimer ce compte et toutes ses transactions ?',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text('Annuler'),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              ref
-                                  .read(accountControllerProvider.notifier)
-                                  .deleteAccount(account.id);
-                              Navigator.pop(ctx);
-                            },
-                            child: const Text(
-                              'Supprimer',
-                              style: TextStyle(color: Colors.red),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit, color: Colors.blue),
+                      onPressed: () =>
+                          _showAccountDialog(context, accountToEdit: account),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.grey),
+                      onPressed: () {
+                        // Confirm delete
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Supprimer ?'),
+                            content: const Text(
+                              'Voulez-vous vraiment supprimer ce compte et toutes ses transactions ?',
                             ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: const Text('Annuler'),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  ref
+                                      .read(accountControllerProvider.notifier)
+                                      .deleteAccount(account.id);
+                                  Navigator.pop(ctx);
+                                },
+                                child: const Text(
+                                  'Supprimer',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    );
-                  },
+                        );
+                      },
+                    ),
+                  ],
                 ),
               );
             },
@@ -186,7 +209,7 @@ class _ManageAccountsPageState extends ConsumerState<ManageAccountsPage> {
       floatingActionButton:
           accountsState.hasValue && accountsState.value!.isNotEmpty
           ? FloatingActionButton(
-              onPressed: () => _showAddAccountDialog(context),
+              onPressed: () => _showAccountDialog(context),
               child: const Icon(Icons.add),
             )
           : null,

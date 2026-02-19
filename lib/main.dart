@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'core/start_app.dart';
 
 void main() {
-  runApp(const ProviderScope(child: BudgetTimeApp()));
+  initializeDateFormatting('fr_FR', null).then((_) {
+    runApp(const ProviderScope(child: BudgetTimeApp()));
+  });
 }
 
 class BudgetTimeApp extends ConsumerWidget {
