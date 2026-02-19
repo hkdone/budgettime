@@ -1,3 +1,6 @@
+## v1.2.2
+- **Build**: Re-build to ensure all assets (icons) are correctly packaged with HTML renderer.
+
 ## v1.2.1
 
 - **Fix**: Forced HTML renderer for Web to fix missing icons issues.
