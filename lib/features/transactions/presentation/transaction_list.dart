@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
+import '../../recurrences/presentation/recurrence_controller.dart';
 
 import '../../../core/start_app.dart';
 
@@ -189,9 +190,12 @@ class TransactionList extends ConsumerWidget {
                         }
 
                         if (choice != null) {
+                          // Refresh Dashboard
                           await ref
                               .read(dashboardControllerProvider.notifier)
                               .refresh();
+                          // Refresh Recurrences List to reflect changes (e.g. stopped recurrence)
+                          ref.invalidate(recurrenceControllerProvider);
                         }
                       }
                     }
