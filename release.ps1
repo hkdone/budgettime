@@ -54,9 +54,47 @@ if (-not (Test-Path .git)) {
 
 git add .
 git commit -m "$Message"
-git tag -a "v$Version" -m "Version $Version"
+# Check if tag already exists to avoid fatal error
+if (git tag -l "v$Version") {
+    Write-Host "Tag v$Version already exists, skipping tag creation." -ForegroundColor Yellow
+}
+else {
+    git tag -a "v$Version" -m "Version $Version"
+}
 
-Write-Host "=== Release Ready! ===" -ForegroundColor Green
+Write-Host "=== Git Release Ready! ===" -ForegroundColor Green
 Write-Host "Next steps:"
 Write-Host "1. Push to GitHub: git push origin main --tags"
-Write-Host "2. Home Assistant will detect the new version via config.yaml"
+
+# 6. Docker Build & Push
+Write-Host "`n=== 6. Docker Deployment (GHCR) ===" -ForegroundColor Cyan
+$ImageName = "ghcr.io/hkdone/budgettime"
+Write-Host "Prepare to build and push Docker image: $($ImageName):$($Version)"
+
+$PushDocker = Read-Host "Build and Push Docker image now? [Y/n]"
+if ($PushDocker -eq "" -or $PushDocker -match "^[OoYy]") {
+    Write-Host "Building Docker image..." -ForegroundColor Green
+    
+    # Use subexpression syntax for safety
+    docker build -t "$($ImageName):$($Version)" -t "$($ImageName):latest" .
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Docker Build Failed!"
+        exit 1
+    }
+
+    Write-Host "Pushing to GitHub Container Registry..." -ForegroundColor Green
+    docker push "$($ImageName):$($Version)"
+    docker push "$($ImageName):latest"
+
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "Docker Image Pushed Successfully!" -ForegroundColor Green
+        Write-Host "Update available on CasaOS with tag usage: latest"
+    }
+    else {
+        Write-Error "Docker Push Failed. Please check 'docker login ghcr.io'."
+    }
+}
+else {
+    Write-Host "Docker deployment skipped." -ForegroundColor Yellow
+}
