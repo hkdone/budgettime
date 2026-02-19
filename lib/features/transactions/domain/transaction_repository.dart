@@ -6,6 +6,12 @@ abstract class TransactionRepository {
     String? accountId,
   });
 
+  /// Fetch projected transactions strictly before a certain date
+  Future<List<Map<String, dynamic>>> getOverdueProjectedTransactions({
+    required DateTime beforeDate,
+    String? accountId,
+  });
+
   Future<double> getBalance({
     String? accountId,
     String? status,

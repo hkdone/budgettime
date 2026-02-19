@@ -62,9 +62,27 @@ class TransactionList extends ConsumerWidget {
                   ).format(DateTime.parse(transaction['date'])),
                 ),
                 if (isProjected)
-                  const Text(
-                    'Prévisionnel',
-                    style: TextStyle(fontSize: 12, color: Colors.blueGrey),
+                  Text(
+                    DateTime.parse(transaction['date']).isBefore(
+                          DateTime.now().subtract(const Duration(days: 1)),
+                        ) // Simple check: is it before today?
+                        ? 'En retard (À consolider)'
+                        : 'Prévisionnel',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color:
+                          DateTime.parse(transaction['date']).isBefore(
+                            DateTime.now().subtract(const Duration(days: 1)),
+                          )
+                          ? Colors.red
+                          : Colors.blueGrey,
+                      fontWeight:
+                          DateTime.parse(transaction['date']).isBefore(
+                            DateTime.now().subtract(const Duration(days: 1)),
+                          )
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
                   ),
               ],
             ),

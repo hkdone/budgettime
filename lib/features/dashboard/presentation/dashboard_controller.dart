@@ -135,6 +135,17 @@ class DashboardController extends StateNotifier<DashboardState> {
         accountId: state.selectedAccount?.id,
       );
 
+      // 3b. Fetch Overdue Projected Transactions (Projected but date is BEFORE start)
+      final overdueTransactions = await _transactionRepo
+          .getOverdueProjectedTransactions(
+            beforeDate: start,
+            accountId: state.selectedAccount?.id,
+          );
+
+      // Combine lists: Overdue first, then current period
+      // Note: effective transactions from previous months are NOT fetched (as per design), only overdue projected.
+      final allTransactions = [...overdueTransactions, ...transactions];
+
       // 4. Calculate Balances
       // Initial Balance (Always part of Effective)
       double initialBalance = 0;
@@ -168,7 +179,7 @@ class DashboardController extends StateNotifier<DashboardState> {
       final projectedBalance = effectiveBalance + projectedTransactionBalance;
 
       state = state.copyWith(
-        transactions: transactions,
+        transactions: allTransactions,
         start: start,
         end: end,
         effectiveBalance: effectiveBalance,
