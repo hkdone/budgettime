@@ -163,40 +163,29 @@ class TransactionList extends ConsumerWidget {
                               .read(transactionRepositoryProvider)
                               .deleteTransaction(transaction['id']);
                         } else if (choice == 'future') {
+                        } else if (choice == 'future') {
+                          // 1. Always delete the specific transaction passed (Current)
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
+                              const SnackBar(
                                 content: Text(
-                                  'Debug: Deleting Future. ID: ${transaction['id']}, Status: ${transaction['status']}',
+                                  'Suppression de la récurrence...',
                                 ),
-                                duration: const Duration(seconds: 5),
+                                duration: Duration(seconds: 1),
                               ),
                             );
                           }
+                          await ref
+                              .read(transactionRepositoryProvider)
+                              .deleteTransaction(transaction['id']);
 
+                          // 2. Delete all other/future occurrences
                           await ref
                               .read(transactionRepositoryProvider)
                               .deleteFutureTransactions(
                                 transaction['recurrence'],
                                 DateTime.parse(transaction['date']),
                               );
-                          // Also delete the current one if it wasn't caught by the "projected" filter
-                          // (e.g. if it's the initial effective transaction)
-                          if (transaction['status'] != 'projected') {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Debug: Deleting Current Transaction...',
-                                  ),
-                                  duration: Duration(seconds: 1),
-                                ),
-                              );
-                            }
-                            await ref
-                                .read(transactionRepositoryProvider)
-                                .deleteTransaction(transaction['id']);
-                          }
                         }
 
                         if (choice != null) {
