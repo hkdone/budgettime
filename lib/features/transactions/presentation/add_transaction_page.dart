@@ -4,11 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/start_app.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
+import '../../recurrences/presentation/recurrence_controller.dart';
+import '../../categories/presentation/category_controller.dart';
+import '../../recurrences/domain/recurrence.dart';
 import '../../accounts/presentation/account_controller.dart';
 import '../../recurrences/application/recurrence_service.dart';
-import '../../recurrences/presentation/recurrence_controller.dart';
-import '../domain/categories.dart';
-import '../../recurrences/domain/recurrence.dart';
 
 class AddTransactionPage extends ConsumerStatefulWidget {
   final Map<String, dynamic>? transactionToEdit;
@@ -30,7 +30,10 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
     super.initState();
     // Refresh accounts to ensure list is up to date
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final _ = ref.refresh(accountControllerProvider);
+      // ignore: unused_result
+      ref.refresh(accountControllerProvider);
+      // ignore: unused_result
+      ref.refresh(categoryControllerProvider);
     });
 
     if (widget.transactionToEdit != null) {
@@ -360,39 +363,77 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
               const SizedBox(height: 16),
 
               // Category
-              DropdownButtonFormField<String>(
-                key: ValueKey(_categoryController.text),
-                initialValue: _categoryController.text.isEmpty
-                    ? null
-                    : _categoryController.text,
-                decoration: const InputDecoration(
-                  labelText: 'Catégorie',
-                  border: OutlineInputBorder(),
-                ),
-                items: [
-                  // Add a "None" or "Custom" option if needed, or just map the list
-                  ...kTransactionCategories.map(
-                    (c) => DropdownMenuItem(
-                      value: c.id,
-                      child: Row(
-                        children: [
-                          Icon(c.icon, color: c.color, size: 20),
-                          const SizedBox(width: 8),
-                          Text(c.name),
-                        ],
+              // Category Selection
+              Consumer(
+                builder: (context, ref, child) {
+                  final categoriesAsync = ref.watch(categoryControllerProvider);
+
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: categoriesAsync.when(
+                          data: (categories) {
+                            return DropdownButtonFormField<String>(
+                              key: ValueKey(_categoryController.text),
+                              isExpanded: true,
+                              initialValue:
+                                  categories.any(
+                                    (c) => c.id == _categoryController.text,
+                                  )
+                                  ? _categoryController.text
+                                  : (categories.isNotEmpty
+                                        ? null
+                                        : null), // Don't auto-select if empty
+                              decoration: const InputDecoration(
+                                labelText: 'Catégorie',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: categories.map((c) {
+                                return DropdownMenuItem(
+                                  value: c.id,
+                                  child: Row(
+                                    children: [
+                                      Icon(c.icon, color: c.color, size: 20),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        c.name,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontWeight: c.isSystem
+                                              ? FontWeight.normal
+                                              : FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() {
+                                    _categoryController.text = value;
+                                  });
+                                }
+                              },
+                              validator: (value) =>
+                                  value == null || value.isEmpty
+                                  ? 'Veuillez choisir une catégorie'
+                                  : null,
+                            );
+                          },
+                          loading: () => const LinearProgressIndicator(),
+                          error: (e, s) => Text('Erreur: $e'),
+                        ),
                       ),
-                    ),
-                  ),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _categoryController.text = value;
-                    });
-                  }
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: () => _showAddCategoryDialog(context, ref),
+                        icon: const Icon(Icons.add_circle_outline),
+                        tooltip: 'Créer une catégorie',
+                      ),
+                    ],
+                  );
                 },
-                validator: (value) =>
-                    value == null ? 'Veuillez choisir une catégorie' : null,
               ),
               const SizedBox(height: 16),
 
@@ -521,6 +562,166 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Future<void> _showAddCategoryDialog(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final nameController = TextEditingController();
+    // ignore: deprecated_member_use
+    int selectedColor = Colors.blue.value;
+    int selectedIcon = Icons.category.codePoint;
+
+    // Default palette
+    final colors = [
+      Colors.red,
+      Colors.pink,
+      Colors.purple,
+      Colors.deepPurple,
+      Colors.indigo,
+      Colors.blue,
+      Colors.lightBlue,
+      Colors.cyan,
+      Colors.teal,
+      Colors.green,
+      Colors.lightGreen,
+      Colors.lime,
+      Colors.yellow,
+      Colors.amber,
+      Colors.orange,
+      Colors.deepOrange,
+      Colors.brown,
+      Colors.grey,
+      Colors.blueGrey,
+      Colors.black,
+    ];
+
+    // Default icons
+    final icons = [
+      Icons.local_grocery_store,
+      Icons.restaurant,
+      Icons.commute,
+      Icons.home,
+      Icons.health_and_safety,
+      Icons.school,
+      Icons.sports_esports,
+      Icons.pets,
+      Icons.shopping_bag,
+      Icons.work,
+      Icons.savings,
+      Icons.flight,
+      Icons.movie,
+      Icons.miscellaneous_services,
+      Icons.build,
+      Icons.local_gas_station,
+    ];
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Nouvelle Catégorie'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nom',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Couleur',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: colors
+                        .map(
+                          (c) => InkWell(
+                            onTap: () {
+                              // ignore: deprecated_member_use
+                              setState(() => selectedColor = c.value);
+                            },
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: c,
+                                shape: BoxShape.circle,
+                                // ignore: deprecated_member_use
+                                border: selectedColor == c.value
+                                    ? Border.all(color: Colors.black, width: 2)
+                                    : null,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Icône',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: icons
+                        .map(
+                          (icon) => InkWell(
+                            onTap: () =>
+                                setState(() => selectedIcon = icon.codePoint),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: selectedIcon == icon.codePoint
+                                    ? Colors.grey[200]
+                                    : null,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(icon, color: Color(selectedColor)),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Annuler'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  if (nameController.text.isNotEmpty) {
+                    await ref
+                        .read(categoryControllerProvider.notifier)
+                        .addCategory(
+                          name: nameController.text,
+                          iconCodePoint: selectedIcon,
+                          colorHex: selectedColor,
+                        );
+                    if (context.mounted) Navigator.pop(context);
+                  }
+                },
+                child: const Text('Créer'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
