@@ -146,15 +146,39 @@ class DashboardPage extends ConsumerWidget {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                    Text(
-                      DateFormat(
-                        'EEEE d MMMM yyyy',
-                        'fr_FR',
-                      ).format(DateTime.now()),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey[600],
-                        fontStyle: FontStyle.italic,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          DateFormat(
+                            'EEEE d MMMM yyyy',
+                            'fr_FR',
+                          ).format(DateTime.now()),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: Colors.grey[600],
+                                fontStyle: FontStyle.italic,
+                              ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'v1.0.6',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.blueGrey,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Card(
