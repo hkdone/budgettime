@@ -89,6 +89,34 @@ class TransactionList extends ConsumerWidget {
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (isProjected)
+                  IconButton(
+                    icon: const Icon(
+                      Icons.check_circle_outline,
+                      color: Colors.green,
+                    ),
+                    tooltip: 'Valider la transaction',
+                    onPressed: () async {
+                      await ref
+                          .read(transactionRepositoryProvider)
+                          .updateTransaction(transaction['id'], {
+                            'status': 'effective',
+                          });
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Transaction validée'),
+                            backgroundColor: Colors.green,
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
+                      }
+                      await ref
+                          .read(dashboardControllerProvider.notifier)
+                          .refresh();
+                    },
+                  ),
+                const SizedBox(width: 8),
                 Text(
                   '${isIncome ? '+' : '-'}${amount.toStringAsFixed(2)} €',
                   style: TextStyle(
