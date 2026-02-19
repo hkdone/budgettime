@@ -1,3 +1,7 @@
+## v1.3.1
+
+- **Fix**: Correctly label transactions without a specific member as "Common" (instead of "Unknown") in statistics.
+
 ## v1.3.0
 
 - **Member Statistics**:
