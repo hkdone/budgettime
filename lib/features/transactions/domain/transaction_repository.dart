@@ -21,6 +21,18 @@ abstract class TransactionRepository {
   /// Add a new transaction
   Future<void> addTransaction(Map<String, dynamic> data);
 
+  /// Add a transfer operation (creates two transactions)
+  Future<void> addTransfer({
+    required String sourceAccountId,
+    required String targetAccountId,
+    required double amount,
+    required DateTime date,
+    required String label,
+    String? category,
+    String? recurrenceId,
+    String status = 'effective',
+  });
+
   /// Update an existing transaction
   Future<void> updateTransaction(String id, Map<String, dynamic> data);
 

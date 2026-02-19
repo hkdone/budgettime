@@ -123,6 +123,61 @@ class TransactionRepositoryImpl implements TransactionRepository {
   }
 
   @override
+  Future<void> addTransfer({
+    required String sourceAccountId,
+    required String targetAccountId,
+    required double amount,
+    required DateTime date,
+    required String label,
+    String? category,
+    String? recurrenceId,
+    String status = 'effective',
+  }) async {
+    final user = _dbService.pb.authStore.record;
+    if (user == null) return;
+
+    final dateStr = date.toUtc().toString();
+
+    // 1. Source Transaction (Expense)
+    await _dbService.pb
+        .collection('transactions')
+        .create(
+          body: {
+            'user': user.id,
+            'account': sourceAccountId,
+            'target_account': targetAccountId,
+            'amount': amount,
+            'label':
+                label, // "Virement vers..." logic can be handled in UI or here? Let's keep label as is and maybe append?
+            // Actually user provides label.
+            'type': 'expense', // Source pays
+            'date': dateStr,
+            'status': 'effective',
+            'category': category ?? 'Virement',
+            'recurrence': recurrenceId,
+          },
+        );
+
+    // 2. Target Transaction (Income)
+    await _dbService.pb
+        .collection('transactions')
+        .create(
+          body: {
+            'user': user.id,
+            'account': targetAccountId,
+            'target_account': sourceAccountId,
+            'amount': amount,
+            'label': label,
+            'type': 'income', // Target receives
+            'date': dateStr,
+            'status': 'effective',
+            'category': category ?? 'Virement',
+            'recurrence': recurrenceId,
+          },
+        );
+  }
+
+  @override
   Future<void> updateTransaction(String id, Map<String, dynamic> data) async {
     await _dbService.pb.collection('transactions').update(id, body: data);
   }

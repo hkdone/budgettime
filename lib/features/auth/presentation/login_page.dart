@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'auth_controller.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -112,6 +113,22 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   TextButton(
                     onPressed: () => context.push('/signup'),
                     child: const Text('Pas de compte ? Créer un compte'),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      // ignore: unused_local_variable
+                      const url = 'http://127.0.0.1:8090/_/';
+                      // Use url_launcher
+                      // Check if we can import it or need to add import
+                      // Will add import in separate step if not present
+                      try {
+                        // ignore: deprecated_member_use
+                        await launchUrl(Uri.parse(url));
+                      } catch (e) {
+                        // ignore
+                      }
+                    },
+                    child: const Text('Interface Admin (PocketBase)'),
                   ),
                 ],
               ),

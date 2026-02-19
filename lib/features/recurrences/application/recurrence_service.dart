@@ -25,26 +25,42 @@ class RecurrenceService {
     int iterations = 0;
 
     while (nextDate.isBefore(periodEnd) && iterations < maxIterations) {
-      final transactionData = {
-        'amount': recurrence.amount,
-        'label': recurrence.label,
-        'type': recurrence.type,
-        'date': nextDate.toUtc().toIso8601String(),
-        'account': recurrence.accountId,
-        'status': 'projected',
-        'category': 'Recurrence', // Or fetch from recurrence if added
-        'recurrence': recurrence.id, // Link to recurrence if possible
-        'is_automatic': true,
-      };
+      if (recurrence.type == 'transfer' && recurrence.targetAccountId != null) {
+        await _transactionRepo.addTransfer(
+          sourceAccountId: recurrence.accountId,
+          targetAccountId: recurrence.targetAccountId!,
+          amount: recurrence.amount,
+          date: nextDate,
+          label: recurrence.label,
+          category: 'Recurrence',
+          recurrenceId: recurrence.id,
+          status: 'projected',
+        );
+      } else {
+        final transactionData = {
+          'amount': recurrence.amount,
+          'label': recurrence.label,
+          'type': recurrence.type,
+          'date': nextDate.toUtc().toIso8601String(),
+          'account': recurrence.accountId,
+          'status': 'projected',
+          'category': 'Recurrence',
+          'recurrence': recurrence.id,
+          'is_automatic': true,
+        };
 
-      await _transactionRepo.addTransaction(transactionData);
+        await _transactionRepo.addTransaction(transactionData);
+      }
 
       // Calculate next date
       if (recurrence.frequency == 'weekly') {
         nextDate = nextDate.add(const Duration(days: 7));
+      } else if (recurrence.frequency == 'biweekly') {
+        nextDate = nextDate.add(const Duration(days: 14));
       } else if (recurrence.frequency == 'monthly') {
-        // Handle month overflow logic if needed, simplify for now
         nextDate = DateTime(nextDate.year, nextDate.month + 1, nextDate.day);
+      } else if (recurrence.frequency == 'bimonthly') {
+        nextDate = DateTime(nextDate.year, nextDate.month + 2, nextDate.day);
       } else if (recurrence.frequency == 'yearly') {
         nextDate = DateTime(nextDate.year + 1, nextDate.month, nextDate.day);
       } else if (recurrence.frequency == 'daily') {

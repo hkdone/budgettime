@@ -27,6 +27,7 @@ class RecurrenceController extends StateNotifier<AsyncValue<List<Recurrence>>> {
     String frequency,
     DateTime nextDueDate, {
     int? dayOfMonth,
+    String? targetAccountId,
   }) async {
     state = const AsyncValue.loading();
     Recurrence? createdRecurrence;
@@ -40,10 +41,38 @@ class RecurrenceController extends StateNotifier<AsyncValue<List<Recurrence>>> {
         'next_due_date': nextDueDate.toUtc().toString(),
         'day_of_month': dayOfMonth,
         'active': true,
+        'target_account': targetAccountId,
       });
       return _repository.getRecurrences();
     });
     return createdRecurrence;
+  }
+
+  Future<void> updateRecurrence(
+    String id, {
+    required String accountId,
+    required double amount,
+    required String label,
+    required String type,
+    required String frequency,
+    required DateTime nextDueDate,
+    int? dayOfMonth,
+    String? targetAccountId,
+  }) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await _repository.updateRecurrence(id, {
+        'account': accountId,
+        'amount': amount,
+        'label': label,
+        'type': type,
+        'frequency': frequency,
+        'next_due_date': nextDueDate.toUtc().toString(),
+        'day_of_month': dayOfMonth,
+        'target_account': targetAccountId,
+      });
+      return _repository.getRecurrences();
+    });
   }
 
   Future<void> deleteRecurrence(String id) async {

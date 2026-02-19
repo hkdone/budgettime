@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../accounts/presentation/account_controller.dart';
 import '../../accounts/domain/account.dart';
+import '../domain/recurrence.dart';
 import 'recurrence_controller.dart';
 
 class ManageRecurrencesPage extends ConsumerStatefulWidget {
@@ -14,7 +15,11 @@ class ManageRecurrencesPage extends ConsumerStatefulWidget {
 }
 
 class _ManageRecurrencesPageState extends ConsumerState<ManageRecurrencesPage> {
-  void _showAddRecurrenceDialog(BuildContext context, List<Account> accounts) {
+  void _showRecurrenceDialog(
+    BuildContext context,
+    List<Account> accounts, {
+    Recurrence? recurrence,
+  }) {
     if (accounts.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Veuillez d\'abord créer un compte.')),
@@ -22,18 +27,24 @@ class _ManageRecurrencesPageState extends ConsumerState<ManageRecurrencesPage> {
       return;
     }
 
-    final labelController = TextEditingController();
-    final amountController = TextEditingController();
-    String selectedAccountId = accounts.first.id;
-    String selectedType = 'expense';
-    String selectedFrequency = 'monthly';
-    DateTime selectedDate = DateTime.now();
+    final isEditing = recurrence != null;
+    final labelController = TextEditingController(text: recurrence?.label);
+    final amountController = TextEditingController(
+      text: recurrence?.amount.toString(),
+    );
+    String selectedAccountId = recurrence?.accountId ?? accounts.first.id;
+    String selectedType = recurrence?.type ?? 'expense';
+    String selectedFrequency = recurrence?.frequency ?? 'monthly';
+    DateTime selectedDate = recurrence?.nextDueDate ?? DateTime.now();
+    String? selectedTargetAccountId = recurrence?.targetAccountId;
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Nouvelle récurrence'),
+          title: Text(
+            isEditing ? 'Modifier la récurrence' : 'Nouvelle récurrence',
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -83,12 +94,52 @@ class _ManageRecurrencesPageState extends ConsumerState<ManageRecurrencesPage> {
                       value: 'weekly',
                       child: Text('Hebdomadaire'),
                     ),
+                    DropdownMenuItem(
+                      value: 'biweekly',
+                      child: Text('Bi-Hebdomadaire (2 sem)'),
+                    ),
                     DropdownMenuItem(value: 'monthly', child: Text('Mensuel')),
+                    DropdownMenuItem(
+                      value: 'bimonthly',
+                      child: Text('Bi-Mensuel (2 mois)'),
+                    ),
                     DropdownMenuItem(value: 'yearly', child: Text('Annuel')),
                   ],
                   onChanged: (v) =>
                       setDialogState(() => selectedFrequency = v!),
                 ),
+                if (selectedType == 'transfer') ...[
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    // If editing, use existing target, else null/first available diff from source
+                    initialValue: recurrence?.targetAccountId,
+                    // Note: recurrence?.targetAccountId might be null if new or not a transfer before.
+                    // We need a local state variable for this dropdown?
+                    // Ideally yes. BUT `showDialog` is stateless unless we use StatefulBuilder which we do.
+                    // But we didn't init `selectedTargetAccountId`.
+                    // We need to init it outside.
+                    // I will fix this locally by using a variable defined in the builder scope or outside.
+                    // The instruction below replaces the whole block, I should fix the initialization first.
+                    // See next tool call for initialization fix.
+                    decoration: const InputDecoration(
+                      labelText: 'Compte Cible',
+                    ),
+                    items: accounts
+                        .where((a) => a.id != selectedAccountId)
+                        .map(
+                          (a) => DropdownMenuItem(
+                            value: a.id,
+                            child: Text(a.name),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) =>
+                        setDialogState(() => selectedTargetAccountId = v),
+                    validator: (v) => selectedType == 'transfer' && v == null
+                        ? 'Veuillez choisir un compte cible'
+                        : null,
+                  ),
+                ],
                 const SizedBox(height: 16),
                 Row(
                   children: [
@@ -98,9 +149,11 @@ class _ManageRecurrencesPageState extends ConsumerState<ManageRecurrencesPage> {
                         final picked = await showDatePicker(
                           context: context,
                           initialDate: selectedDate,
-                          firstDate: DateTime.now(),
-                          lastDate: DateTime.now().add(
+                          firstDate: DateTime.now().subtract(
                             const Duration(days: 365),
+                          ), // Allow past dates for editing
+                          lastDate: DateTime.now().add(
+                            const Duration(days: 365 * 2),
                           ),
                         );
                         if (picked != null) {
@@ -131,23 +184,55 @@ class _ManageRecurrencesPageState extends ConsumerState<ManageRecurrencesPage> {
                     0.0;
 
                 if (label.isNotEmpty && amount > 0) {
-                  await ref
-                      .read(recurrenceControllerProvider.notifier)
-                      .addRecurrence(
-                        selectedAccountId,
-                        amount,
-                        label,
-                        selectedType,
-                        selectedFrequency,
-                        selectedDate,
-                        dayOfMonth: selectedFrequency == 'monthly'
-                            ? selectedDate.day
-                            : null,
-                      );
+                  if (isEditing) {
+                    // Update logic (Not implemented in controller yet, will add later)
+                    // For now, we might need to delete and recreate or add update method
+                    // Actually, let's just delete and recreate for simplicity in this pass if update is complex?
+                    // No, better to implement update. But for now, let's assume updateRecurrence is available or we add it.
+                    // The user wants to Modify.
+                    await ref
+                        .read(recurrenceControllerProvider.notifier)
+                        .updateRecurrence(
+                          recurrence.id,
+                          accountId: selectedAccountId,
+                          amount: amount,
+                          label: label,
+                          type: selectedType,
+                          frequency: selectedFrequency,
+                          nextDueDate: selectedDate,
+                          dayOfMonth:
+                              (selectedFrequency == 'monthly' ||
+                                  selectedFrequency == 'bimonthly')
+                              ? selectedDate.day
+                              : null,
+                          targetAccountId: selectedType == 'transfer'
+                              ? selectedTargetAccountId
+                              : null,
+                        );
+                  } else {
+                    await ref
+                        .read(recurrenceControllerProvider.notifier)
+                        .addRecurrence(
+                          selectedAccountId,
+                          amount,
+                          label,
+                          selectedType,
+                          selectedFrequency,
+                          selectedDate,
+                          dayOfMonth:
+                              (selectedFrequency == 'monthly' ||
+                                  selectedFrequency == 'bimonthly')
+                              ? selectedDate.day
+                              : null,
+                          targetAccountId: selectedType == 'transfer'
+                              ? selectedTargetAccountId
+                              : null,
+                        );
+                  }
                   if (context.mounted) Navigator.pop(context);
                 }
               },
-              child: const Text('Ajouter'),
+              child: Text(isEditing ? 'Modifier' : 'Ajouter'),
             ),
           ],
         ),
@@ -180,7 +265,7 @@ class _ManageRecurrencesPageState extends ConsumerState<ManageRecurrencesPage> {
                 ),
                 title: Text(r.label),
                 subtitle: Text(
-                  '${r.frequency} - Prochaine: ${DateFormat('dd/MM').format(r.nextDueDate)}',
+                  '${r.frequency} - Prochaine: ${DateFormat('dd/MM/yyyy').format(r.nextDueDate)}',
                 ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -190,11 +275,44 @@ class _ManageRecurrencesPageState extends ConsumerState<ManageRecurrencesPage> {
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.grey),
+                      icon: const Icon(Icons.edit, color: Colors.blue),
                       onPressed: () {
-                        ref
-                            .read(recurrenceControllerProvider.notifier)
-                            .deleteRecurrence(r.id);
+                        accountsAsync.whenData((accounts) {
+                          _showRecurrenceDialog(
+                            context,
+                            accounts,
+                            recurrence: r,
+                          );
+                        });
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.grey),
+                      onPressed: () async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Supprimer ?'),
+                            content: const Text(
+                              'Voulez-vous vraiment supprimer cette récurrence ?',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Annuler'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text('Supprimer'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirm == true) {
+                          ref
+                              .read(recurrenceControllerProvider.notifier)
+                              .deleteRecurrence(r.id);
+                        }
                       },
                     ),
                   ],
@@ -208,7 +326,7 @@ class _ManageRecurrencesPageState extends ConsumerState<ManageRecurrencesPage> {
       ),
       floatingActionButton: accountsAsync.when(
         data: (accounts) => FloatingActionButton(
-          onPressed: () => _showAddRecurrenceDialog(context, accounts),
+          onPressed: () => _showRecurrenceDialog(context, accounts),
           child: const Icon(Icons.add),
         ),
         loading: () => null,

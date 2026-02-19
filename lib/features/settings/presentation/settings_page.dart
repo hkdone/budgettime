@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/database_service.dart';
 import 'settings_controller.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../members/presentation/manage_members_page.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -65,6 +66,23 @@ class SettingsPage extends ConsumerWidget {
                 ).then((_) {
                   // Refresh if needed, though members are usually static
                 }),
+          ),
+          ListTile(
+            leading: const Icon(Icons.admin_panel_settings),
+            title: const Text('Administration (PocketBase)'),
+            onTap: () async {
+              const url = 'http://127.0.0.1:8090/_/';
+              try {
+                // ignore: deprecated_member_use
+                await launchUrl(Uri.parse(url));
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Impossible d\'ouvrir le lien: $e')),
+                  );
+                }
+              }
+            },
           ),
           const Divider(),
           ListTile(
@@ -143,6 +161,8 @@ class SettingsPage extends ConsumerWidget {
     await clearCollection('transactions');
     await clearCollection('recurrences');
     await clearCollection('accounts');
+    await clearCollection('members');
+    await clearCollection('categories');
     await clearCollection('raw_inbox');
   }
 }

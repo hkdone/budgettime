@@ -79,6 +79,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
 
   String _type = 'expense'; // 'income' or 'expense'
   String? _selectedAccountId;
+  String? _targetAccountId; // For transfers
   String? _selectedMemberId;
   DateTime _date = DateTime.now();
   bool _isLoading = false;
@@ -217,6 +218,9 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                   dayOfMonth: _recurrenceFrequency == 'monthly'
                       ? _date.day
                       : null,
+                  targetAccountId: _type == 'transfer'
+                      ? _targetAccountId
+                      : null,
                 );
           }
 
@@ -226,7 +230,22 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
           }
 
           // 3. Create Transaction
-          await ref.read(transactionRepositoryProvider).addTransaction(data);
+          if (_type == 'transfer' && _targetAccountId != null) {
+            await ref
+                .read(transactionRepositoryProvider)
+                .addTransfer(
+                  sourceAccountId: _selectedAccountId!,
+                  targetAccountId: _targetAccountId!,
+                  amount: amount,
+                  date: _date,
+                  label: label,
+                  category: category,
+                  recurrenceId: createdRecurrence?.id,
+                  status: _status,
+                );
+          } else {
+            await ref.read(transactionRepositoryProvider).addTransaction(data);
+          }
 
           // 4. Generate Projections
           if (createdRecurrence != null) {
@@ -300,6 +319,11 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                     value: 'income',
                     label: Text('Revenu'),
                     icon: Icon(Icons.attach_money),
+                  ),
+                  ButtonSegment(
+                    value: 'transfer',
+                    label: Text('Virement'),
+                    icon: Icon(Icons.swap_horiz),
                   ),
                 ],
                 selected: {_type},
@@ -613,6 +637,69 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                 },
               ),
               const SizedBox(height: 16),
+
+              if (_type == 'transfer') ...[
+                Consumer(
+                  builder: (context, ref, child) {
+                    final accountsAsync = ref.watch(accountControllerProvider);
+                    return accountsAsync.when(
+                      data: (accounts) {
+                        // Filter out selected source account
+                        final targetAccounts = accounts
+                            .where((a) => a.id != _selectedAccountId)
+                            .toList();
+
+                        if (targetAccounts.isEmpty) {
+                          return const Text(
+                            'Veuillez créer au moins deux comptes pour effectuer un virement.',
+                            style: TextStyle(color: Colors.red),
+                          );
+                        }
+
+                        // Ensure target is valid (not same as source)
+                        if (_targetAccountId == _selectedAccountId) {
+                          // defer update
+                          Future.microtask(() {
+                            if (mounted) {
+                              setState(() => _targetAccountId = null);
+                            }
+                          });
+                        }
+
+                        return DropdownButtonFormField<String>(
+                          key: ValueKey('target_$_targetAccountId'),
+                          initialValue: _targetAccountId,
+                          decoration: const InputDecoration(
+                            labelText: 'Compte Cible',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.login),
+                          ),
+                          items: targetAccounts.map((account) {
+                            return DropdownMenuItem(
+                              value: account.id,
+                              child: Text(account.name),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _targetAccountId = value;
+                            });
+                          },
+                          validator: (value) {
+                            if (_type == 'transfer' && value == null) {
+                              return 'Veuillez sélectionner un compte cible';
+                            }
+                            return null;
+                          },
+                        );
+                      },
+                      loading: () => const LinearProgressIndicator(),
+                      error: (e, s) => Text('Erreur: $e'),
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
 
               // Submit Button
               FilledButton(
