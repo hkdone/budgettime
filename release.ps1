@@ -25,6 +25,12 @@ flutter clean
 flutter pub get
 flutter build web --release --no-tree-shake-icons
 
+# Force HTML renderer to avoid CanvasKit icon issues in some environments
+$BootstrapFile = "build\web\flutter_bootstrap.js"
+if (Test-Path $BootstrapFile) {
+    (Get-Content $BootstrapFile) -replace '"renderer":"canvaskit"', '"renderer":"html"' | Set-Content $BootstrapFile
+}
+
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Build failed!"
     exit 1
