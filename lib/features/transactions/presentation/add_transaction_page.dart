@@ -9,6 +9,7 @@ import '../../categories/presentation/category_controller.dart';
 import '../../recurrences/domain/recurrence.dart';
 import '../../accounts/presentation/account_controller.dart';
 import '../../recurrences/application/recurrence_service.dart';
+import '../../members/presentation/member_controller.dart';
 
 class AddTransactionPage extends ConsumerStatefulWidget {
   final Map<String, dynamic>? transactionToEdit;
@@ -34,6 +35,8 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
       ref.refresh(accountControllerProvider);
       // ignore: unused_result
       ref.refresh(categoryControllerProvider);
+      // ignore: unused_result
+      ref.refresh(memberControllerProvider);
     });
 
     if (widget.transactionToEdit != null) {
@@ -55,6 +58,12 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
         _selectedAccountId = t['account'];
       }
 
+      if (t['expand'] != null && t['expand']['member'] != null) {
+        _selectedMemberId = t['expand']['member']['id'];
+      } else {
+        _selectedMemberId = t['member'];
+      }
+
       // Pre-fill Recurrence details
       if (t['expand'] != null && t['expand']['recurrence'] != null) {
         final recurrence = t['expand']['recurrence'];
@@ -70,6 +79,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
 
   String _type = 'expense'; // 'income' or 'expense'
   String? _selectedAccountId;
+  String? _selectedMemberId;
   DateTime _date = DateTime.now();
   bool _isLoading = false;
   bool _isRecurring = false;
@@ -118,6 +128,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
           'date': _date.toUtc().toIso8601String(),
           'category': category,
           'account': _selectedAccountId,
+          'member': _selectedMemberId,
           'status': _status,
           'is_automatic': false,
         };
@@ -493,6 +504,61 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                 ),
               ],
               const SizedBox(height: 32),
+
+              const SizedBox(height: 16),
+              // Member Selection
+              Consumer(
+                builder: (context, ref, child) {
+                  final membersAsync = ref.watch(memberControllerProvider);
+                  return membersAsync.when(
+                    data: (members) {
+                      if (members.isEmpty) return const SizedBox.shrink();
+
+                      return DropdownButtonFormField<String>(
+                        key: ValueKey(_selectedMemberId),
+                        initialValue: _selectedMemberId,
+                        decoration: const InputDecoration(
+                          labelText: 'Membre',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.person_outline),
+                        ),
+                        items: [
+                          const DropdownMenuItem(
+                            value: null,
+                            child: Row(
+                              children: [
+                                Icon(Icons.family_restroom, color: Colors.grey),
+                                SizedBox(width: 8),
+                                Text('Commun'),
+                              ],
+                            ),
+                          ),
+                          ...members.map((member) {
+                            return DropdownMenuItem(
+                              value: member.id,
+                              child: Row(
+                                children: [
+                                  Icon(member.icon, color: Colors.blueGrey),
+                                  const SizedBox(width: 8),
+                                  Text(member.name),
+                                ],
+                              ),
+                            );
+                          }),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedMemberId = value;
+                          });
+                        },
+                      );
+                    },
+                    loading: () => const LinearProgressIndicator(),
+                    error: (e, s) => Text('Erreur: $e'),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
 
               // Account Selection
               Consumer(

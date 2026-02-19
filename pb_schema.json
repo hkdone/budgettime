@@ -289,6 +289,22 @@
             },
             {
                 "system": false,
+                "id": "tx_memb",
+                "name": "member",
+                "type": "relation",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "members",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": 1,
+                    "displayFields": []
+                }
+            },
+            {
+                "system": false,
                 "id": "tx_amt",
                 "name": "amount",
                 "type": "number",
@@ -417,6 +433,64 @@
                     "min": 1,
                     "max": 31,
                     "noDecimal": true
+                }
+            }
+        ],
+        "indexes": [],
+        "listRule": "user = @request.auth.id",
+        "viewRule": "user = @request.auth.id",
+        "createRule": "user = @request.auth.id",
+        "updateRule": "user = @request.auth.id",
+        "deleteRule": "user = @request.auth.id",
+        "options": {}
+    },
+    {
+        "name": "members",
+        "type": "base",
+        "system": false,
+        "schema": [
+            {
+                "system": false,
+                "id": "mem_user",
+                "name": "user",
+                "type": "relation",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "collectionId": "_pb_users_auth_",
+                    "cascadeDelete": false,
+                    "minSelect": null,
+                    "maxSelect": 1,
+                    "displayFields": []
+                }
+            },
+            {
+                "system": false,
+                "id": "mem_name",
+                "name": "name",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "mem_icon",
+                "name": "icon",
+                "type": "text",
+                "required": true,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
                 }
             }
         ],

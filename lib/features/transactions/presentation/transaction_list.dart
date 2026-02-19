@@ -89,6 +89,33 @@ class TransactionList extends ConsumerWidget {
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Member Icon
+                if (transaction['expand'] != null &&
+                    transaction['expand']['member'] != null) ...[
+                  Tooltip(
+                    message: transaction['expand']['member']['name'],
+                    child: Icon(
+                      IconData(
+                        int.parse(transaction['expand']['member']['icon']),
+                        fontFamily: 'MaterialIcons',
+                      ),
+                      size: 20,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ] else ...[
+                  const Tooltip(
+                    message: 'Commun',
+                    child: Icon(
+                      Icons.family_restroom,
+                      size: 20,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+
                 if (isProjected)
                   IconButton(
                     icon: const Icon(

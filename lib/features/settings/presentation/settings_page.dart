@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/database_service.dart';
 import 'settings_controller.dart';
+import '../../members/presentation/manage_members_page.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -51,6 +52,19 @@ class SettingsPage extends ConsumerWidget {
                 );
               },
             ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.people),
+            title: const Text('Gérer les membres'),
+            onTap: () =>
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ManageMembersPage(),
+                  ),
+                ).then((_) {
+                  // Refresh if needed, though members are usually static
+                }),
           ),
           const Divider(),
           ListTile(

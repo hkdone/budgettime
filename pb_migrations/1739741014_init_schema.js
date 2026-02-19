@@ -64,6 +64,7 @@ migrate((db) => {
                 { name: "user", type: "relation", required: true, options: { collectionId: "_pb_users_auth_", maxSelect: 1, cascadeDelete: false } },
                 { name: "account", type: "relation", required: true, options: { collectionId: "accounts", maxSelect: 1, cascadeDelete: false } },
                 { name: "recurrence", type: "relation", required: false, options: { collectionId: "recurrences", maxSelect: 1, cascadeDelete: false } },
+                { name: "member", type: "relation", required: false, options: { collectionId: "members", maxSelect: 1, cascadeDelete: false } },
                 { name: "amount", type: "number", required: true },
                 { name: "label", type: "text", required: true },
                 { name: "type", type: "select", required: true, options: { maxSelect: 1, values: ["income", "expense", "transfer"] } },
@@ -100,7 +101,28 @@ migrate((db) => {
         dao.saveCollection(collection);
     }
 
-    // 5. raw_inbox
+    // 5. members
+    try {
+        const collection = dao.findCollectionByNameOrId("members");
+    } catch (_) {
+        const collection = new Collection({
+            name: "members",
+            type: "base",
+            schema: [
+                { name: "user", type: "relation", required: true, options: { collectionId: "_pb_users_auth_", maxSelect: 1, cascadeDelete: false } },
+                { name: "name", type: "text", required: true },
+                { name: "icon", type: "text", required: true }
+            ],
+            listRule: "user = @request.auth.id",
+            viewRule: "user = @request.auth.id",
+            createRule: "user = @request.auth.id",
+            updateRule: "user = @request.auth.id",
+            deleteRule: "user = @request.auth.id",
+        });
+        dao.saveCollection(collection);
+    }
+
+    // 6. raw_inbox
     try {
         const collection = dao.findCollectionByNameOrId("raw_inbox");
     } catch (_) {

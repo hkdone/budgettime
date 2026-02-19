@@ -12,6 +12,8 @@ import '../features/transactions/data/transaction_repository_impl.dart';
 import '../features/transactions/domain/transaction_repository.dart';
 import '../features/categories/data/category_repository_impl.dart';
 import '../features/categories/domain/category_repository.dart';
+import '../features/members/data/member_repository_impl.dart';
+import '../features/members/domain/member_repository.dart';
 
 // Services
 final databaseServiceProvider = Provider<DatabaseService>((ref) {
@@ -41,6 +43,11 @@ final categoryRepositoryProvider = Provider<CategoryRepository>((ref) {
 // Inbox Repository
 final inboxRepositoryProvider = Provider<InboxRepository>((ref) {
   return InboxRepositoryImpl(ref.watch(databaseServiceProvider));
+});
+
+// Member Repository
+final memberRepositoryProvider = Provider<MemberRepository>((ref) {
+  return MemberRepositoryImpl(ref.watch(databaseServiceProvider));
 });
 
 // Inbox Service

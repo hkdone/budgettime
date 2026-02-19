@@ -1,3 +1,13 @@
+## v1.2.0
+
+- **Multi-User Tracking**:
+  - Added Members management.
+  - Added Member assignment to transactions.
+  - Added Member icons in lists.
+- **Database**:
+  - Added `members` collection.
+  - Added `member` relation to `transactions`.
+
 ## v0.22.3
 
 - Fixed the z-index of the current admin dropdown on Safari ([#4492](https://github.com/pocketbase/pocketbase/issues/4492)).
