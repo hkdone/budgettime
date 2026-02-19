@@ -113,28 +113,30 @@ class TransactionRepositoryImpl implements TransactionRepository {
     final dateStr = fromDate.toUtc().toIso8601String();
 
     // Find all projected transactions for this recurrence after the date
-    final validRecords = await _dbService.pb
-        .collection('transactions')
-        .getFullList(
-          filter:
-              'user = "${user.id}" && recurrence = "$recurrenceId" && status = "projected" && date >= "$dateStr"',
-        );
+    // 1. Delete Future Projected Transactions
+    try {
+      final validRecords = await _dbService.pb
+          .collection('transactions')
+          .getFullList(
+            filter:
+                'user = "${user.id}" && recurrence = "$recurrenceId" && status = "projected" && date >= "$dateStr"',
+          );
 
-    for (final record in validRecords) {
-      await _dbService.pb.collection('transactions').delete(record.id);
+      for (final record in validRecords) {
+        await _dbService.pb.collection('transactions').delete(record.id);
+      }
+    } catch (e) {
+      // print('Error deleting future transactions: $e');
     }
 
-    // CRITICAL FIX: Stop the recurrence so it doesn't regenerate projections!
+    // 2. CRITICAL: Stop the recurrence (Set active = false)
+    // This must happen regardless of whether transactions were found/deleted.
     try {
-      // If we are deleting "Future" from a date, we should probably stop the recurrence entirely
-      // or set its end date. For simplicity in "Delete All Future", we disable it.
-      // If we are deleting from "Today", it means "Stop recurrence now".
       await _dbService.pb
           .collection('recurrences')
           .update(recurrenceId, body: {'active': false});
     } catch (e) {
       // print('Error stopping recurrence: $e');
-      // If it fails, maybe it was already deleted?
     }
   }
 
