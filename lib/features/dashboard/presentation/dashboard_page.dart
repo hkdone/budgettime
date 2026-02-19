@@ -124,6 +124,11 @@ class DashboardPage extends ConsumerWidget {
                 context.push('/accounts').then((_) => controller.refresh()),
           ),
           IconButton(
+            icon: const Icon(Icons.bar_chart, color: Colors.black),
+            tooltip: 'Statistiques',
+            onPressed: () => context.push('/statistics'),
+          ),
+          IconButton(
             icon: const Icon(Icons.settings, color: Colors.black),
             tooltip: 'Paramètres',
             onPressed: () =>
@@ -171,7 +176,7 @@ class DashboardPage extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Text(
-                            'v1.0.16',
+                            'v1.1.0',
                             style: TextStyle(
                               fontSize: 10,
                               color: Colors.blueGrey,

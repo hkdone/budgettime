@@ -7,6 +7,7 @@ import '../../features/transactions/presentation/add_transaction_page.dart';
 import '../../features/recurrences/presentation/manage_recurrences_page.dart';
 import '../../features/recurrences/presentation/recurrences_list_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
+import '../../features/statistics/presentation/statistics_page.dart';
 import '../services/database_service.dart';
 
 final router = GoRouter(
@@ -48,6 +49,10 @@ final router = GoRouter(
         final accountId = state.extra as String;
         return RecurrencesListPage(accountId: accountId);
       },
+    ),
+    GoRoute(
+      path: '/statistics',
+      builder: (context, state) => const StatisticsPage(),
     ),
   ],
 );
