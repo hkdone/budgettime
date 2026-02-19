@@ -163,6 +163,15 @@ class TransactionList extends ConsumerWidget {
                               .read(transactionRepositoryProvider)
                               .deleteTransaction(transaction['id']);
                         } else if (choice == 'future') {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Debug: Deleting Future. ID: ${transaction['id']}, Status: ${transaction['status']}',
+                              ),
+                              duration: const Duration(seconds: 5),
+                            ),
+                          );
+
                           await ref
                               .read(transactionRepositoryProvider)
                               .deleteFutureTransactions(
@@ -172,6 +181,14 @@ class TransactionList extends ConsumerWidget {
                           // Also delete the current one if it wasn't caught by the "projected" filter
                           // (e.g. if it's the initial effective transaction)
                           if (transaction['status'] != 'projected') {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Debug: Deleting Current Transaction...',
+                                ),
+                                duration: Duration(seconds: 1),
+                              ),
+                            );
                             await ref
                                 .read(transactionRepositoryProvider)
                                 .deleteTransaction(transaction['id']);

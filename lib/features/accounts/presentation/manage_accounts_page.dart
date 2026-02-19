@@ -161,10 +161,7 @@ class _ManageAccountsPageState extends ConsumerState<ManageAccountsPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(
-                        Icons.calendar_month,
-                        color: Colors.blueGrey,
-                      ),
+                      icon: const Icon(Icons.event, color: Colors.purple),
                       tooltip: 'Voir les échéances',
                       onPressed: () {
                         context.push('/account-recurrences', extra: account.id);
