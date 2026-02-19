@@ -94,9 +94,12 @@ class DashboardPage extends ConsumerWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                state.selectedAccount?.name ?? 'Tous les comptes',
-                style: const TextStyle(color: Colors.black),
+              Flexible(
+                child: Text(
+                  state.selectedAccount?.name ?? 'Tous les comptes',
+                  style: const TextStyle(color: Colors.black),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               const Icon(Icons.arrow_drop_down, color: Colors.black),
             ],
@@ -118,27 +121,57 @@ class DashboardPage extends ConsumerWidget {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.account_balance),
-            tooltip: 'Gérer les comptes',
-            onPressed: () =>
-                context.push('/accounts').then((_) => controller.refresh()),
-          ),
-          IconButton(
-            icon: const Icon(Icons.bar_chart, color: Colors.black),
+            icon: const Icon(Icons.pie_chart, color: Colors.black),
             tooltip: 'Statistiques',
             onPressed: () => context.push('/statistics'),
           ),
-          IconButton(
-            icon: const Icon(Icons.settings, color: Colors.black),
-            tooltip: 'Paramètres',
-            onPressed: () =>
-                context.push('/settings').then((_) => controller.refresh()),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              ref.read(authControllerProvider.notifier).signOut();
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.black),
+            onSelected: (value) {
+              switch (value) {
+                case 'accounts':
+                  context.push('/accounts').then((_) => controller.refresh());
+                  break;
+                case 'settings':
+                  context.push('/settings').then((_) => controller.refresh());
+                  break;
+                case 'logout':
+                  ref.read(authControllerProvider.notifier).signOut();
+                  break;
+              }
             },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'accounts',
+                child: Row(
+                  children: [
+                    Icon(Icons.account_balance, color: Colors.black54),
+                    SizedBox(width: 8),
+                    Text('Gérer les comptes'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'settings',
+                child: Row(
+                  children: [
+                    Icon(Icons.settings, color: Colors.black54),
+                    SizedBox(width: 8),
+                    Text('Paramètres'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Déconnexion', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),

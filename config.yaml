@@ -1,5 +1,5 @@
 name: "Budget Assistant"
-version: "1.1.0-categories-final"
+version: "1.1.1-ui-fix"
 slug: "budget_assistant"
 description: "Gestion de budget Offline-First basée sur PocketBase"
 arch:
