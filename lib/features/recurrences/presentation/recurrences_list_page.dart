@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../recurrences/presentation/recurrence_controller.dart';
 import '../../recurrences/domain/recurrence.dart'; // Import Recurrence model
+import 'recurrence_dialog.dart';
 import '../../accounts/presentation/account_controller.dart';
 
 class RecurrencesListPage extends ConsumerWidget {
@@ -75,15 +76,84 @@ class RecurrencesListPage extends ConsumerWidget {
                                     ?.copyWith(fontWeight: FontWeight.bold),
                               ),
                             ),
-                            Text(
-                              '${recurrence.amount.toStringAsFixed(2)} €',
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(
-                                    color: recurrence.type == 'income'
-                                        ? Colors.green
-                                        : Colors.red,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  '${recurrence.amount.toStringAsFixed(2)} €',
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(
+                                        color: recurrence.type == 'income'
+                                            ? Colors.green
+                                            : Colors.red,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                ),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.edit,
+                                        size: 20,
+                                        color: Colors.blue,
+                                      ),
+                                      onPressed: () {
+                                        accountsAsync.whenData((accounts) {
+                                          RecurrenceDialog.show(
+                                            context,
+                                            ref,
+                                            accounts,
+                                            recurrence: recurrence,
+                                          );
+                                        });
+                                      },
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.delete,
+                                        size: 20,
+                                        color: Colors.grey,
+                                      ),
+                                      onPressed: () async {
+                                        final confirm = await showDialog<bool>(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: const Text('Supprimer ?'),
+                                            content: const Text(
+                                              'Voulez-vous vraiment supprimer cette récurrence ?',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(
+                                                  context,
+                                                  false,
+                                                ),
+                                                child: const Text('Annuler'),
+                                              ),
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(
+                                                  context,
+                                                  true,
+                                                ),
+                                                child: const Text('Supprimer'),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                        if (confirm == true) {
+                                          ref
+                                              .read(
+                                                recurrenceControllerProvider
+                                                    .notifier,
+                                              )
+                                              .deleteRecurrence(recurrence.id);
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ],
                         ),

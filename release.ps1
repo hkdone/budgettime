@@ -62,18 +62,25 @@ else {
     git tag -a "v$Version" -m "Version $Version"
 }
 
-Write-Host "=== Git Release Ready! ===" -ForegroundColor Green
-Write-Host "Next steps:"
-Write-Host "1. Push to GitHub: git push origin main --tags"
+Write-Host "=== Git Release Ready locally! ===" -ForegroundColor Green
 
-# 6. Docker Build & Push
-Write-Host "`n=== 6. Docker Deployment (GHCR) ===" -ForegroundColor Cyan
+# 6. Push to GitHub (Master & Main)
+$PushGit = Read-Host "Push to GitHub now? [Y/n]"
+if ($PushGit -eq "" -or $PushGit -match "^[OoYy]") {
+    Write-Host "Pushing to GitHub..." -ForegroundColor Green
+    git push origin main --tags --force
+    git push origin main:master --force
+    Write-Host "GitHub synchronization complete." -ForegroundColor Green
+}
+
+# 7. Docker Build & Push
+Write-Host "`n=== 7. Docker Deployment (GHCR for CasaOS) ===" -ForegroundColor Cyan
 $ImageName = "ghcr.io/hkdone/budgettime"
 Write-Host "Prepare to build and push Docker image: $($ImageName):$($Version)"
 
 $PushDocker = Read-Host "Build and Push Docker image now? [Y/n]"
 if ($PushDocker -eq "" -or $PushDocker -match "^[OoYy]") {
-    Write-Host "Building Docker image..." -ForegroundColor Green
+    Write-Host "Building Docker image (multi-arch ready context)..." -ForegroundColor Green
     
     # Use subexpression syntax for safety, using budgettime/ folder as context
     docker build -t "$($ImageName):$($Version)" -t "$($ImageName):latest" ./budgettime
@@ -89,7 +96,6 @@ if ($PushDocker -eq "" -or $PushDocker -match "^[OoYy]") {
 
     if ($LASTEXITCODE -eq 0) {
         Write-Host "Docker Image Pushed Successfully!" -ForegroundColor Green
-        Write-Host "Update available on CasaOS with tag usage: latest"
     }
     else {
         Write-Error "Docker Push Failed. Please check 'docker login ghcr.io'."
@@ -98,3 +104,9 @@ if ($PushDocker -eq "" -or $PushDocker -match "^[OoYy]") {
 else {
     Write-Host "Docker deployment skipped." -ForegroundColor Yellow
 }
+
+Write-Host "`n=== Final Update Summary ===" -ForegroundColor Cyan
+Write-Host "1. Synology: Copy the content of './budgettime' to your NAS." -ForegroundColor Yellow
+Write-Host "2. CasaOS: Image pushed to GHCR. Click 'Update' in CasaOS UI." -ForegroundColor Yellow
+Write-Host "3. Home Assistant: Git pushed. Perform a 'git pull' or reinstall in HA." -ForegroundColor Yellow
+Write-Host "`n=== Release v$Version Complete! ===" -ForegroundColor Green
