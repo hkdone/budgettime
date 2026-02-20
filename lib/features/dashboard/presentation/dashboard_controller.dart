@@ -5,6 +5,7 @@ import '../../accounts/presentation/account_controller.dart';
 import '../../accounts/data/account_repository_impl.dart';
 import '../../settings/presentation/settings_controller.dart';
 import '../../transactions/domain/transaction_repository.dart';
+import '../../recurrences/presentation/recurrence_controller.dart';
 
 class DashboardState {
   final List<dynamic> transactions;
@@ -232,6 +233,8 @@ final dashboardControllerProvider =
       ref.watch(settingsControllerProvider);
       // Watch account controller state to rebuild/reload when accounts change
       ref.watch(accountControllerProvider);
+      // Watch recurrences to refresh dashboard when they change
+      ref.watch(recurrenceControllerProvider);
 
       return DashboardController(transactionRepo, ref);
     });

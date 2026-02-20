@@ -58,9 +58,32 @@ class RecurrenceService {
       } else if (recurrence.frequency == 'biweekly') {
         nextDate = nextDate.add(const Duration(days: 14));
       } else if (recurrence.frequency == 'monthly') {
-        nextDate = DateTime(nextDate.year, nextDate.month + 1, nextDate.day);
+        // Move to next month and keep the same day
+        final nextMonth = DateTime(nextDate.year, nextDate.month + 1, 1);
+        final lastDayOfNextMonth = DateTime(
+          nextDate.year,
+          nextDate.month + 2,
+          0,
+        ).day;
+        final targetDay = recurrence.dayOfMonth ?? recurrence.nextDueDate.day;
+        nextDate = DateTime(
+          nextMonth.year,
+          nextMonth.month,
+          targetDay > lastDayOfNextMonth ? lastDayOfNextMonth : targetDay,
+        );
       } else if (recurrence.frequency == 'bimonthly') {
-        nextDate = DateTime(nextDate.year, nextDate.month + 2, nextDate.day);
+        final nextMonth = DateTime(nextDate.year, nextDate.month + 2, 1);
+        final lastDayOfNextMonth = DateTime(
+          nextDate.year,
+          nextDate.month + 3,
+          0,
+        ).day;
+        final targetDay = recurrence.dayOfMonth ?? recurrence.nextDueDate.day;
+        nextDate = DateTime(
+          nextMonth.year,
+          nextMonth.month,
+          targetDay > lastDayOfNextMonth ? lastDayOfNextMonth : targetDay,
+        );
       } else if (recurrence.frequency == 'yearly') {
         nextDate = DateTime(nextDate.year + 1, nextDate.month, nextDate.day);
       } else if (recurrence.frequency == 'daily') {
