@@ -83,9 +83,30 @@ schema: {}
 
 ### Dockerfile
 ```dockerfile
-FROM ghcr.io/hkdone/budgettime:latest
+FROM alpine:latest
+
+# Version de PocketBase
+ARG PB_VERSION=0.22.3
+
+RUN apk add --no-cache unzip ca-certificates curl dos2unix
+
+# Téléchargement dynamique selon l'architecture du Raspberry Pi (ou autre)
+RUN ARCH=$(uname -m) && \
+    case "$ARCH" in \
+      x86_64) PB_BINARY_ARCH="linux_amd64" ;; \
+      aarch64) PB_BINARY_ARCH="linux_arm64" ;; \
+      armv7*) PB_BINARY_ARCH="linux_armv7" ;; \
+      *) echo "Architecture non supportée: $ARCH" && exit 1 ;; \
+    esac && \
+    curl -L https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_${PB_BINARY_ARCH}.zip -o /tmp/pb.zip && \
+    unzip /tmp/pb.zip -d /pb/ && \
+    rm /tmp/pb.zip
+
+# Note : Pour que cela fonctionne en manuel, vous devez avoir le dossier pb_public dans le même dossier
+# Si vous avez utilisé la méthode Terminal (Section 5), c'est déjà bon.
+COPY pb_public /pb/pb_public
 COPY run.sh /run.sh
-RUN chmod +x /run.sh
+RUN dos2unix /run.sh && chmod +x /run.sh
 CMD [ "/run.sh" ]
 ```
 
