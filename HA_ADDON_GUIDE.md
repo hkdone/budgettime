@@ -52,9 +52,10 @@ Quand vous publiez une nouvelle version (via `release.ps1`) :
 ## 4. Troubleshooting: Installation Manuelle (Fiable à 100%)
 Si vous rencontrez des erreurs de type "Invalid Add-on Repository", voici la méthode manuelle :
 
-1.  Installez l'add-on officiel **File Editor** ou **Samba Share** dans Home Assistant.
-2.  Accédez au dossier `/addons` de votre Home Assistant.
-3.  Créez un dossier nommé `local_budgettime`.
+1.  Installez l'add-on officiel **File Editor** ou **Samba Share**.
+    *   **Si vous utilisez File Editor** : Allez dans la configuration de l'add-on, désactivez `Enforce Basepath` (mettez le à `false`) et redémarrez l'add-on. Ensuite, cliquez sur la flèche "Remonter" (..) en haut de l'explorateur de fichiers pour sortir du dossier `/config` et voir le dossier `/addons`.
+    *   **Si vous utilisez Samba Share** : Le dossier `addons` devrait apparaître dans votre réseau Windows.
+2.  Dans ce dossier `/addons` (s'il n'existe pas, créez-le à la racine), créez un dossier `local_budgettime`.
 4.  À l'intérieur, créez 3 fichiers (`config.yaml`, `Dockerfile`, `run.sh`) avec le contenu suivant :
 
 ### config.yaml
