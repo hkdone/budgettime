@@ -17,7 +17,7 @@ Write-Host "1. Updating pubspec.yaml..."
 
 # 2. Update HA config.yaml version
 Write-Host "2. Updating config.yaml..."
-(Get-Content config.yaml) -replace "version: .*", "version: ""$Version""" | Set-Content config.yaml
+(Get-Content budgettime/config.yaml) -replace "version: .*", "version: ""$Version""" | Set-Content budgettime/config.yaml
 
 # 3. Build Flutter Web
 Write-Host "3. Building Flutter Web..."
@@ -36,11 +36,11 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# 4. Update pb_public
-Write-Host "4. Updating pb_public..."
-if (Test-Path pb_public) { Remove-Item -Recurse -Force pb_public }
-New-Item -ItemType Directory -Force -Path pb_public
-Copy-Item -Recurse build\web\* pb_public\
+# 4. Update pb_public (inside budgettime/ for HA/Docker context)
+Write-Host "4. Updating budgettime/pb_public..."
+if (Test-Path budgettime/pb_public) { Remove-Item -Recurse -Force budgettime/pb_public }
+New-Item -ItemType Directory -Force -Path budgettime/pb_public
+Copy-Item -Recurse build\web\* budgettime/pb_public\
 
 # 5. Git Operations
 Write-Host "5. Git Operations..."
@@ -75,8 +75,8 @@ $PushDocker = Read-Host "Build and Push Docker image now? [Y/n]"
 if ($PushDocker -eq "" -or $PushDocker -match "^[OoYy]") {
     Write-Host "Building Docker image..." -ForegroundColor Green
     
-    # Use subexpression syntax for safety
-    docker build -t "$($ImageName):$($Version)" -t "$($ImageName):latest" .
+    # Use subexpression syntax for safety, using budgettime/ folder as context
+    docker build -t "$($ImageName):$($Version)" -t "$($ImageName):latest" ./budgettime
 
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Docker Build Failed!"
