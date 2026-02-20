@@ -1,12 +1,19 @@
-name: "Budget Assistant"
-version: "1.5.1"
-slug: "budget_assistant"
+name: "BudgetTime"
+version: "1.5.2"
+slug: "budgettime"
 description: "Gestion de budget Offline-First basée sur PocketBase"
+url: "https://github.com/hkdone/budgettime"
+startup: application
 arch:
   - aarch64
   - amd64
-ports:
-  8090/tcp: 8090
+image: "ghcr.io/hkdone/budgettime:{arch}"
 map:
   - "share:rw"
-data: true # Obligatoire pour la persistance
+ports:
+  8090/tcp: 8090
+ports_description:
+  8090/tcp: Web Interface
+data: true # Persistance dans /data
+options: {}
+schema: {}
