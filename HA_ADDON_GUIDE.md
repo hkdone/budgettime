@@ -105,3 +105,26 @@ fi
 ### Étape Finale
 1.  Redémarrez l'Add-on Store (3 petits points -> "Check for updates").
 2.  Dans "Local Add-ons", installez **BudgetTime Local**.
+
+## 5. Méthode "Terminal & SSH" (Si vous ne trouvez pas le dossier addons)
+Si vous ne voyez pas le dossier `/addons`, le plus simple est d'utiliser l'add-on **Terminal & SSH** :
+
+1.  Installez et lancez l'add-on **Terminal & SSH**.
+2.  Tapez ces commandes (une par une) :
+
+```bash
+# Aller dans le dossier addons (le créer s'il n'existe pas)
+cd /addons || mkdir /addons && cd /addons
+
+# Télécharger le projet
+git clone https://github.com/hkdone/budgettime temp_install
+
+# Déplacer le dossier de l'addon au bon endroit
+mv temp_install/budgettime local_budgettime
+
+# Nettoyer
+rm -rf temp_install
+```
+
+3.  Allez dans **Boutique** -> **Check for updates**.
+4.  L'addon **BudgetTime** apparaîtra dans la liste "Local Add-ons".
