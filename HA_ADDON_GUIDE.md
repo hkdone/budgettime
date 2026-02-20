@@ -48,3 +48,59 @@ Quand vous publiez une nouvelle version (via `release.ps1`) :
 1. Dans Home Assistant, allez sur la page de l'Add-on.
 2. Vous devriez voir un bouton de mise à jour (parfois il faut "Rechercher les mises à jour" dans la boutique).
 3. Cliquez sur **Mettre à jour**.
+
+## 4. Troubleshooting: Installation Manuelle (Fiable à 100%)
+Si vous rencontrez des erreurs de type "Invalid Add-on Repository", voici la méthode manuelle :
+
+1.  Installez l'add-on officiel **File Editor** ou **Samba Share** dans Home Assistant.
+2.  Accédez au dossier `/addons` de votre Home Assistant.
+3.  Créez un dossier nommé `local_budgettime`.
+4.  À l'intérieur, créez 3 fichiers (`config.yaml`, `Dockerfile`, `run.sh`) avec le contenu suivant :
+
+### config.yaml
+```yaml
+name: "BudgetTime Local"
+version: "1.5.2"
+slug: "budgettime_local"
+description: "Gestion de budget Offline-First"
+url: "https://github.com/hkdone/budgettime"
+startup: application
+arch:
+  - aarch64
+  - amd64
+# image: "ghcr.io/hkdone/budgettime:{arch}" # Commenté pour forcer le build local
+map:
+  - "share:rw"
+ports:
+  8090/tcp: 8090
+ports_description:
+  8090/tcp: Web Interface
+data: true
+options: {}
+schema: {}
+```
+
+### Dockerfile
+```dockerfile
+FROM ghcr.io/hkdone/budgettime:latest
+COPY run.sh /run.sh
+RUN chmod +x /run.sh
+CMD [ "/run.sh" ]
+```
+
+### run.sh
+*(Attention : Assurez-vous que les fins de lignes sont en LF / Unix)*
+```bash
+#!/bin/sh
+if [ -d "/data" ]; then
+    echo "Environment: Home Assistant Add-on"
+    /pb/pocketbase serve --http=0.0.0.0:8090 --dir="/data/pb_data" --publicDir="/pb/pb_public"
+else
+    echo "Environment: Docker Standard"
+    /pb/pocketbase serve --http=0.0.0.0:8090 --dir="/pb/pb_data" --publicDir="/pb/pb_public"
+fi
+```
+
+### Étape Finale
+1.  Redémarrez l'Add-on Store (3 petits points -> "Check for updates").
+2.  Dans "Local Add-ons", installez **BudgetTime Local**.
