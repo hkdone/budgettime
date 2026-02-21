@@ -86,7 +86,7 @@ class AccountGlobalCard extends ConsumerWidget {
                                 child: CategoryPieChart(
                                   stats: stats.expenseByCategory,
                                   totalAmount: stats.totalExpense,
-                                  showLegend: false,
+                                  showLegend: true,
                                 ),
                               ),
                               Expanded(
@@ -96,7 +96,7 @@ class AccountGlobalCard extends ConsumerWidget {
                                     members: members,
                                     totalAmount: stats.totalExpense,
                                     title: 'Membres',
-                                    showLegend: false,
+                                    showLegend: true,
                                   ),
                                   orElse: () => const SizedBox.shrink(),
                                 ),
@@ -110,7 +110,7 @@ class AccountGlobalCard extends ConsumerWidget {
                                 child: CategoryPieChart(
                                   stats: stats.expenseByCategory,
                                   totalAmount: stats.totalExpense,
-                                  showLegend: false,
+                                  showLegend: true,
                                 ),
                               ),
                               const SizedBox(width: 8),

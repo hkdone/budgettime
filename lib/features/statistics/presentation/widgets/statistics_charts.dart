@@ -62,7 +62,7 @@ class CategoryPieChart extends StatelessWidget {
           Wrap(
             spacing: 8,
             runSpacing: 4,
-            children: stats.take(3).map((catStat) {
+            children: stats.take(5).map((catStat) {
               final category = kTransactionCategories.firstWhere(
                 (c) => c.id == catStat.categoryId,
                 orElse: () => const Category(

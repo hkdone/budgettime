@@ -50,34 +50,39 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
 
     if (widget.transactionToEdit != null) {
       final t = widget.transactionToEdit!;
-      _amountController.text = (t['amount'] as num).toString();
-      _labelController.text = t['label'] ?? '';
-      _categoryController.text = t['category'] ?? '';
-      _type = t['type'] ?? 'expense';
-      _status = t['status'] ?? 'projected';
-      _date = DateTime.parse(t['date']);
 
-      if (t['expand'] != null && t['expand']['account'] != null) {
-        _selectedAccountId = t['expand']['account']['id'];
-      } else {
-        _selectedAccountId = t['account'];
-      }
+      // If it's an edit (has id)
+      if (t['id'] != null) {
+        _amountController.text = (t['amount'] as num?)?.toString() ?? '';
+        _labelController.text = t['label'] ?? '';
+        _categoryController.text = t['category'] ?? '';
+        _type = t['type'] ?? 'expense';
+        _status = t['status'] ?? 'projected';
+        _date = t['date'] != null ? DateTime.parse(t['date']) : DateTime.now();
 
-      if (t['expand'] != null && t['expand']['member'] != null) {
-        _selectedMemberId = t['expand']['member']['id'];
-      } else {
-        _selectedMemberId = t['member'];
-      }
+        if (t['expand'] != null && t['expand']['account'] != null) {
+          _selectedAccountId = t['expand']['account']['id'];
+        } else {
+          _selectedAccountId = t['account'];
+        }
 
-      if (t['expand'] != null && t['expand']['recurrence'] != null) {
-        final recurrence = t['expand']['recurrence'];
-        _isRecurring = true;
-        _recurrenceFrequency = recurrence['frequency'] ?? 'monthly';
-        if (!['weekly', 'monthly', 'yearly'].contains(_recurrenceFrequency)) {
-          _recurrenceFrequency = 'monthly';
+        if (t['expand'] != null && t['expand']['member'] != null) {
+          _selectedMemberId = t['expand']['member']['id'];
+        } else {
+          _selectedMemberId = t['member'];
+        }
+
+        if (t['expand'] != null && t['expand']['recurrence'] != null) {
+          final recurrence = t['expand']['recurrence'];
+          _isRecurring = true;
+          _recurrenceFrequency = recurrence['frequency'] ?? 'monthly';
+          if (!['weekly', 'monthly', 'yearly'].contains(_recurrenceFrequency)) {
+            _recurrenceFrequency = 'monthly';
+          }
         }
       }
 
+      // If it's a pre-filled account (for both edit and new)
       if (t['accountId'] != null) {
         _selectedAccountId = t['accountId'];
       }
