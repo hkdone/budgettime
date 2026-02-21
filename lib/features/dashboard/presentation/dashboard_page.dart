@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../auth/presentation/auth_controller.dart';
 import 'dashboard_controller.dart';
 import '../../transactions/presentation/transaction_list.dart';
+import 'widgets/account_global_card.dart';
 
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
@@ -120,11 +121,6 @@ class DashboardPage extends ConsumerWidget {
               }
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.pie_chart, color: Colors.black),
-            tooltip: 'Statistiques',
-            onPressed: () => context.push('/statistics'),
-          ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.black),
             onSelected: (value) {
@@ -209,7 +205,7 @@ class DashboardPage extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Text(
-                            'v1.6.2',
+                            'v1.6.4',
                             style: TextStyle(
                               fontSize: 10,
                               color: Colors.blueGrey,
@@ -332,27 +328,32 @@ class DashboardPage extends ConsumerWidget {
                 ),
               ),
             ),
-            if (state.isLoading)
-              const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (state.error != null)
-              SliverFillRemaining(
-                child: Center(child: Text('Error: ${state.error}')),
+            // 5. Success State: Transactions or Account Cards
+            if (state.selectedAccount == null)
+              // GLOBAL VIEW: Show per-account cards
+              SliverList(
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final account = state.accounts[index];
+                  return AccountGlobalCard(account: account);
+                }, childCount: state.accounts.length),
               )
             else
-              SliverFillRemaining(
-                child: TransactionList(transactions: state.transactions),
-              ),
+              // DETAIL VIEW: Show transaction list for the selected account
+              TransactionList(transactions: state.transactions),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          context.push('/add-transaction');
-        },
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: state.selectedAccount != null
+          ? FloatingActionButton(
+              onPressed: () {
+                context.push(
+                  '/add-transaction',
+                  extra: {'accountId': state.selectedAccount!.id},
+                );
+              },
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 }

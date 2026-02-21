@@ -15,17 +15,19 @@ class TransactionList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (transactions.isEmpty) {
-      return const Center(
-        child: Text(
-          'Aucune transaction pour cette période',
-          style: TextStyle(color: Colors.grey),
+      return const SliverFillRemaining(
+        hasScrollBody: false,
+        child: Center(
+          child: Text(
+            'Aucune transaction pour cette période',
+            style: TextStyle(color: Colors.grey),
+          ),
         ),
       );
     }
 
-    return ListView.builder(
-      itemCount: transactions.length,
-      itemBuilder: (context, index) {
+    return SliverList(
+      delegate: SliverChildBuilderDelegate((context, index) {
         final transaction = transactions[index];
         final isIncome = transaction['type'] == 'income';
         final amount = (transaction['amount'] as num).toDouble();
@@ -326,7 +328,7 @@ class TransactionList extends ConsumerWidget {
             ),
           ),
         );
-      },
+      }, childCount: transactions.length),
     );
   }
 }

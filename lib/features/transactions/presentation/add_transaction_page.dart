@@ -26,10 +26,19 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
   final _labelController = TextEditingController();
   final _categoryController = TextEditingController();
 
+  String _type = 'expense'; // 'income' or 'expense'
+  String? _selectedAccountId;
+  String? _targetAccountId; // For transfers
+  String? _selectedMemberId;
+  DateTime _date = DateTime.now();
+  bool _isLoading = false;
+  bool _isRecurring = false;
+  String _recurrenceFrequency = 'monthly';
+  String _status = 'projected';
+
   @override
   void initState() {
     super.initState();
-    // Refresh accounts to ensure list is up to date
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // ignore: unused_result
       ref.refresh(accountControllerProvider);
@@ -45,16 +54,12 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
       _labelController.text = t['label'] ?? '';
       _categoryController.text = t['category'] ?? '';
       _type = t['type'] ?? 'expense';
-      _status = t['status'] ?? 'effective';
-      _date = DateTime.parse(t['date']); // Assuming UTC string
+      _status = t['status'] ?? 'projected';
+      _date = DateTime.parse(t['date']);
 
-      // Handle account selection (might need to wait for accounts to load?)
-      // Since we just triggered refresh, account list might not be ready.
-      // But _selectedAccountId is used logic.
       if (t['expand'] != null && t['expand']['account'] != null) {
         _selectedAccountId = t['expand']['account']['id'];
       } else {
-        // Fallback if not expanded but id is there (depends on how we pass data)
         _selectedAccountId = t['account'];
       }
 
@@ -64,28 +69,20 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
         _selectedMemberId = t['member'];
       }
 
-      // Pre-fill Recurrence details
       if (t['expand'] != null && t['expand']['recurrence'] != null) {
         final recurrence = t['expand']['recurrence'];
         _isRecurring = true;
         _recurrenceFrequency = recurrence['frequency'] ?? 'monthly';
-        // Ensure valid value
         if (!['weekly', 'monthly', 'yearly'].contains(_recurrenceFrequency)) {
           _recurrenceFrequency = 'monthly';
         }
       }
+
+      if (t['accountId'] != null) {
+        _selectedAccountId = t['accountId'];
+      }
     }
   }
-
-  String _type = 'expense'; // 'income' or 'expense'
-  String? _selectedAccountId;
-  String? _targetAccountId; // For transfers
-  String? _selectedMemberId;
-  DateTime _date = DateTime.now();
-  bool _isLoading = false;
-  bool _isRecurring = false;
-  String _recurrenceFrequency = 'monthly';
-  String _status = 'effective';
 
   @override
   void dispose() {
@@ -109,7 +106,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
     }
   }
 
-  Future<void> _submit() async {
+  Future<void> _submit({required bool stayOnPage}) async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
@@ -144,11 +141,6 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                 .read(transactionRepositoryProvider)
                 .updateTransaction(widget.transactionToEdit!['id'], data);
           } else {
-            // Smart Update Dialog
-            // Need to await dialog result, but we are inside _submit
-            // Refactor: We should probably ask BEFORE calling this or just show dialog here
-            // Showing dialog here since it's an async operation
-
             if (!mounted) return;
             final choice = await showDialog<String>(
               context: context,
@@ -178,12 +170,9 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                   .read(transactionRepositoryProvider)
                   .updateTransaction(widget.transactionToEdit!['id'], data);
             } else if (choice == 'future') {
-              // Update current
               await ref
                   .read(transactionRepositoryProvider)
                   .updateTransaction(widget.transactionToEdit!['id'], data);
-
-              // Update future
               await ref
                   .read(transactionRepositoryProvider)
                   .updateFutureTransactions(
@@ -194,7 +183,6 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
             }
           }
         } else {
-          // 1. Create Recurrence FIRST
           Recurrence? createdRecurrence;
           if (_isRecurring && _selectedAccountId != null) {
             DateTime nextDueDate = _date;
@@ -224,12 +212,10 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                 );
           }
 
-          // 2. Link to transaction
           if (createdRecurrence != null) {
             data['recurrence'] = createdRecurrence.id;
           }
 
-          // 3. Create Transaction
           if (_type == 'transfer' && _targetAccountId != null) {
             await ref
                 .read(transactionRepositoryProvider)
@@ -247,9 +233,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
             await ref.read(transactionRepositoryProvider).addTransaction(data);
           }
 
-          // 4. Generate Projections
           if (createdRecurrence != null) {
-            // Generate projected transactions for the next year
             final oneYearLater = DateTime.now().add(const Duration(days: 365));
             await ref
                 .read(recurrenceServiceProvider)
@@ -260,7 +244,6 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
           }
         }
 
-        // Refresh dashboard
         await ref.read(dashboardControllerProvider.notifier).refresh();
 
         if (mounted) {
@@ -273,7 +256,12 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
               ),
             ),
           );
-          context.pop();
+
+          if (stayOnPage) {
+            _resetForm();
+          } else {
+            context.pop();
+          }
         }
       } catch (e) {
         if (mounted) {
@@ -289,6 +277,13 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
         }
       }
     }
+  }
+
+  void _resetForm() {
+    setState(() {
+      _amountController.clear();
+      _labelController.clear();
+    });
   }
 
   @override
@@ -307,7 +302,6 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Type Selection
               SegmentedButton<String>(
                 segments: const [
                   ButtonSegment(
@@ -334,8 +328,6 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                 },
               ),
               const SizedBox(height: 16),
-
-              // Status Selection
               SegmentedButton<String>(
                 segments: const [
                   ButtonSegment(
@@ -357,8 +349,6 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                 },
               ),
               const SizedBox(height: 24),
-
-              // Amount
               TextFormField(
                 controller: _amountController,
                 decoration: const InputDecoration(
@@ -380,8 +370,6 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                 },
               ),
               const SizedBox(height: 16),
-
-              // Label
               TextFormField(
                 controller: _labelController,
                 decoration: const InputDecoration(
@@ -396,13 +384,9 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                 },
               ),
               const SizedBox(height: 16),
-
-              // Category
-              // Category Selection
               Consumer(
                 builder: (context, ref, child) {
                   final categoriesAsync = ref.watch(categoryControllerProvider);
-
                   return Row(
                     children: [
                       Expanded(
@@ -416,9 +400,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                                     (c) => c.id == _categoryController.text,
                                   )
                                   ? _categoryController.text
-                                  : (categories.isNotEmpty
-                                        ? null
-                                        : null), // Don't auto-select if empty
+                                  : null,
                               decoration: const InputDecoration(
                                 labelText: 'Catégorie',
                                 border: OutlineInputBorder(),
@@ -471,8 +453,6 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                 },
               ),
               const SizedBox(height: 16),
-
-              // Date
               InkWell(
                 onTap: () => _selectDate(context),
                 child: InputDecorator(
@@ -490,8 +470,6 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                 ),
               ),
               const SizedBox(height: 16),
-
-              // Recurrence Toggle
               SwitchListTile(
                 title: const Text('Répéter'),
                 value: _isRecurring,
@@ -501,7 +479,6 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                   });
                 },
               ),
-
               if (_isRecurring) ...[
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
@@ -527,17 +504,13 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                   },
                 ),
               ],
-              const SizedBox(height: 32),
-
-              const SizedBox(height: 16),
-              // Member Selection
+              const SizedBox(height: 24),
               Consumer(
                 builder: (context, ref, child) {
                   final membersAsync = ref.watch(memberControllerProvider);
                   return membersAsync.when(
                     data: (members) {
                       if (members.isEmpty) return const SizedBox.shrink();
-
                       return DropdownButtonFormField<String>(
                         key: ValueKey(_selectedMemberId),
                         initialValue: _selectedMemberId,
@@ -583,8 +556,6 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                 },
               ),
               const SizedBox(height: 16),
-
-              // Account Selection
               Consumer(
                 builder: (context, ref, child) {
                   final accountsAsync = ref.watch(accountControllerProvider);
@@ -596,9 +567,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                           style: TextStyle(color: Colors.red),
                         );
                       }
-                      // Auto-select first if null
                       if (_selectedAccountId == null && accounts.isNotEmpty) {
-                        // Defer update to avoid build error
                         Future.microtask(() {
                           if (mounted) {
                             setState(() {
@@ -607,7 +576,6 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                           }
                         });
                       }
-
                       return DropdownButtonFormField<String>(
                         key: ValueKey(_selectedAccountId),
                         initialValue: _selectedAccountId,
@@ -637,35 +605,28 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                 },
               ),
               const SizedBox(height: 16),
-
               if (_type == 'transfer') ...[
                 Consumer(
                   builder: (context, ref, child) {
                     final accountsAsync = ref.watch(accountControllerProvider);
                     return accountsAsync.when(
                       data: (accounts) {
-                        // Filter out selected source account
                         final targetAccounts = accounts
                             .where((a) => a.id != _selectedAccountId)
                             .toList();
-
                         if (targetAccounts.isEmpty) {
                           return const Text(
                             'Veuillez créer au moins deux comptes pour effectuer un virement.',
                             style: TextStyle(color: Colors.red),
                           );
                         }
-
-                        // Ensure target is valid (not same as source)
                         if (_targetAccountId == _selectedAccountId) {
-                          // defer update
                           Future.microtask(() {
                             if (mounted) {
                               setState(() => _targetAccountId = null);
                             }
                           });
                         }
-
                         return DropdownButtonFormField<String>(
                           key: ValueKey('target_$_targetAccountId'),
                           initialValue: _targetAccountId,
@@ -700,17 +661,32 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                 ),
                 const SizedBox(height: 16),
               ],
-
-              // Submit Button
-              FilledButton(
-                onPressed: _isLoading ? null : _submit,
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Enregistrer'),
+              const SizedBox(height: 24),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  FilledButton(
+                    onPressed: _isLoading
+                        ? null
+                        : () => _submit(stayOnPage: false),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Enregistrer'),
+                  ),
+                  if (!isEditing) ...[
+                    const SizedBox(height: 8),
+                    OutlinedButton(
+                      onPressed: _isLoading
+                          ? null
+                          : () => _submit(stayOnPage: true),
+                      child: const Text('Enregistrer et Nouveau'),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),
@@ -727,8 +703,6 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
     // ignore: deprecated_member_use
     int selectedColor = Colors.blue.value;
     int selectedIcon = Icons.category.codePoint;
-
-    // Default palette
     final colors = [
       Colors.red,
       Colors.pink,
@@ -751,8 +725,6 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
       Colors.blueGrey,
       Colors.black,
     ];
-
-    // Default icons
     final icons = [
       Icons.local_grocery_store,
       Icons.restaurant,

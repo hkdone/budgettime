@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/database_service.dart';
+import '../../../../core/start_app.dart';
 import '../domain/account.dart';
 import '../domain/account_repository.dart';
 import '../data/account_repository_impl.dart';
@@ -71,3 +72,15 @@ final accountControllerProvider =
       final userId = DatabaseService().userId;
       return AccountController(repository, userId);
     });
+
+final accountBalanceProvider = FutureProvider.family<double, Account>((
+  ref,
+  account,
+) async {
+  final transactionRepo = ref.watch(transactionRepositoryProvider);
+  final effectiveBalance = await transactionRepo.getBalance(
+    accountId: account.id,
+    status: 'effective',
+  );
+  return account.initialBalance + effectiveBalance;
+});
