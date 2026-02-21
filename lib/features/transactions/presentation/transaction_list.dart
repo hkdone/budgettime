@@ -118,8 +118,8 @@ class _TransactionListState extends ConsumerState<TransactionList> {
                     color: isProjected
                         ? Colors.grey[50]
                         : const Color(
-                            0xFFF0F4FF,
-                          ), // Very light blue for effective
+                            0xFFE1F5FE,
+                          ), // Light sky blue for effective
                     margin: EdgeInsets.symmetric(
                       horizontal: 8,
                       vertical: isProjected ? 4 : 6,
@@ -129,8 +129,8 @@ class _TransactionListState extends ConsumerState<TransactionList> {
                       side: BorderSide(
                         color: isProjected
                             ? Colors.grey.shade200
-                            : const Color(0xFFD0D7FF),
-                        width: isProjected ? 0.5 : 1.0,
+                            : Colors.blue.shade300,
+                        width: isProjected ? 0.5 : 1.5,
                       ),
                     ),
                     child: ListTile(

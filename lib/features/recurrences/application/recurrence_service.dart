@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/utils/formatters.dart';
 import '../../transactions/domain/transaction_repository.dart';
 import '../domain/recurrence.dart';
 
@@ -42,7 +43,7 @@ class RecurrenceService {
           'amount': recurrence.amount,
           'label': recurrence.label,
           'type': recurrence.type,
-          'date': nextDate.toUtc().toString().split('.')[0],
+          'date': formatDateForPb(nextDate),
           'account': recurrence.accountId,
           'member': recurrence.memberId,
           'status': 'projected',
