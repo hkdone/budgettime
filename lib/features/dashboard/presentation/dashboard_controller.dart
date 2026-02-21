@@ -161,16 +161,29 @@ class DashboardController extends StateNotifier<DashboardState> {
       }
 
       // Effective Balance (Real transactions only)
-      final effectiveTransactionBalance = await _transactionRepo.getBalance(
-        accountId: state.selectedAccount?.id,
-        status: 'effective',
-      );
+      // We only count effective transactions that occurred AFTER the last time the account's initial balance was set/updated
+      // to avoid double counting if the user sets initial balance as a "current snapshot".
+      double effectiveTransactionBalance = 0;
+      if (state.selectedAccount != null) {
+        effectiveTransactionBalance = await _transactionRepo.getBalance(
+          accountId: state.selectedAccount?.id,
+          status: 'effective',
+          minDate: DateTime.parse(state.selectedAccount!.updated),
+        );
+      } else {
+        // For "All Accounts", we need to sum for each account separately with its own updated date
+        for (final account in currentAccounts) {
+          effectiveTransactionBalance += await _transactionRepo.getBalance(
+            accountId: account.id,
+            status: 'effective',
+            minDate: DateTime.parse(account.updated),
+          );
+        }
+      }
       final effectiveBalance = initialBalance + effectiveTransactionBalance;
 
       // Projected Balance (Effective + Projected up to end of period)
-      // Note: We only include projected transactions that are WITHIN the current view period (or all future?)
-      // User said: "forecast balance at the deadline date indicated on the account".
-      // Let's assume "deadline date" = end of current rolling month (state.end).
+      // Note: We only include projected transactions that are WITHIN the current view period
       final projectedTransactionBalance = await _transactionRepo.getBalance(
         accountId: state.selectedAccount?.id,
         status: 'projected',

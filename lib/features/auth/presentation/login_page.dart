@@ -139,6 +139,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     },
                     child: const Text('Interface Admin (PocketBase)'),
                   ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'v1.6.8',
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
                 ],
               ),
             ),

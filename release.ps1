@@ -19,9 +19,10 @@ Write-Host "1. Updating pubspec.yaml..."
 Write-Host "2. Updating config.yaml..."
 (Get-Content budgettime/config.yaml) -replace "version: .*", "version: ""$Version""" | Set-Content budgettime/config.yaml
 
-# 2b. Update Dashboard version
-Write-Host "2b. Updating dashboard_page.dart version..."
+# 2b. Update Dashboard & Login version
+Write-Host "2b. Updating dashboard_page.dart & login_page.dart version..."
 (Get-Content lib/features/dashboard/presentation/dashboard_page.dart) -replace "'v\d+\.\d+\.\d+'", "'v$Version'" | Set-Content lib/features/dashboard/presentation/dashboard_page.dart
+(Get-Content lib/features/auth/presentation/login_page.dart) -replace "'v\d+\.\d+\.\d+'", "'v$Version'" | Set-Content lib/features/auth/presentation/login_page.dart
 
 # 3. Build Flutter Web
 Write-Host "3. Building Flutter Web..."

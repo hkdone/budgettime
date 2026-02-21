@@ -72,6 +72,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
   Future<double> getBalance({
     String? accountId,
     String? status,
+    DateTime? minDate,
     DateTime? maxDate,
   }) async {
     final user = _dbService.pb.authStore.record;
@@ -83,6 +84,10 @@ class TransactionRepositoryImpl implements TransactionRepository {
     }
     if (status != null) {
       filter += ' && status = "$status"';
+    }
+    if (minDate != null) {
+      final dateStr = minDate.toUtc().toString().split('.')[0];
+      filter += ' && date >= "$dateStr"';
     }
     if (maxDate != null) {
       final dateStr = maxDate.toUtc().toString().split('.')[0];

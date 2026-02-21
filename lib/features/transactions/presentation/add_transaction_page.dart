@@ -193,8 +193,12 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
             DateTime nextDueDate = _date;
             if (_recurrenceFrequency == 'weekly') {
               nextDueDate = _date.add(const Duration(days: 7));
+            } else if (_recurrenceFrequency == 'biweekly') {
+              nextDueDate = _date.add(const Duration(days: 14));
             } else if (_recurrenceFrequency == 'monthly') {
               nextDueDate = DateTime(_date.year, _date.month + 1, _date.day);
+            } else if (_recurrenceFrequency == 'bimonthly') {
+              nextDueDate = DateTime(_date.year, _date.month + 2, _date.day);
             } else if (_recurrenceFrequency == 'yearly') {
               nextDueDate = DateTime(_date.year + 1, _date.month, _date.day);
             }
@@ -208,7 +212,9 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                   _type,
                   _recurrenceFrequency,
                   nextDueDate,
-                  dayOfMonth: _recurrenceFrequency == 'monthly'
+                  dayOfMonth:
+                      (_recurrenceFrequency == 'monthly' ||
+                          _recurrenceFrequency == 'bimonthly')
                       ? _date.day
                       : null,
                   targetAccountId: _type == 'transfer'
@@ -289,7 +295,9 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isEditing = widget.transactionToEdit != null;
+    final isEditing =
+        widget.transactionToEdit != null &&
+        widget.transactionToEdit!['id'] != null;
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -493,7 +501,15 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                       value: 'weekly',
                       child: Text('Hebdomadaire'),
                     ),
+                    DropdownMenuItem(
+                      value: 'biweekly',
+                      child: Text('Bi-hebdomadaire'),
+                    ),
                     DropdownMenuItem(value: 'monthly', child: Text('Mensuel')),
+                    DropdownMenuItem(
+                      value: 'bimonthly',
+                      child: Text('Bi-mensuel'),
+                    ),
                     DropdownMenuItem(value: 'yearly', child: Text('Annuel')),
                   ],
                   onChanged: (value) {

@@ -30,24 +30,29 @@ class AccountGlobalCard extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: Colors.blue.withValues(alpha: 0.1),
-                      child: const Icon(
-                        Icons.account_balance,
-                        color: Colors.blue,
+                Expanded(
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: Colors.blue.withValues(alpha: 0.1),
+                        child: const Icon(
+                          Icons.account_balance,
+                          color: Colors.blue,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      account.name,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          account.name,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 balanceAsync.when(
                   data: (balance) => Text(

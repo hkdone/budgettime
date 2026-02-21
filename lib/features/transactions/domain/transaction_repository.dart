@@ -15,6 +15,7 @@ abstract class TransactionRepository {
   Future<double> getBalance({
     String? accountId,
     String? status,
+    DateTime? minDate,
     DateTime? maxDate,
   });
 

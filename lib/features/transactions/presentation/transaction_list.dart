@@ -130,6 +130,8 @@ class _TransactionListState extends ConsumerState<TransactionList> {
                       ),
                       title: Text(
                         transaction['label'] ?? 'No Label',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontStyle: isProjected
                               ? FontStyle.italic
