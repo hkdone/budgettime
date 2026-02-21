@@ -35,6 +35,7 @@ class RecurrenceService {
           category: 'Recurrence',
           recurrenceId: recurrence.id,
           status: 'projected',
+          memberId: recurrence.memberId,
         );
       } else {
         final transactionData = {
@@ -43,6 +44,7 @@ class RecurrenceService {
           'type': recurrence.type,
           'date': nextDate.toUtc().toString().split('.')[0],
           'account': recurrence.accountId,
+          'member': recurrence.memberId,
           'status': 'projected',
           'category': 'Recurrence',
           'recurrence': recurrence.id,

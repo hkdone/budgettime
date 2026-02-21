@@ -9,6 +9,7 @@ class Recurrence {
   final DateTime nextDueDate;
   final bool active;
   final String? targetAccountId;
+  final String? memberId;
 
   Recurrence({
     required this.id,
@@ -21,6 +22,7 @@ class Recurrence {
     required this.nextDueDate,
     required this.active,
     this.targetAccountId,
+    this.memberId,
   });
 
   factory Recurrence.fromRecord(dynamic record) {
@@ -35,6 +37,7 @@ class Recurrence {
       nextDueDate: DateTime.parse(record.data['next_due_date']),
       active: record.data['active'] ?? true,
       targetAccountId: record.data['target_account'],
+      memberId: record.data['member'],
     );
   }
 
@@ -50,6 +53,7 @@ class Recurrence {
       nextDueDate: DateTime.parse(json['next_due_date']),
       active: json['active'] ?? true,
       targetAccountId: json['target_account'],
+      memberId: json['member'],
     );
   }
 }

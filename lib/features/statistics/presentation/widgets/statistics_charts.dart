@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../../transactions/domain/categories.dart';
 import '../statistics_controller.dart';
 import '../../../members/domain/member.dart';
+import 'package:budgettime/core/utils/formatters.dart';
 
 class CategoryPieChart extends StatelessWidget {
   final List<CategoryStats> stats;
@@ -181,7 +182,10 @@ class MemberPieChart extends StatelessWidget {
                 children: [
                   Container(width: 8, height: 8, color: memberColor),
                   const SizedBox(width: 4),
-                  Text(memberName, style: const TextStyle(fontSize: 10)),
+                  Text(
+                    '$memberName (${formatCurrency(stat.amount)})',
+                    style: const TextStyle(fontSize: 10),
+                  ),
                 ],
               );
             }).toList(),

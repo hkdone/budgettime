@@ -243,6 +243,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                   category: category,
                   recurrenceId: createdRecurrence?.id,
                   status: _status,
+                  memberId: _selectedMemberId,
                 );
           } else {
             await ref.read(transactionRepositoryProvider).addTransaction(data);

@@ -31,7 +31,8 @@ abstract class TransactionRepository {
     required String label,
     String? category,
     String? recurrenceId,
-    String status = 'effective',
+    String? status,
+    String? memberId,
   });
 
   /// Update an existing transaction

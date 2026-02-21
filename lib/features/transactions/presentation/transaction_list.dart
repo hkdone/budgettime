@@ -113,12 +113,22 @@ class _TransactionListState extends ConsumerState<TransactionList> {
                   final isProjected = status == 'projected';
 
                   return Card(
-                    elevation: isProjected ? 0 : 1,
-                    color: isProjected ? Colors.grey[50] : null,
-                    margin: const EdgeInsets.symmetric(
+                    elevation: isProjected ? 0 : 4,
+                    shadowColor: isProjected ? null : Colors.black26,
+                    color: isProjected ? Colors.grey[50] : Colors.white,
+                    margin: EdgeInsets.symmetric(
                       horizontal: 8,
-                      vertical: 4,
+                      vertical: isProjected ? 4 : 6,
                     ),
+                    shape: isProjected
+                        ? null
+                        : RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: Colors.grey.shade200,
+                              width: 0.5,
+                            ),
+                          ),
                     child: ListTile(
                       leading: CircleAvatar(
                         backgroundColor: isIncome

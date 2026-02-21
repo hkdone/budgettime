@@ -136,7 +136,8 @@ class TransactionRepositoryImpl implements TransactionRepository {
     required String label,
     String? category,
     String? recurrenceId,
-    String status = 'effective',
+    String? status,
+    String? memberId,
   }) async {
     final user = _dbService.pb.authStore.record;
     if (user == null) return;
@@ -155,9 +156,10 @@ class TransactionRepositoryImpl implements TransactionRepository {
             'label': label,
             'type': 'expense', // Source pays
             'date': dateStr,
-            'status': status,
-            'category': category ?? 'Virement',
+            'status': status ?? 'effective',
+            'category': category ?? 'transfer',
             'recurrence': recurrenceId,
+            'member': memberId,
             'is_automatic': false,
           },
         );
@@ -174,9 +176,10 @@ class TransactionRepositoryImpl implements TransactionRepository {
             'label': label,
             'type': 'income', // Target receives
             'date': dateStr,
-            'status': status,
-            'category': category ?? 'Virement',
+            'status': status ?? 'effective',
+            'category': category ?? 'transfer',
             'recurrence': recurrenceId,
+            'member': memberId,
             'is_automatic': false,
           },
         );

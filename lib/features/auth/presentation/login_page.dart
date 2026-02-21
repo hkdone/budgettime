@@ -141,7 +141,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   ),
                   const SizedBox(height: 24),
                   const Text(
-                    'v1.7.0',
+                    'v1.7.1',
                     style: TextStyle(color: Colors.grey, fontSize: 12),
                     textAlign: TextAlign.center,
                   ),

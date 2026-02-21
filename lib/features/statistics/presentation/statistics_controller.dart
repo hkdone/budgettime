@@ -94,10 +94,14 @@ class StatisticsController extends StateNotifier<AsyncValue<StatisticsData>> {
       for (final t in transactions) {
         final amount = (t['amount'] as num).toDouble();
         final type = t['type'];
-        String memberId = t['member']?.toString() ?? '';
-        if (memberId.isEmpty) memberId = 'common'; // 'common' for Shared/Family
-
-        // Filter out transfers if needed? usually yes.
+        // Safe access to member ID
+        String memberId = '';
+        if (t['expand'] != null && t['expand']['member'] != null) {
+          memberId = t['expand']['member']['id'] ?? '';
+        } else if (t['member'] != null) {
+          memberId = t['member'].toString();
+        }
+        if (memberId.isEmpty) memberId = 'common';
         if (type == 'expense') {
           totalExpense += amount;
           final catId = t['category'] ?? 'other';
