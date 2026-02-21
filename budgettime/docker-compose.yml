@@ -1,0 +1,13 @@
+services:
+  budget-app:
+    build: . # Ou image: votre-repo/budget:latest
+    container_name: budget_app
+    # network_mode: host # Désactivé pour permettre le mapping de port
+    ports:
+      - "8097:8090" # Port Externe : Port Interne (8090)
+    volumes:
+      - ./pb_data:/pb/pb_data # Données persistantes
+      - ./pb_migrations:/pb/pb_migrations # Migrations de schéma (CRUCIAL)
+      - ./pb_public:/pb/pb_public # Fichiers Web (Frontend)
+      # - /volume1/docker/budget/pb_data:/pb/pb_data # Exemple Synology absolu
+    restart: unless-stopped

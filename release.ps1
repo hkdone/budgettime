@@ -41,11 +41,23 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# 4. Update pb_public (inside budgettime/ for HA/Docker context)
-Write-Host "4. Updating budgettime/pb_public..."
+# 4. Update budgettime folder assets (for HA/Docker/Synology context)
+Write-Host "4. Updating budgettime assets..."
+
+# Public Web
 if (Test-Path budgettime/pb_public) { Remove-Item -Recurse -Force budgettime/pb_public }
 New-Item -ItemType Directory -Force -Path budgettime/pb_public
 Copy-Item -Recurse build\web\* budgettime/pb_public\
+
+# Migrations & Schema
+if (Test-Path budgettime/pb_migrations) { Remove-Item -Recurse -Force budgettime/pb_migrations }
+if (Test-Path pb_migrations) {
+    Copy-Item -Recurse pb_migrations budgettime/
+}
+Copy-Item pb_schema.json budgettime/
+if (Test-Path docker-compose.yml) {
+    Copy-Item docker-compose.yml budgettime/
+}
 
 # 5. Git Operations
 Write-Host "5. Git Operations..."

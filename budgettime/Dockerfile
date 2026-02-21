@@ -29,8 +29,14 @@ RUN echo "Build date: $(date)" > /build_info && \
     head -c 4 /pb/pocketbase | grep -q $'\x7fELF' && echo "Verification success: ELF Magic Found" || (echo "FATAL: Invalid binary format" && exit 1) && \
     rm /tmp/pb.zip
 
+# Définir le répertoire de travail pour PocketBase
+WORKDIR /pb
+
 # Copie du Frontend Flutter
 COPY pb_public /pb/pb_public
+
+# Copie des Migrations PocketBase
+COPY pb_migrations /pb/pb_migrations
 
 # Script de lancement
 COPY run.sh /run.sh
