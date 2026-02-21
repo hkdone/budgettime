@@ -16,8 +16,8 @@ class TransactionRepositoryImpl implements TransactionRepository {
     if (user == null) return [];
 
     // Format dates for PocketBase filter (YYYY-MM-DD HH:MM:SS)
-    final startStr = start.toUtc().toString().split('.')[0];
-    final endStr = end.toUtc().toString().split('.')[0];
+    final startStr = _formatDateForPb(start);
+    final endStr = _formatDateForPb(end);
 
     String filter =
         'user = "${user.id}" && date >= "$startStr" && date <= "$endStr"';
@@ -47,7 +47,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
 
     // Format date for PocketBase filter (YYYY-MM-DD HH:MM:SS)
     // We want strictly LESS THAN start date.
-    final dateStr = beforeDate.toUtc().toString().split('.')[0];
+    final dateStr = _formatDateForPb(beforeDate);
 
     String filter =
         'user = "${user.id}" && status = "projected" && date < "$dateStr"';
@@ -86,11 +86,11 @@ class TransactionRepositoryImpl implements TransactionRepository {
       filter += ' && status = "$status"';
     }
     if (minDate != null) {
-      final dateStr = minDate.toUtc().toString().split('.')[0];
+      final dateStr = _formatDateForPb(minDate);
       filter += ' && date >= "$dateStr"';
     }
     if (maxDate != null) {
-      final dateStr = maxDate.toUtc().toString().split('.')[0];
+      final dateStr = _formatDateForPb(maxDate);
       filter += ' && date <= "$dateStr"';
     }
 
@@ -118,6 +118,10 @@ class TransactionRepositoryImpl implements TransactionRepository {
     if (user == null) return;
 
     // Ensure status is set (default to 'effective' if not provided)
+    if (data['date'] is DateTime) {
+      data['date'] = _formatDateForPb(data['date'] as DateTime);
+    }
+
     if (!data.containsKey('status')) {
       data['status'] = 'effective';
     }
@@ -142,47 +146,72 @@ class TransactionRepositoryImpl implements TransactionRepository {
     final user = _dbService.pb.authStore.record;
     if (user == null) return;
 
-    final dateStr = date.toUtc().toString().split('.')[0];
+    final dateStr = _formatDateForPb(date);
+    final effectiveStatus = status ?? 'effective';
 
-    // 1. Source Transaction (Expense)
-    await _dbService.pb
-        .collection('transactions')
-        .create(
-          body: {
-            'user': user.id,
-            'account': sourceAccountId,
-            'target_account': targetAccountId,
-            'amount': amount,
-            'label': label,
-            'type': 'expense', // Source pays
-            'date': dateStr,
-            'status': status ?? 'effective',
-            'category': category ?? 'transfer',
-            'recurrence': recurrenceId,
-            'member': memberId,
-            'is_automatic': false,
-          },
-        );
+    try {
+      // 1. Source Transaction (Expense)
+      await _dbService.pb
+          .collection('transactions')
+          .create(
+            body: {
+              'user': user.id,
+              'account': sourceAccountId,
+              'target_account': targetAccountId,
+              'amount': amount,
+              'label': label,
+              'type': 'expense', // Source pays
+              'date': dateStr,
+              'status': status ?? 'effective',
+              'category': category ?? 'transfer',
+              'recurrence': recurrenceId,
+              'member': memberId,
+              'is_automatic': false,
+            },
+          );
 
-    // 2. Target Transaction (Income)
-    await _dbService.pb
-        .collection('transactions')
-        .create(
-          body: {
-            'user': user.id,
-            'account': targetAccountId,
-            'target_account': sourceAccountId,
-            'amount': amount,
-            'label': label,
-            'type': 'income', // Target receives
-            'date': dateStr,
-            'status': status ?? 'effective',
-            'category': category ?? 'transfer',
-            'recurrence': recurrenceId,
-            'member': memberId,
-            'is_automatic': false,
-          },
-        );
+      // 2. Target Transaction (Income)
+      await _dbService.pb
+          .collection('transactions')
+          .create(
+            body: {
+              'user': user.id,
+              'account': targetAccountId,
+              'target_account': sourceAccountId,
+              'amount': amount,
+              'label': label,
+              'type': 'income', // Target receives
+              'date': dateStr,
+              'status': effectiveStatus,
+              'category': category ?? 'transfer',
+              'recurrence': recurrenceId,
+              'member': memberId,
+              'is_automatic': false,
+            },
+          );
+    } catch (e) {
+      // ignore: avoid_print
+      print('ERROR in addTransfer: $e');
+      try {
+        // Safe access to response for ClientException
+        final dynamic err = e;
+        if (err.response != null) {
+          // ignore: avoid_print
+          print('PocketBase Error Details: ${err.response}');
+        }
+      } catch (_) {}
+      rethrow;
+    }
+  }
+
+  String _formatDateForPb(DateTime date) {
+    // PocketBase expects YYYY-MM-DD HH:MM:SS
+    // We want to preserve the local calendar day, so we avoid UTC shifts that could change the day.
+    // Standardizing on NOON to stay far from day boundaries.
+    final y = date.year.toString().padLeft(4, '0');
+    final m = date.month.toString().padLeft(2, '0');
+    final d = date.day.toString().padLeft(2, '0');
+    return '$y-$m-$d 12:00:00';
   }
 
   @override
