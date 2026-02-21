@@ -136,7 +136,11 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
           'is_automatic': false,
         };
 
-        if (widget.transactionToEdit != null) {
+        final bool isActualEdit =
+            widget.transactionToEdit != null &&
+            widget.transactionToEdit!['id'] != null;
+
+        if (isActualEdit) {
           final isRecurrent =
               widget.transactionToEdit!['recurrence'] != null &&
               widget.transactionToEdit!['recurrence'].toString().isNotEmpty;
