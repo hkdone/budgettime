@@ -263,7 +263,10 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
           );
 
           if (stayOnPage) {
-            _resetForm();
+            context.pushReplacement(
+              '/add-transaction',
+              extra: {'accountId': _selectedAccountId},
+            );
           } else {
             context.pop();
           }
@@ -282,13 +285,6 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
         }
       }
     }
-  }
-
-  void _resetForm() {
-    setState(() {
-      _amountController.clear();
-      _labelController.clear();
-    });
   }
 
   @override
