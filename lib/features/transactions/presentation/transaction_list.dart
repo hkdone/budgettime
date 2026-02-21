@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:budgettime/core/utils/formatters.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
 import '../../recurrences/presentation/recurrence_controller.dart';
 
@@ -236,7 +237,7 @@ class _TransactionListState extends ConsumerState<TransactionList> {
                             ),
                           const SizedBox(width: 8),
                           Text(
-                            '${isIncome ? '+' : '-'}${amount.toStringAsFixed(2)} €',
+                            '${isIncome ? '+' : '-'}${formatCurrency(amount)}',
                             style: TextStyle(
                               color: isProjected
                                   ? Colors.grey

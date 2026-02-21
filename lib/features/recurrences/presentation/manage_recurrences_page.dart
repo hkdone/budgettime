@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../accounts/presentation/account_controller.dart';
 import 'recurrence_controller.dart';
 import 'recurrence_dialog.dart';
+import 'package:budgettime/core/utils/formatters.dart';
 
 class ManageRecurrencesPage extends ConsumerStatefulWidget {
   const ManageRecurrencesPage({super.key});
@@ -45,7 +46,7 @@ class _ManageRecurrencesPageState extends ConsumerState<ManageRecurrencesPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      '${r.amount.toStringAsFixed(2)} €',
+                      formatCurrency(r.amount),
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     IconButton(

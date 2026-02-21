@@ -207,7 +207,7 @@ class DashboardController extends StateNotifier<DashboardState> {
   }
 
   Future<void> refresh() async {
-    await _loadData();
+    await _loadData(refreshAccounts: true);
   }
 
   void selectAccount(Account? account) {

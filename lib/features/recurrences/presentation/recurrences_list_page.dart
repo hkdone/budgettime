@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../recurrences/presentation/recurrence_controller.dart';
 import '../../recurrences/domain/recurrence.dart'; // Import Recurrence model
+import 'package:budgettime/core/utils/formatters.dart';
 import 'recurrence_dialog.dart';
 import '../../accounts/presentation/account_controller.dart';
 
@@ -80,7 +81,7 @@ class RecurrencesListPage extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Text(
-                                  '${recurrence.amount.toStringAsFixed(2)} €',
+                                  formatCurrency(recurrence.amount),
                                   style: Theme.of(context).textTheme.titleMedium
                                       ?.copyWith(
                                         color: recurrence.type == 'income'

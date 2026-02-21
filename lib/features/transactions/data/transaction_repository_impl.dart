@@ -152,14 +152,13 @@ class TransactionRepositoryImpl implements TransactionRepository {
             'account': sourceAccountId,
             'target_account': targetAccountId,
             'amount': amount,
-            'label':
-                label, // "Virement vers..." logic can be handled in UI or here? Let's keep label as is and maybe append?
-            // Actually user provides label.
+            'label': label,
             'type': 'expense', // Source pays
             'date': dateStr,
-            'status': 'effective',
+            'status': status,
             'category': category ?? 'Virement',
             'recurrence': recurrenceId,
+            'is_automatic': false,
           },
         );
 
@@ -175,9 +174,10 @@ class TransactionRepositoryImpl implements TransactionRepository {
             'label': label,
             'type': 'income', // Target receives
             'date': dateStr,
-            'status': 'effective',
+            'status': status,
             'category': category ?? 'Virement',
             'recurrence': recurrenceId,
+            'is_automatic': false,
           },
         );
   }

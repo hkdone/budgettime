@@ -7,6 +7,7 @@ import '../../auth/presentation/auth_controller.dart';
 import 'dashboard_controller.dart';
 import '../../transactions/presentation/transaction_list.dart';
 import 'widgets/account_global_card.dart';
+import 'package:budgettime/core/utils/formatters.dart';
 
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
@@ -205,7 +206,7 @@ class DashboardPage extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Text(
-                            'v1.6.9',
+                            'v1.7.0',
                             style: TextStyle(
                               fontSize: 10,
                               color: Colors.blueGrey,
@@ -238,7 +239,7 @@ class DashboardPage extends ConsumerWidget {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              '${state.effectiveBalance.toStringAsFixed(2)} €',
+                              formatCurrency(state.effectiveBalance),
                               style: Theme.of(context).textTheme.displayMedium
                                   ?.copyWith(
                                     color: state.effectiveBalance >= 0
@@ -275,7 +276,7 @@ class DashboardPage extends ConsumerWidget {
                                     ),
                                   ),
                                   Text(
-                                    '${state.projectedBalance.toStringAsFixed(2)} €',
+                                    formatCurrency(state.projectedBalance),
                                     style: TextStyle(
                                       color: Colors.blue[800],
                                       fontWeight: FontWeight.bold,
@@ -295,7 +296,7 @@ class DashboardPage extends ConsumerWidget {
                                       style: TextStyle(color: Colors.green),
                                     ),
                                     Text(
-                                      '+${totalIncome.toStringAsFixed(2)} €',
+                                      '+${formatCurrency(totalIncome)}',
                                       style: Theme.of(context)
                                           .textTheme
                                           .titleLarge
@@ -310,7 +311,7 @@ class DashboardPage extends ConsumerWidget {
                                       style: TextStyle(color: Colors.red),
                                     ),
                                     Text(
-                                      '-${totalExpense.toStringAsFixed(2)} €',
+                                      '-${formatCurrency(totalExpense)}',
                                       style: Theme.of(context)
                                           .textTheme
                                           .titleLarge

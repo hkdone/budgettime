@@ -303,12 +303,14 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
         widget.transactionToEdit != null &&
         widget.transactionToEdit!['id'] != null;
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: Text(
           isEditing ? 'Modifier la transaction' : 'Ajouter une transaction',
         ),
       ),
       body: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,

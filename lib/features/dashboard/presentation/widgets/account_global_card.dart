@@ -5,6 +5,7 @@ import '../../../statistics/presentation/statistics_controller.dart';
 import '../../../statistics/presentation/widgets/statistics_charts.dart';
 import '../../../members/presentation/member_controller.dart';
 import '../../../accounts/presentation/account_controller.dart';
+import 'package:budgettime/core/utils/formatters.dart';
 
 class AccountGlobalCard extends ConsumerWidget {
   final Account account;
@@ -56,7 +57,7 @@ class AccountGlobalCard extends ConsumerWidget {
                 ),
                 balanceAsync.when(
                   data: (balance) => Text(
-                    '${balance.toStringAsFixed(2)} €',
+                    formatCurrency(balance),
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -79,7 +80,7 @@ class AccountGlobalCard extends ConsumerWidget {
               data: (stats) {
                 return LayoutBuilder(
                   builder: (context, constraints) {
-                    final isWide = constraints.maxWidth > 400;
+                    final isWide = constraints.maxWidth > 500;
 
                     return Column(
                       children: [
@@ -100,7 +101,19 @@ class AccountGlobalCard extends ConsumerWidget {
                                     stats: stats.expenseByMember,
                                     members: members,
                                     totalAmount: stats.totalExpense,
-                                    title: 'Membres',
+                                    title: 'Dépenses membres',
+                                    showLegend: true,
+                                  ),
+                                  orElse: () => const SizedBox.shrink(),
+                                ),
+                              ),
+                              Expanded(
+                                child: membersAsync.maybeWhen(
+                                  data: (members) => MemberPieChart(
+                                    stats: stats.incomeByMember,
+                                    members: members,
+                                    totalAmount: stats.totalIncome,
+                                    title: 'Recettes membres',
                                     showLegend: true,
                                   ),
                                   orElse: () => const SizedBox.shrink(),
@@ -109,38 +122,60 @@ class AccountGlobalCard extends ConsumerWidget {
                             ],
                           )
                         else
-                          Row(
+                          Column(
                             children: [
-                              Expanded(
-                                child: CategoryPieChart(
-                                  stats: stats.expenseByCategory,
-                                  totalAmount: stats.totalExpense,
-                                  showLegend: true,
-                                ),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: CategoryPieChart(
+                                      stats: stats.expenseByCategory,
+                                      totalAmount: stats.totalExpense,
+                                      showLegend: true,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: HistoryBarChart(
+                                      history: stats.history,
+                                      showTitles: false,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: HistoryBarChart(
-                                  history: stats.history,
-                                  showTitles: false,
-                                ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: membersAsync.maybeWhen(
+                                      data: (members) => MemberPieChart(
+                                        stats: stats.expenseByMember,
+                                        members: members,
+                                        totalAmount: stats.totalExpense,
+                                        title: 'Dépenses membres',
+                                        showLegend: true,
+                                      ),
+                                      orElse: () => const SizedBox.shrink(),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: membersAsync.maybeWhen(
+                                      data: (members) => MemberPieChart(
+                                        stats: stats.incomeByMember,
+                                        members: members,
+                                        totalAmount: stats.totalIncome,
+                                        title: 'Recettes membres',
+                                        showLegend: true,
+                                      ),
+                                      orElse: () => const SizedBox.shrink(),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
                         const SizedBox(height: 16),
-                        if (isWide)
-                          HistoryBarChart(history: stats.history)
-                        else
-                          membersAsync.maybeWhen(
-                            data: (members) => MemberPieChart(
-                              stats: stats.expenseByMember,
-                              members: members,
-                              totalAmount: stats.totalExpense,
-                              title: 'Dépenses membres',
-                              showLegend: true,
-                            ),
-                            orElse: () => const SizedBox.shrink(),
-                          ),
+                        if (isWide) HistoryBarChart(history: stats.history),
                       ],
                     );
                   },
