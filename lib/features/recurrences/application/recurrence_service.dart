@@ -41,7 +41,7 @@ class RecurrenceService {
           'amount': recurrence.amount,
           'label': recurrence.label,
           'type': recurrence.type,
-          'date': nextDate.toUtc().toIso8601String(),
+          'date': nextDate.toUtc().toString().split('.')[0],
           'account': recurrence.accountId,
           'status': 'projected',
           'category': 'Recurrence',

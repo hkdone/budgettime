@@ -136,7 +136,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     final user = _dbService.pb.authStore.record;
     if (user == null) return;
 
-    final dateStr = date.toUtc().toString();
+    final dateStr = date.toUtc().toString().split('.')[0];
 
     // 1. Source Transaction (Expense)
     await _dbService.pb
@@ -195,7 +195,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     final user = _dbService.pb.authStore.record;
     if (user == null) return;
 
-    final dateStr = fromDate.toUtc().toIso8601String();
+    final dateStr = fromDate.toUtc().toString().split('.')[0];
 
     // Find all projected transactions for this recurrence after the date
     // 1. Delete Future Projected Transactions
@@ -234,7 +234,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     final user = _dbService.pb.authStore.record;
     if (user == null) return;
 
-    final dateStr = fromDate.toUtc().toIso8601String();
+    final dateStr = fromDate.toUtc().toString().split('.')[0];
 
     // Find all projected transactions for this recurrence after the date
     final validRecords = await _dbService.pb

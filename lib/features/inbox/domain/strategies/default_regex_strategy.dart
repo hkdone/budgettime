@@ -41,9 +41,9 @@ class DefaultRegexStrategy implements InboxProcessingStrategy {
         'amount': amount,
         'label': content.length > 50 ? content.substring(0, 50) : content,
         'type': type,
-        'date': DateTime.now()
-            .toUtc()
-            .toIso8601String(), // Or extract date from text
+        'date': DateTime.now().toUtc().toString().split(
+          '.',
+        )[0], // Or extract date from text
         'category': 'Autre',
         'is_automatic': true,
       };

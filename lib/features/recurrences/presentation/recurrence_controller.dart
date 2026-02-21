@@ -50,7 +50,7 @@ class RecurrenceController extends StateNotifier<AsyncValue<List<Recurrence>>> {
         'label': label,
         'type': type,
         'frequency': frequency,
-        'next_due_date': nextDueDate.toUtc().toString(),
+        'next_due_date': nextDueDate.toUtc().toString().split('.')[0],
         'day_of_month': dayOfMonth,
         'active': true,
         'target_account': targetAccountId,

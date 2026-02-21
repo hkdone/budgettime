@@ -126,7 +126,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
           'amount': amount,
           'label': label,
           'type': _type,
-          'date': _date.toUtc().toIso8601String(),
+          'date': _date.toUtc().toString().split('.')[0],
           'category': category,
           'account': _selectedAccountId,
           'member': _selectedMemberId,
