@@ -21,15 +21,27 @@ class DashboardPage extends ConsumerWidget {
     final controller = ref.read(dashboardControllerProvider.notifier);
 
     // Calculate totals including initial balances
-    double totalIncome = 0;
-    double totalExpense = 0;
+    double realIncome = 0;
+    double realExpense = 0;
+    double projectedIncome = 0;
+    double projectedExpense = 0;
 
     for (final t in state.transactions) {
+      // Transfer Neutrality: Exclude transfers from statistics
+      if (t['target_account'] != null &&
+          t['target_account'].toString().isNotEmpty) {
+        continue;
+      }
+
       final amount = (t['amount'] as num).toDouble();
+      final isEffective = t['status'] == 'effective';
+
       if (t['type'] == 'income') {
-        totalIncome += amount;
+        if (isEffective) realIncome += amount;
+        projectedIncome += amount;
       } else {
-        totalExpense += amount;
+        if (isEffective) realExpense += amount;
+        projectedExpense += amount;
       }
     }
 
@@ -142,6 +154,13 @@ class DashboardPage extends ConsumerWidget {
               );
             },
           ),
+          IconButton(
+            icon: const Icon(Icons.bar_chart_rounded, color: Colors.blueAccent),
+            tooltip: 'Statistiques Annuelles',
+            onPressed: () {
+              context.push('/stats');
+            },
+          ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.black),
             onSelected: (value) {
@@ -230,7 +249,7 @@ class DashboardPage extends ConsumerWidget {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: const Text(
-                                  'v1.8.9',
+                                  'v1.9.0',
                                   style: TextStyle(
                                     fontSize: 10,
                                     color: Colors.blueGrey,
@@ -317,40 +336,80 @@ class DashboardPage extends ConsumerWidget {
                                   ),
                                   const SizedBox(height: 24),
                                   Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceAround,
                                     children: [
-                                      Column(
-                                        children: [
-                                          const Text(
-                                            'Revenus',
-                                            style: TextStyle(
-                                              color: Colors.green,
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              'Réel (Mois)',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.blueGrey,
+                                              ),
                                             ),
-                                          ),
-                                          Text(
-                                            '+${formatCurrency(totalIncome)}',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleLarge
-                                                ?.copyWith(color: Colors.green),
-                                          ),
-                                        ],
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              '+${formatCurrency(realIncome)}',
+                                              style: const TextStyle(
+                                                color: Colors.green,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            Text(
+                                              '-${formatCurrency(realExpense)}',
+                                              style: const TextStyle(
+                                                color: Colors.red,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                      Column(
-                                        children: [
-                                          const Text(
-                                            'Dépenses',
-                                            style: TextStyle(color: Colors.red),
-                                          ),
-                                          Text(
-                                            '-${formatCurrency(totalExpense)}',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleLarge
-                                                ?.copyWith(color: Colors.red),
-                                          ),
-                                        ],
+                                      Container(
+                                        width: 1,
+                                        height: 40,
+                                        color: Colors.grey[300],
+                                        margin: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              'Prévu (Mois)',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.blueGrey,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              '+${formatCurrency(projectedIncome)}',
+                                              style: TextStyle(
+                                                color: Colors.green[700],
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            Text(
+                                              '-${formatCurrency(projectedExpense)}',
+                                              style: TextStyle(
+                                                color: Colors.red[700],
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ],
                                   ),

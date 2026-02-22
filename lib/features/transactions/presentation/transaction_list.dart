@@ -112,6 +112,10 @@ class _TransactionListState extends ConsumerState<TransactionList> {
                   final status = transaction['status'] ?? 'effective';
                   final isProjected = status == 'projected';
 
+                  final isTransfer =
+                      transaction['target_account'] != null &&
+                      transaction['target_account'].toString().isNotEmpty;
+
                   return Card(
                     elevation: isProjected ? 0 : 2,
                     shadowColor: isProjected ? null : Colors.black12,
@@ -135,12 +139,20 @@ class _TransactionListState extends ConsumerState<TransactionList> {
                     ),
                     child: ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: isIncome
-                            ? Colors.green.withValues(alpha: 0.2)
-                            : Colors.red.withValues(alpha: 0.2),
+                        backgroundColor: isTransfer
+                            ? Colors.blue.withValues(alpha: 0.2)
+                            : (isIncome
+                                  ? Colors.green.withValues(alpha: 0.2)
+                                  : Colors.red.withValues(alpha: 0.2)),
                         child: Icon(
-                          isIncome ? Icons.arrow_downward : Icons.arrow_upward,
-                          color: isIncome ? Colors.green : Colors.red,
+                          isTransfer
+                              ? Icons.swap_horiz
+                              : (isIncome
+                                    ? Icons.arrow_downward
+                                    : Icons.arrow_upward),
+                          color: isTransfer
+                              ? Colors.blue
+                              : (isIncome ? Colors.green : Colors.red),
                         ),
                       ),
                       title: Text(
@@ -257,7 +269,11 @@ class _TransactionListState extends ConsumerState<TransactionList> {
                             style: TextStyle(
                               color: isProjected
                                   ? Colors.grey
-                                  : (isIncome ? Colors.green : Colors.red),
+                                  : (isTransfer
+                                        ? Colors.blue
+                                        : (isIncome
+                                              ? Colors.green
+                                              : Colors.red)),
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
                             ),

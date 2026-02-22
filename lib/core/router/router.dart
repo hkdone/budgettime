@@ -8,6 +8,8 @@ import '../../features/recurrences/presentation/manage_recurrences_page.dart';
 import '../../features/recurrences/presentation/recurrences_list_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
 import '../../features/members/presentation/manage_members_page.dart';
+import '../../features/dashboard/presentation/stats_page.dart';
+import '../../features/dashboard/presentation/stats_trend_page.dart';
 import '../services/database_service.dart';
 
 final router = GoRouter(
@@ -53,6 +55,11 @@ final router = GoRouter(
     GoRoute(
       path: '/members',
       builder: (context, state) => const ManageMembersPage(),
+    ),
+    GoRoute(path: '/stats', builder: (context, state) => const StatsPage()),
+    GoRoute(
+      path: '/stats-trend',
+      builder: (context, state) => const StatsTrendPage(),
     ),
   ],
 );
