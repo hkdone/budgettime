@@ -24,6 +24,10 @@ Write-Host "2b. Updating dashboard_page.dart & login_page.dart version..."
 (Get-Content lib/features/dashboard/presentation/dashboard_page.dart) -replace "'v\d+\.\d+\.\d+'", "'v$Version'" | Set-Content lib/features/dashboard/presentation/dashboard_page.dart
 (Get-Content lib/features/auth/presentation/login_page.dart) -replace "'v\d+\.\d+\.\d+'", "'v$Version'" | Set-Content lib/features/auth/presentation/login_page.dart
 
+# 2c. Update index.html manifest version
+Write-Host "2c. Updating index.html manifest version..."
+(Get-Content web/index.html) -replace 'manifest.json\?v=[\d.]+', "manifest.json?v=$Version" | Set-Content web/index.html
+
 # 3. Build Flutter Web
 Write-Host "3. Building Flutter Web..."
 flutter clean
