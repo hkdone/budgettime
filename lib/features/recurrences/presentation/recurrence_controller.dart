@@ -8,6 +8,7 @@ import '../domain/recurrence.dart';
 import '../data/recurrence_repository_impl.dart';
 import '../application/recurrence_service.dart';
 import '../../../core/start_app.dart';
+import '../../../core/utils/formatters.dart';
 import '../../transactions/domain/transaction_repository.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
 
@@ -50,7 +51,7 @@ class RecurrenceController extends StateNotifier<AsyncValue<List<Recurrence>>> {
         'label': label,
         'type': type,
         'frequency': frequency,
-        'next_due_date': nextDueDate.toUtc().toString().split('.')[0],
+        'next_due_date': formatDateForPb(nextDueDate),
         'day_of_month': dayOfMonth,
         'active': true,
         'target_account': targetAccountId,
@@ -98,7 +99,7 @@ class RecurrenceController extends StateNotifier<AsyncValue<List<Recurrence>>> {
         'label': label,
         'type': type,
         'frequency': frequency,
-        'next_due_date': nextDueDate.toUtc().toString(),
+        'next_due_date': formatDateForPb(nextDueDate),
         'day_of_month': dayOfMonth,
         'target_account': targetAccountId,
       });
