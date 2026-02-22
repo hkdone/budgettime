@@ -312,7 +312,9 @@
                 "required": false,
                 "presentable": false,
                 "unique": false,
-                "options": {}
+                "options": {
+                    "maxSize": 2000000
+                }
             }
         ],
         "indexes": [],
@@ -782,7 +784,9 @@
                 "required": false,
                 "presentable": false,
                 "unique": false,
-                "options": {}
+                "options": {
+                    "maxSize": 2000000
+                }
             }
         ],
         "indexes": [],

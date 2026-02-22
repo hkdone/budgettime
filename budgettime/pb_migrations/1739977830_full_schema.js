@@ -176,7 +176,7 @@ migrate((db) => {
             { "id": "rawinbox_user", "name": "user", "type": "relation", "required": true, "presentable": false, "unique": false, "options": { "collectionId": "_pb_users_auth_", "cascadeDelete": true, "minSelect": null, "maxSelect": 1, "displayFields": null } },
             { "id": "rawinbox_proc", "name": "is_processed", "type": "bool", "required": false, "presentable": false, "unique": false, "options": {} },
             { "id": "rawinbox_payl", "name": "raw_payload", "type": "text", "required": false, "presentable": false, "unique": false, "options": { "min": null, "max": null, "pattern": "" } },
-            { "id": "rawinbox_meta", "name": "metadata", "type": "json", "required": false, "presentable": false, "unique": false, "options": {} }
+            { "id": "rawinbox_meta", "name": "metadata", "type": "json", "required": false, "presentable": false, "unique": false, "options": { "maxSize": 2000000 } }
         ],
         "listRule": "user = @request.auth.id",
         "viewRule": "user = @request.auth.id",
@@ -195,7 +195,7 @@ migrate((db) => {
         "schema": [
             { "id": "settings_fiscal", "name": "fiscal_day_start", "type": "number", "required": true, "presentable": false, "unique": false, "options": { "min": 1, "max": 31, "noDecimal": true } },
             { "id": "settings_user", "name": "user", "type": "relation", "required": true, "presentable": false, "unique": false, "options": { "collectionId": "_pb_users_auth_", "cascadeDelete": true, "minSelect": null, "maxSelect": 1, "displayFields": null } },
-            { "id": "set_parsers", "name": "active_parsers", "type": "json", "required": false, "presentable": false, "unique": false, "options": {} }
+            { "id": "set_parsers", "name": "active_parsers", "type": "json", "required": false, "presentable": false, "unique": false, "options": { "maxSize": 2000000 } }
         ],
         "listRule": "user = @request.auth.id",
         "viewRule": "user = @request.auth.id",
