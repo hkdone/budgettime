@@ -4,11 +4,20 @@ import 'package:go_router/go_router.dart';
 import 'stats_controller.dart';
 import '../../../core/utils/formatters.dart';
 
-class StatsPage extends ConsumerWidget {
+import 'package:fl_chart/fl_chart.dart';
+
+class StatsPage extends ConsumerStatefulWidget {
   const StatsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StatsPage> createState() => _StatsPageState();
+}
+
+class _StatsPageState extends ConsumerState<StatsPage> {
+  String _viewType = 'projected'; // 'real' or 'projected'
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(statsControllerProvider);
     final controller = ref.read(statsControllerProvider.notifier);
 
@@ -50,17 +59,50 @@ class StatsPage extends ConsumerWidget {
                 children: [
                   _buildSummaryCard(state),
                   const SizedBox(height: 24),
+                  Center(
+                    child: SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment(
+                          value: 'real',
+                          label: Text('Réel'),
+                          icon: Icon(Icons.account_balance_wallet),
+                        ),
+                        ButtonSegment(
+                          value: 'projected',
+                          label: Text('Prévisionnel'),
+                          icon: Icon(Icons.event_note),
+                        ),
+                      ],
+                      selected: {_viewType},
+                      onSelectionChanged: (newSelection) {
+                        setState(() {
+                          _viewType = newSelection.first;
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 32),
                   _buildSectionTitle('Dépenses par Catégorie'),
-                  _buildDataList(state.expenseByCategory, Colors.red),
-                  const SizedBox(height: 24),
-                  _buildSectionTitle('Dépenses par Membre'),
-                  _buildDataList(state.expenseByMember, Colors.orange),
-                  const SizedBox(height: 24),
-                  _buildSectionTitle('Revenus par Catégorie'),
-                  _buildDataList(state.incomeByCategory, Colors.green),
-                  const SizedBox(height: 24),
+                  _buildPieChart(
+                    _viewType == 'real'
+                        ? state.realExpenseByCategory
+                        : state.projectedExpenseByCategory,
+                    Colors.redAccent,
+                  ),
+                  const SizedBox(height: 48),
                   _buildSectionTitle('Revenus par Membre'),
-                  _buildDataList(state.incomeByMember, Colors.teal),
+                  _buildPieChart(
+                    _viewType == 'real'
+                        ? state.realIncomeByMember
+                        : state.projectedIncomeByMember,
+                    Colors.teal,
+                  ),
+                  const SizedBox(height: 48),
+                  _buildSectionTitle('Dépenses par Membre (Prévisionnel)'),
+                  _buildPieChart(
+                    state.projectedExpenseByMember,
+                    Colors.orangeAccent,
+                  ),
                   const SizedBox(height: 40),
                 ],
               ),
@@ -69,42 +111,67 @@ class StatsPage extends ConsumerWidget {
   }
 
   Widget _buildSummaryCard(StatsState state) {
-    final totalIncome = state.incomeByCategory.values.fold(
+    final realIncome = state.realIncomeByCategory.values.fold(
       0.0,
       (a, b) => a + b,
     );
-    final totalExpense = state.expenseByCategory.values.fold(
+    final realExpense = state.realExpenseByCategory.values.fold(
       0.0,
       (a, b) => a + b,
     );
-    final balance = totalIncome - totalExpense;
+    final realBalance = realIncome - realExpense;
+
+    final projectedIncome = state.projectedIncomeByCategory.values.fold(
+      0.0,
+      (a, b) => a + b,
+    );
+    final projectedExpense = state.projectedExpenseByCategory.values.fold(
+      0.0,
+      (a, b) => a + b,
+    );
+    final projectedBalance = projectedIncome - projectedExpense;
 
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
             Text(
-              'Cumul Annuel ${state.selectedYear}',
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              formatCurrency(balance),
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: balance >= 0 ? Colors.black : Colors.red,
+              'Bilan Annuel ${state.selectedYear}',
+              style: const TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
+                fontWeight: FontWeight.w500,
               ),
             ),
-            const Divider(height: 32),
+            const SizedBox(height: 20),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildSimpleSummaryItem('Revenus', totalIncome, Colors.green),
-                _buildSimpleSummaryItem('Dépenses', totalExpense, Colors.red),
+                Expanded(
+                  child: _buildBalanceItem(
+                    'Réel',
+                    realBalance,
+                    realIncome,
+                    realExpense,
+                    Colors.blueGrey,
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 80,
+                  color: Colors.grey.withValues(alpha: 0.2),
+                ),
+                Expanded(
+                  child: _buildBalanceItem(
+                    'Prévisionnel',
+                    projectedBalance,
+                    projectedIncome,
+                    projectedExpense,
+                    Colors.blueAccent,
+                  ),
+                ),
               ],
             ),
           ],
@@ -113,18 +180,48 @@ class StatsPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildSimpleSummaryItem(String label, double amount, Color color) {
+  Widget _buildBalanceItem(
+    String label,
+    double balance,
+    double income,
+    double expense,
+    Color color,
+  ) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(color: Colors.grey)),
-        const SizedBox(height: 4),
         Text(
-          formatCurrency(amount),
+          label,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          formatCurrency(balance),
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: color,
+            color: balance >= 0 ? Colors.black : Colors.red,
           ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.arrow_upward, size: 12, color: Colors.green),
+            Text(
+              formatCurrency(income),
+              style: const TextStyle(fontSize: 11, color: Colors.green),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.arrow_downward, size: 12, color: Colors.red),
+            Text(
+              formatCurrency(expense),
+              style: const TextStyle(fontSize: 11, color: Colors.red),
+            ),
+          ],
         ),
       ],
     );
@@ -132,7 +229,7 @@ class StatsPage extends ConsumerWidget {
 
   Widget _buildSectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 24, left: 4),
       child: Text(
         title,
         style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -140,53 +237,88 @@ class StatsPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildDataList(Map<String, double> data, Color color) {
+  Widget _buildPieChart(Map<String, double> data, Color baseColor) {
     if (data.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 8),
-        child: Text('Aucune donnée', style: TextStyle(color: Colors.grey)),
+      return const SizedBox(
+        height: 100,
+        child: Center(
+          child: Text('Aucune donnée', style: TextStyle(color: Colors.grey)),
+        ),
       );
     }
 
-    final sortedList = data.entries.toList()
+    final total = data.values.fold(0.0, (a, b) => a + b);
+    final sortedEntries = data.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    final maxVal = sortedList.first.value;
+
+    // Generate colors
+    final List<Color> palette = [
+      baseColor,
+      baseColor.withValues(alpha: 0.8),
+      baseColor.withValues(alpha: 0.6),
+      baseColor.withValues(alpha: 0.4),
+      baseColor.withValues(alpha: 0.2),
+      ...Colors.primaries.map((c) => c.withValues(alpha: 0.5)),
+    ];
 
     return Column(
-      children: sortedList.map((entry) {
-        final percentage = (entry.value / maxVal).clamp(0.0, 1.0);
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    entry.key,
-                    style: const TextStyle(fontWeight: FontWeight.w500),
+      children: [
+        SizedBox(
+          height: 200,
+          child: PieChart(
+            PieChartData(
+              sectionsSpace: 2,
+              centerSpaceRadius: 40,
+              sections: sortedEntries.asMap().entries.map((entry) {
+                final index = entry.key;
+                final val = entry.value;
+                final percentage = (val.value / total) * 100;
+
+                return PieChartSectionData(
+                  color: palette[index % palette.length],
+                  value: val.value,
+                  title: percentage > 5
+                      ? '${percentage.toStringAsFixed(0)}%'
+                      : '',
+                  radius: 50,
+                  titleStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
-                  Text(
-                    formatCurrency(entry.value),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: percentage,
-                  backgroundColor: color.withValues(alpha: 0.1),
-                  color: color,
-                  minHeight: 8,
-                ),
-              ),
-            ],
+                );
+              }).toList(),
+            ),
           ),
-        );
-      }).toList(),
+        ),
+        const SizedBox(height: 24),
+        Wrap(
+          spacing: 16,
+          runSpacing: 8,
+          children: sortedEntries.asMap().entries.map((entry) {
+            final index = entry.key;
+            final val = entry.value;
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: palette[index % palette.length],
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '${val.key}: ${formatCurrency(val.value)}',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ],
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 }

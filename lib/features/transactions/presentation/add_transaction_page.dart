@@ -8,7 +8,6 @@ import '../../recurrences/presentation/recurrence_controller.dart';
 import '../../categories/presentation/category_controller.dart';
 import '../../recurrences/domain/recurrence.dart';
 import '../../accounts/presentation/account_controller.dart';
-import '../../recurrences/application/recurrence_service.dart';
 import '../../members/presentation/member_controller.dart';
 
 class AddTransactionPage extends ConsumerStatefulWidget {
@@ -260,16 +259,6 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                 );
           } else {
             await ref.read(transactionRepositoryProvider).addTransaction(data);
-          }
-
-          if (createdRecurrence != null) {
-            final oneYearLater = DateTime.now().add(const Duration(days: 365));
-            await ref
-                .read(recurrenceServiceProvider)
-                .generateProjectedTransactions(
-                  recurrence: createdRecurrence,
-                  periodEnd: oneYearLater,
-                );
           }
         }
 

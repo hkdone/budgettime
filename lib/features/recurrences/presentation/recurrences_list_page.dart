@@ -247,14 +247,18 @@ class RecurrencesListPage extends ConsumerWidget {
 
   String _translateFrequency(String frequency) {
     switch (frequency) {
-      case 'weekly':
-        return 'Hebdomadaire';
-      case 'monthly':
-        return 'Mensuel';
-      case 'yearly':
-        return 'Annuel';
       case 'daily':
         return 'Quotidien';
+      case 'weekly':
+        return 'Hebdomadaire';
+      case 'biweekly':
+        return 'Bi-Hebdomadaire (2 sem)';
+      case 'monthly':
+        return 'Mensuel';
+      case 'bimonthly':
+        return 'Bi-Mensuel (2 mois)';
+      case 'yearly':
+        return 'Annuel';
       default:
         return frequency;
     }
@@ -275,8 +279,12 @@ class RecurrencesListPage extends ConsumerWidget {
 
       if (recurrence.frequency == 'weekly') {
         current = current.add(const Duration(days: 7));
+      } else if (recurrence.frequency == 'biweekly') {
+        current = current.add(const Duration(days: 14));
       } else if (recurrence.frequency == 'monthly') {
         current = DateTime(current.year, current.month + 1, current.day);
+      } else if (recurrence.frequency == 'bimonthly') {
+        current = DateTime(current.year, current.month + 2, current.day);
       } else if (recurrence.frequency == 'yearly') {
         current = DateTime(current.year + 1, current.month, current.day);
       } else if (recurrence.frequency == 'daily') {
