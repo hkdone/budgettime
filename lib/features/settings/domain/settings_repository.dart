@@ -1,4 +1,6 @@
+import 'app_settings.dart';
+
 abstract class SettingsRepository {
-  Future<int> getFiscalDayStart();
-  Future<void> setFiscalDayStart(int day);
+  Future<AppSettings> getSettings();
+  Future<void> saveSettings(AppSettings settings);
 }

@@ -51,15 +51,8 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
     if (widget.transactionToEdit != null) {
       final t = widget.transactionToEdit!;
 
-      // If it's an edit (has id)
+      // Pre-fill fields for either an edit OR a suggestion (like from Inbox)
       if (t['id'] != null) {
-        _amountController.text = (t['amount'] as num?)?.toString() ?? '';
-        _labelController.text = t['label'] ?? '';
-        _categoryController.text = t['category'] ?? '';
-        _type = t['type'] ?? 'expense';
-        _status = t['status'] ?? 'projected';
-        _date = t['date'] != null ? DateTime.parse(t['date']) : DateTime.now();
-
         if (t['expand'] != null && t['expand']['account'] != null) {
           _selectedAccountId = t['expand']['account']['id'];
         } else {
@@ -82,9 +75,29 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
         }
       }
 
-      // If it's a pre-filled account (for both edit and new)
+      if (t['amount'] != null) {
+        _amountController.text = (t['amount'] as num).abs().toString();
+      }
+      if (t['label'] != null) {
+        _labelController.text = t['label'];
+      }
+      if (t['category'] != null) {
+        _categoryController.text = t['category'];
+      }
+      if (t['type'] != null) {
+        _type = t['type'];
+      }
+      if (t['status'] != null) {
+        _status = t['status'];
+      }
+      if (t['date'] != null) {
+        _date = DateTime.parse(t['date']);
+      }
       if (t['accountId'] != null) {
         _selectedAccountId = t['accountId'];
+      }
+      if (t['memberId'] != null) {
+        _selectedMemberId = t['memberId'];
       }
     }
   }
@@ -279,7 +292,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
               extra: {'accountId': _selectedAccountId},
             );
           } else {
-            context.pop();
+            context.pop(true);
           }
         }
       } catch (e) {

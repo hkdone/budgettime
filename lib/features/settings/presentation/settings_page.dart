@@ -19,9 +19,10 @@ class SettingsPage extends ConsumerWidget {
             title: const Text('Début du mois fiscal'),
             subtitle: Consumer(
               builder: (context, ref, child) {
-                final settings = ref.watch(settingsControllerProvider);
-                return settings.when(
-                  data: (day) => Text('Le $day du mois'),
+                final state = ref.watch(settingsControllerProvider);
+                return state.when(
+                  data: (settings) =>
+                      Text('Le ${settings.fiscalDayStart} du mois'),
                   loading: () => const Text('Chargement...'),
                   error: (e, s) => const Text('Erreur récupération'),
                 );
@@ -29,10 +30,10 @@ class SettingsPage extends ConsumerWidget {
             ),
             trailing: Consumer(
               builder: (context, ref, child) {
-                final settings = ref.watch(settingsControllerProvider);
-                return settings.maybeWhen(
-                  data: (day) => DropdownButton<int>(
-                    value: day,
+                final state = ref.watch(settingsControllerProvider);
+                return state.maybeWhen(
+                  data: (settings) => DropdownButton<int>(
+                    value: settings.fiscalDayStart,
                     items: List.generate(28, (index) => index + 1)
                         .map(
                           (d) => DropdownMenuItem(
@@ -54,6 +55,49 @@ class SettingsPage extends ConsumerWidget {
               },
             ),
           ),
+          const Divider(),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Text(
+              'Réceptions (Smart Inbox)',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+            ),
+          ),
+          Consumer(
+            builder: (context, ref, child) {
+              final state = ref.watch(settingsControllerProvider);
+              return state.when(
+                data: (settings) {
+                  return Column(
+                    children: settings.activeParsers.entries.map((entry) {
+                      final name = entry.key == 'la_banque_postale'
+                          ? 'La Banque Postale'
+                          : entry.key == 'credit_mutuel'
+                          ? 'Crédit Mutuel'
+                          : entry.key;
+                      return CheckboxListTile(
+                        title: Text(name),
+                        subtitle: Text(
+                          'Activer le parser automatique pour $name',
+                        ),
+                        value: entry.value,
+                        onChanged: (val) {
+                          if (val != null) {
+                            ref
+                                .read(settingsControllerProvider.notifier)
+                                .toggleParser(entry.key, val);
+                          }
+                        },
+                      );
+                    }).toList(),
+                  );
+                },
+                loading: () => const Center(child: LinearProgressIndicator()),
+                error: (e, s) => ListTile(title: Text('Erreur: $e')),
+              );
+            },
+          ),
+          const Divider(),
           ListTile(
             leading: const Icon(Icons.people),
             title: const Text('Gérer les membres'),

@@ -54,11 +54,10 @@ New-Item -ItemType Directory -Force -Path budgettime/pb_public
 Copy-Item -Recurse build\web\* budgettime/pb_public\
 
 # Migrations & Schema
-if (Test-Path budgettime/pb_migrations) { Remove-Item -Recurse -Force budgettime/pb_migrations }
-if (Test-Path pb_migrations) {
-    Copy-Item -Recurse pb_migrations budgettime/
+if (Test-Path budgettime/pb_migrations) { 
+    Write-Host "Keeping existing migrations in budgettime subfolder..." 
 }
-Copy-Item pb_schema.json budgettime/
+# Note: we no longer copy from root to subfolder as the source of truth is now IN the subfolder
 if (Test-Path docker-compose.yml) {
     Copy-Item docker-compose.yml budgettime/
 }

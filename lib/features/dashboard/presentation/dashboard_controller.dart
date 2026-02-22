@@ -110,7 +110,7 @@ class DashboardController extends StateNotifier<DashboardState> {
 
       // 1. Get Settings for fiscal day
       final settingsAsync = _ref.read(settingsControllerProvider);
-      final int fiscalDay = settingsAsync.value ?? 1;
+      final int fiscalDay = settingsAsync.value?.fiscalDayStart ?? 1;
 
       // 2. Calculate Rolling Month
       final now = DateTime.now();

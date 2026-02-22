@@ -303,6 +303,16 @@
                     "maxSelect": 1,
                     "displayFields": []
                 }
+            },
+            {
+                "system": false,
+                "id": "set_parsers",
+                "name": "active_parsers",
+                "type": "json",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {}
             }
         ],
         "indexes": [],
@@ -739,6 +749,40 @@
                     "maxSelect": 1,
                     "displayFields": []
                 }
+            },
+            {
+                "system": false,
+                "id": "rawinbox_proc",
+                "name": "is_processed",
+                "type": "bool",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {}
+            },
+            {
+                "system": false,
+                "id": "rawinbox_payl",
+                "name": "raw_payload",
+                "type": "text",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {
+                    "min": null,
+                    "max": null,
+                    "pattern": ""
+                }
+            },
+            {
+                "system": false,
+                "id": "rawinbox_meta",
+                "name": "metadata",
+                "type": "json",
+                "required": false,
+                "presentable": false,
+                "unique": false,
+                "options": {}
             }
         ],
         "indexes": [],

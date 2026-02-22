@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../inbox/presentation/inbox_controller.dart';
+import '../../inbox/presentation/external_inbox_page.dart';
 import 'package:intl/intl.dart';
 
 import '../../auth/presentation/auth_controller.dart';
@@ -113,18 +115,31 @@ class DashboardPage extends ConsumerWidget {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.sync),
-            tooltip: 'Traiter la réception',
-            onPressed: () async {
-              await ref
-                  .read(dashboardControllerProvider.notifier)
-                  .processInbox();
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Réception traitée')),
-                );
-              }
+          Consumer(
+            builder: (context, ref, child) {
+              final inboxState = ref.watch(inboxControllerProvider);
+              final count = inboxState.items.length;
+              return IconButton(
+                icon: Badge.count(
+                  count: count,
+                  isLabelVisible: count > 0,
+                  child: const Icon(
+                    Icons.move_to_inbox_rounded,
+                    color: Colors.blue,
+                  ),
+                ),
+                tooltip: 'Réceptions externes',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ExternalInboxPage(),
+                    ),
+                  ).then((_) {
+                    ref.read(inboxControllerProvider.notifier).refresh();
+                  });
+                },
+              );
             },
           ),
           PopupMenuButton<String>(
@@ -215,7 +230,7 @@ class DashboardPage extends ConsumerWidget {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: const Text(
-                                  'v1.7.7',
+                                  'v1.8.0',
                                   style: TextStyle(
                                     fontSize: 10,
                                     color: Colors.blueGrey,
