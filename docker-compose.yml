@@ -3,8 +3,9 @@ services:
     build: . # Ou image: votre-repo/budget:latest
     container_name: budget_app
     # network_mode: host # Désactivé pour permettre le mapping de port
+    # Port Externe (8097) : Port Interne (8090)
     ports:
-      - "8097:8090" # Port Externe : Port Interne (8090)
+      - "8097:8090"
     volumes:
       - ./pb_data:/pb/pb_data # Données persistantes
       - ./pb_migrations:/pb/pb_migrations # Migrations de schéma (CRUCIAL)

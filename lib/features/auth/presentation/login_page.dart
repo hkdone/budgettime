@@ -62,6 +62,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Image.asset('assets/logo.png', height: 100),
+                  const SizedBox(height: 16),
                   Text(
                     'Budget Time',
                     style: Theme.of(context).textTheme.headlineMedium,
@@ -141,7 +143,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   ),
                   const SizedBox(height: 24),
                   const Text(
-                    'v1.7.4',
+                    'v1.7.5',
                     style: TextStyle(color: Colors.grey, fontSize: 12),
                     textAlign: TextAlign.center,
                   ),

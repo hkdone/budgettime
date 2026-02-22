@@ -1,11 +1,11 @@
 {
-    "name": "budgettime",
-    "short_name": "budgettime",
+    "name": "BudgetTime",
+    "short_name": "BudgetTime",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
+    "background_color": "#E1F5FE",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Gestion de budget Offline-First basée sur PocketBase",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

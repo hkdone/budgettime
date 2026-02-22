@@ -7,6 +7,7 @@ import '../../auth/presentation/auth_controller.dart';
 import 'dashboard_controller.dart';
 import '../../transactions/presentation/transaction_list.dart';
 import 'widgets/account_global_card.dart';
+import 'widgets/pwa_install_banner.dart';
 import 'package:budgettime/core/utils/formatters.dart';
 
 class DashboardPage extends ConsumerWidget {
@@ -64,6 +65,10 @@ class DashboardPage extends ConsumerWidget {
         backgroundColor: Colors.grey[50],
         iconTheme: const IconThemeData(color: Colors.black),
         actionsIconTheme: const IconThemeData(color: Colors.black),
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Image.asset('assets/logo.png'),
+        ),
         title: PopupMenuButton<String>(
           initialValue: state.selectedAccount?.id ?? 'all',
           onSelected: (String accountId) {
@@ -174,173 +179,189 @@ class DashboardPage extends ConsumerWidget {
       ),
       body: RefreshIndicator(
         onRefresh: controller.refresh,
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          DateFormat(
-                            'EEEE d MMMM yyyy',
-                            'fr_FR',
-                          ).format(DateTime.now()),
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: Colors.grey[600],
-                                fontStyle: FontStyle.italic,
+        child: Column(
+          children: [
+            const PwaInstallBanner(),
+            Expanded(
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                DateFormat(
+                                  'EEEE d MMMM yyyy',
+                                  'fr_FR',
+                                ).format(DateTime.now()),
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      color: Colors.grey[600],
+                                      fontStyle: FontStyle.italic,
+                                    ),
                               ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Text(
-                            'v1.7.4',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.blueGrey,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Card(
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      color: Colors.white,
-                      surfaceTintColor: Colors.white,
-                      child: Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Column(
-                          children: [
-                            Text(
-                              state.selectedAccount != null
-                                  ? 'Solde actuel (${state.selectedAccount!.name})'
-                                  : 'Solde actuel',
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(
-                                    color: Colors.grey[600],
-                                    fontWeight: FontWeight.w500,
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[200],
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Text(
+                                  'v1.7.5',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.blueGrey,
                                   ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              formatCurrency(state.effectiveBalance),
-                              style: Theme.of(context).textTheme.displayMedium
-                                  ?.copyWith(
-                                    color: state.effectiveBalance >= 0
-                                        ? Colors.black
-                                        : Colors.red,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                            ),
-                            const SizedBox(height: 16),
-                            // Projected Balance
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
+                                ),
                               ),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Card(
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            color: Colors.white,
+                            surfaceTintColor: Colors.white,
+                            child: Padding(
+                              padding: const EdgeInsets.all(24.0),
+                              child: Column(
                                 children: [
-                                  const Icon(
-                                    Icons.trending_up,
-                                    size: 16,
-                                    color: Colors.blue,
-                                  ),
-                                  const SizedBox(width: 8),
                                   Text(
-                                    'Prévisionnel (fin de mois) : ',
-                                    style: TextStyle(
-                                      color: Colors.blue[800],
-                                      fontWeight: FontWeight.w500,
+                                    state.selectedAccount != null
+                                        ? 'Solde actuel (${state.selectedAccount!.name})'
+                                        : 'Solde actuel',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          color: Colors.grey[600],
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    formatCurrency(state.effectiveBalance),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .displayMedium
+                                        ?.copyWith(
+                                          color: state.effectiveBalance >= 0
+                                              ? Colors.black
+                                              : Colors.red,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  // Projected Balance
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.trending_up,
+                                          size: 16,
+                                          color: Colors.blue,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Prévisionnel (fin de mois) : ',
+                                          style: TextStyle(
+                                            color: Colors.blue[800],
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        Text(
+                                          formatCurrency(
+                                            state.projectedBalance,
+                                          ),
+                                          style: TextStyle(
+                                            color: Colors.blue[800],
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  Text(
-                                    formatCurrency(state.projectedBalance),
-                                    style: TextStyle(
-                                      color: Colors.blue[800],
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                  const SizedBox(height: 24),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceAround,
+                                    children: [
+                                      Column(
+                                        children: [
+                                          const Text(
+                                            'Revenus',
+                                            style: TextStyle(
+                                              color: Colors.green,
+                                            ),
+                                          ),
+                                          Text(
+                                            '+${formatCurrency(totalIncome)}',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleLarge
+                                                ?.copyWith(color: Colors.green),
+                                          ),
+                                        ],
+                                      ),
+                                      Column(
+                                        children: [
+                                          const Text(
+                                            'Dépenses',
+                                            style: TextStyle(color: Colors.red),
+                                          ),
+                                          Text(
+                                            '-${formatCurrency(totalExpense)}',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleLarge
+                                                ?.copyWith(color: Colors.red),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 24),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
-                              children: [
-                                Column(
-                                  children: [
-                                    const Text(
-                                      'Revenus',
-                                      style: TextStyle(color: Colors.green),
-                                    ),
-                                    Text(
-                                      '+${formatCurrency(totalIncome)}',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleLarge
-                                          ?.copyWith(color: Colors.green),
-                                    ),
-                                  ],
-                                ),
-                                Column(
-                                  children: [
-                                    const Text(
-                                      'Dépenses',
-                                      style: TextStyle(color: Colors.red),
-                                    ),
-                                    Text(
-                                      '-${formatCurrency(totalExpense)}',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleLarge
-                                          ?.copyWith(color: Colors.red),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                  // 5. Success State: Transactions or Account Cards
+                  if (state.selectedAccount == null)
+                    // GLOBAL VIEW: Show per-account cards
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final account = state.accounts[index];
+                        return AccountGlobalCard(account: account);
+                      }, childCount: state.accounts.length),
+                    )
+                  else
+                    // DETAIL VIEW: Show transaction list for the selected account
+                    TransactionList(transactions: state.transactions),
+                ],
               ),
             ),
-            // 5. Success State: Transactions or Account Cards
-            if (state.selectedAccount == null)
-              // GLOBAL VIEW: Show per-account cards
-              SliverList(
-                delegate: SliverChildBuilderDelegate((context, index) {
-                  final account = state.accounts[index];
-                  return AccountGlobalCard(account: account);
-                }, childCount: state.accounts.length),
-              )
-            else
-              // DETAIL VIEW: Show transaction list for the selected account
-              TransactionList(transactions: state.transactions),
           ],
         ),
       ),
