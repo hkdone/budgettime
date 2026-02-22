@@ -1,6 +1,7 @@
 {
     "name": "BudgetTime",
     "short_name": "BudgetTime",
+    "id": "/budgettime-pwa",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#E1F5FE",
