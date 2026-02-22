@@ -222,20 +222,30 @@ final accountStatsProvider = FutureProvider.family<StatisticsData, String?>((
   double totalIncome = 0;
 
   for (final t in transactions) {
+    // Transfer Neutrality: Exclude transfers from statistics
+    if (t['target_account'] != null &&
+        t['target_account'].toString().isNotEmpty) {
+      continue;
+    }
+
     final amount = (t['amount'] as num).toDouble();
     final type = t['type'];
-    // Safe access to member ID
-    String mId = '';
+
+    // Safe access to category and member IDs/names
+    String catId = t['category'] ?? 'other';
+    if (t['expand'] != null && t['expand']['category'] != null) {
+      catId = t['expand']['category']['id'] ?? catId;
+    }
+
+    String mId = 'common';
     if (t['expand'] != null && t['expand']['member'] != null) {
-      mId = t['expand']['member']['id'] ?? '';
+      mId = t['expand']['member']['id'] ?? 'common';
     } else if (t['member'] != null) {
       mId = t['member'].toString();
     }
-    if (mId.isEmpty) mId = 'common';
 
     if (type == 'expense') {
       totalExpense += amount;
-      final catId = t['category'] ?? 'other';
       categoryMap[catId] = (categoryMap[catId] ?? 0) + amount;
       memberExpenseMap[mId] = (memberExpenseMap[mId] ?? 0) + amount;
     } else if (type == 'income') {

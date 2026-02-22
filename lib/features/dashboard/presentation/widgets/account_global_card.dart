@@ -124,23 +124,10 @@ class AccountGlobalCard extends ConsumerWidget {
                         else
                           Column(
                             children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: CategoryPieChart(
-                                      stats: stats.expenseByCategory,
-                                      totalAmount: stats.totalExpense,
-                                      showLegend: true,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: HistoryBarChart(
-                                      history: stats.history,
-                                      showTitles: false,
-                                    ),
-                                  ),
-                                ],
+                              CategoryPieChart(
+                                stats: stats.expenseByCategory,
+                                totalAmount: stats.totalExpense,
+                                showLegend: true,
                               ),
                               const SizedBox(height: 16),
                               Row(
@@ -174,8 +161,6 @@ class AccountGlobalCard extends ConsumerWidget {
                               ),
                             ],
                           ),
-                        const SizedBox(height: 16),
-                        if (isWide) HistoryBarChart(history: stats.history),
                       ],
                     );
                   },

@@ -16,8 +16,7 @@ class YearlyTrend {
   });
 }
 
-class StatsState {
-  final bool isLoading;
+class AccountStats {
   final Map<String, double> realIncomeByCategory;
   final Map<String, double> projectedIncomeByCategory;
   final Map<String, double> realExpenseByCategory;
@@ -26,11 +25,8 @@ class StatsState {
   final Map<String, double> projectedIncomeByMember;
   final Map<String, double> realExpenseByMember;
   final Map<String, double> projectedExpenseByMember;
-  final List<YearlyTrend> yearlyTrends;
-  final int selectedYear;
 
-  StatsState({
-    this.isLoading = false,
+  AccountStats({
     this.realIncomeByCategory = const {},
     this.projectedIncomeByCategory = const {},
     this.realExpenseByCategory = const {},
@@ -39,38 +35,35 @@ class StatsState {
     this.projectedIncomeByMember = const {},
     this.realExpenseByMember = const {},
     this.projectedExpenseByMember = const {},
+  });
+}
+
+class StatsState {
+  final bool isLoading;
+  final Map<String, AccountStats> statsByAccount; // accountId -> AccountStats
+  final Map<String, String> accountNames; // accountId -> name
+  final List<YearlyTrend> yearlyTrends;
+  final int selectedYear;
+
+  StatsState({
+    this.isLoading = false,
+    this.statsByAccount = const {},
+    this.accountNames = const {},
     this.yearlyTrends = const [],
     this.selectedYear = 0,
   });
 
   StatsState copyWith({
     bool? isLoading,
-    Map<String, double>? realIncomeByCategory,
-    Map<String, double>? projectedIncomeByCategory,
-    Map<String, double>? realExpenseByCategory,
-    Map<String, double>? projectedExpenseByCategory,
-    Map<String, double>? realIncomeByMember,
-    Map<String, double>? projectedIncomeByMember,
-    Map<String, double>? realExpenseByMember,
-    Map<String, double>? projectedExpenseByMember,
+    Map<String, AccountStats>? statsByAccount,
+    Map<String, String>? accountNames,
     List<YearlyTrend>? yearlyTrends,
     int? selectedYear,
   }) {
     return StatsState(
       isLoading: isLoading ?? this.isLoading,
-      realIncomeByCategory: realIncomeByCategory ?? this.realIncomeByCategory,
-      projectedIncomeByCategory:
-          projectedIncomeByCategory ?? this.projectedIncomeByCategory,
-      realExpenseByCategory:
-          realExpenseByCategory ?? this.realExpenseByCategory,
-      projectedExpenseByCategory:
-          projectedExpenseByCategory ?? this.projectedExpenseByCategory,
-      realIncomeByMember: realIncomeByMember ?? this.realIncomeByMember,
-      projectedIncomeByMember:
-          projectedIncomeByMember ?? this.projectedIncomeByMember,
-      realExpenseByMember: realExpenseByMember ?? this.realExpenseByMember,
-      projectedExpenseByMember:
-          projectedExpenseByMember ?? this.projectedExpenseByMember,
+      statsByAccount: statsByAccount ?? this.statsByAccount,
+      accountNames: accountNames ?? this.accountNames,
       yearlyTrends: yearlyTrends ?? this.yearlyTrends,
       selectedYear: selectedYear ?? this.selectedYear,
     );
@@ -97,15 +90,8 @@ class StatsController extends StateNotifier<StatsState> {
       end: end,
     );
 
-    final realIncomeByCategory = <String, double>{};
-    final projectedIncomeByCategory = <String, double>{};
-    final realExpenseByCategory = <String, double>{};
-    final projectedExpenseByCategory = <String, double>{};
-
-    final realIncomeByMember = <String, double>{};
-    final projectedIncomeByMember = <String, double>{};
-    final realExpenseByMember = <String, double>{};
-    final projectedExpenseByMember = <String, double>{};
+    final statsByAccount = <String, AccountStats>{};
+    final accountNames = <String, String>{};
 
     for (final t in transactions) {
       // Transfer Neutrality: Exclude transfers from statistics
@@ -114,49 +100,69 @@ class StatsController extends StateNotifier<StatsState> {
         continue;
       }
 
+      final accountId = t['account'] ?? 'unknown';
+      if (!statsByAccount.containsKey(accountId)) {
+        statsByAccount[accountId] = AccountStats(
+          realIncomeByCategory: {},
+          projectedIncomeByCategory: {},
+          realExpenseByCategory: {},
+          projectedExpenseByCategory: {},
+          realIncomeByMember: {},
+          projectedIncomeByMember: {},
+          realExpenseByMember: {},
+          projectedExpenseByMember: {},
+        );
+
+        if (t['expand'] != null && t['expand']['account'] != null) {
+          accountNames[accountId] = t['expand']['account']['name'] ?? 'Compte';
+        } else {
+          accountNames[accountId] = 'Compte';
+        }
+      }
+
+      final stats = statsByAccount[accountId]!;
       final amount = (t['amount'] as num).toDouble();
       final type = t['type'];
       final status = t['status'] ?? 'effective';
       final isReal = status == 'effective';
-      final category = t['expand']?['category']?['name'] ?? 'Inconnu';
+
+      // Always expand category for reliable display
+      String category = 'Inconnu';
+      if (t['expand'] != null && t['expand']['category'] != null) {
+        category = t['expand']['category']['name'] ?? 'Inconnu';
+      }
+
       final member = t['expand']?['member']?['name'] ?? 'Commun';
 
       if (type == 'income') {
         if (isReal) {
-          realIncomeByCategory[category] =
-              (realIncomeByCategory[category] ?? 0) + amount;
-          realIncomeByMember[member] =
-              (realIncomeByMember[member] ?? 0) + amount;
+          stats.realIncomeByCategory[category] =
+              (stats.realIncomeByCategory[category] ?? 0) + amount;
+          stats.realIncomeByMember[member] =
+              (stats.realIncomeByMember[member] ?? 0) + amount;
         }
-        // Projected always includes Real + Actual Projected
-        projectedIncomeByCategory[category] =
-            (projectedIncomeByCategory[category] ?? 0) + amount;
-        projectedIncomeByMember[member] =
-            (projectedIncomeByMember[member] ?? 0) + amount;
+        stats.projectedIncomeByCategory[category] =
+            (stats.projectedIncomeByCategory[category] ?? 0) + amount;
+        stats.projectedIncomeByMember[member] =
+            (stats.projectedIncomeByMember[member] ?? 0) + amount;
       } else {
         if (isReal) {
-          realExpenseByCategory[category] =
-              (realExpenseByCategory[category] ?? 0) + amount;
-          realExpenseByMember[member] =
-              (realExpenseByMember[member] ?? 0) + amount;
+          stats.realExpenseByCategory[category] =
+              (stats.realExpenseByCategory[category] ?? 0) + amount;
+          stats.realExpenseByMember[member] =
+              (stats.realExpenseByMember[member] ?? 0) + amount;
         }
-        projectedExpenseByCategory[category] =
-            (projectedExpenseByCategory[category] ?? 0) + amount;
-        projectedExpenseByMember[member] =
-            (projectedExpenseByMember[member] ?? 0) + amount;
+        stats.projectedExpenseByCategory[category] =
+            (stats.projectedExpenseByCategory[category] ?? 0) + amount;
+        stats.projectedExpenseByMember[member] =
+            (stats.projectedExpenseByMember[member] ?? 0) + amount;
       }
     }
 
     state = state.copyWith(
       isLoading: false,
-      realIncomeByCategory: realIncomeByCategory,
-      projectedIncomeByCategory: projectedIncomeByCategory,
-      realExpenseByCategory: realExpenseByCategory,
-      projectedExpenseByCategory: projectedExpenseByCategory,
-      realIncomeByMember: realIncomeByMember,
-      projectedIncomeByMember: projectedIncomeByMember,
-      realExpenseByMember: realExpenseByMember,
-      projectedExpenseByMember: projectedExpenseByMember,
+      statsByAccount: statsByAccount,
+      accountNames: accountNames,
     );
   }
 

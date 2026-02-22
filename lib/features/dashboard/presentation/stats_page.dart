@@ -14,124 +14,186 @@ class StatsPage extends ConsumerStatefulWidget {
 }
 
 class _StatsPageState extends ConsumerState<StatsPage> {
-  String _viewType = 'projected'; // 'real' or 'projected'
+  String _viewMode = 'projected'; // 'real' or 'projected'
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(statsControllerProvider);
-    final controller = ref.read(statsControllerProvider.notifier);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Statistiques Annuelles'),
-        actions: [
-          DropdownButton<int>(
-            value: state.selectedYear,
-            underline: const SizedBox(),
-            onChanged: (year) {
-              if (year != null) controller.changeYear(year);
-            },
-            items: List.generate(5, (index) => DateTime.now().year - index)
-                .map(
-                  (year) => DropdownMenuItem(
-                    value: year,
-                    child: Text(year.toString()),
+    return state.isLoading
+        ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+        : Scaffold(
+            appBar: AppBar(
+              title: const Text('Analyse Annuelle'),
+              actions: [
+                IconButton(
+                  onPressed: () => context.push('/stats-trend'),
+                  icon: const Icon(Icons.show_chart),
+                  tooltip: 'Tendances pluriannuelles',
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: DropdownButton<int>(
+                    value: state.selectedYear,
+                    onChanged: (y) {
+                      if (y != null) {
+                        ref
+                            .read(statsControllerProvider.notifier)
+                            .changeYear(y);
+                      }
+                    },
+                    items: [for (int i = 0; i < 5; i++) DateTime.now().year - i]
+                        .map((y) {
+                          return DropdownMenuItem(
+                            value: y,
+                            child: Text(y.toString()),
+                          );
+                        })
+                        .toList(),
                   ),
-                )
-                .toList(),
-          ),
-          IconButton(
-            icon: const Icon(Icons.trending_up, color: Colors.blueAccent),
-            tooltip: 'Tendances Annuelles',
-            onPressed: () {
-              context.push('/stats-trend');
-            },
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: state.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+                ),
+              ],
+            ),
+            body: SingleChildScrollView(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSummaryCard(state),
-                  const SizedBox(height: 24),
-                  Center(
-                    child: SegmentedButton<String>(
-                      segments: const [
-                        ButtonSegment(
-                          value: 'real',
-                          label: Text('Réel'),
-                          icon: Icon(Icons.account_balance_wallet),
-                        ),
-                        ButtonSegment(
-                          value: 'projected',
-                          label: Text('Prévisionnel'),
-                          icon: Icon(Icons.event_note),
-                        ),
-                      ],
-                      selected: {_viewType},
-                      onSelectionChanged: (newSelection) {
-                        setState(() {
-                          _viewType = newSelection.first;
-                        });
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  _buildSectionTitle('Dépenses par Catégorie'),
-                  _buildPieChart(
-                    _viewType == 'real'
-                        ? state.realExpenseByCategory
-                        : state.projectedExpenseByCategory,
-                    Colors.redAccent,
-                  ),
-                  const SizedBox(height: 48),
-                  _buildSectionTitle('Revenus par Membre'),
-                  _buildPieChart(
-                    _viewType == 'real'
-                        ? state.realIncomeByMember
-                        : state.projectedIncomeByMember,
-                    Colors.teal,
-                  ),
-                  const SizedBox(height: 48),
-                  _buildSectionTitle('Dépenses par Membre (Prévisionnel)'),
-                  _buildPieChart(
-                    state.projectedExpenseByMember,
-                    Colors.orangeAccent,
-                  ),
-                  const SizedBox(height: 40),
+                  _buildGlobalSummary(state),
+                  if (state.statsByAccount.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(32.0),
+                      child: Center(
+                        child: Text('Aucune donnée pour cette année'),
+                      ),
+                    )
+                  else
+                    ...state.statsByAccount.entries.map((entry) {
+                      final accountId = entry.key;
+                      final stats = entry.value;
+                      final accountName =
+                          state.accountNames[accountId] ?? 'Compte';
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.account_balance,
+                                  color: Colors.blue,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  accountName,
+                                  style: Theme.of(context).textTheme.titleLarge
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue[800],
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Divider(indent: 16, endIndent: 16),
+
+                          // Dual View: Category Expenses (Real vs Projected)
+                          _buildSectionTitle('Dépenses par Catégorie'),
+                          _buildDualCharts(
+                            realData: stats.realExpenseByCategory,
+                            projectedData: stats.projectedExpenseByCategory,
+                            viewMode: _viewMode,
+                            baseColor: Colors.redAccent,
+                          ),
+
+                          // Dual View: Member Income (Real vs Projected)
+                          _buildSectionTitle('Revenus par Membre'),
+                          _buildDualCharts(
+                            realData: stats.realIncomeByMember,
+                            projectedData: stats.projectedIncomeByMember,
+                            viewMode: _viewMode,
+                            baseColor: Colors.teal,
+                          ),
+
+                          // Single View: Member Expenses (Projected)
+                          _buildSectionTitle(
+                            'Dépenses par Membre (Prévisionnel)',
+                          ),
+                          Center(
+                            child: SizedBox(
+                              width: 500,
+                              child: _buildPieChart(
+                                stats.projectedExpenseByMember,
+                                Colors.orangeAccent,
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 32),
+                        ],
+                      );
+                    }),
                 ],
               ),
             ),
-    );
+            bottomNavigationBar: BottomAppBar(
+              height: 70,
+              child: Center(
+                child: SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(
+                      value: 'real',
+                      label: Text('Réel'),
+                      icon: Icon(Icons.check_circle_outline),
+                    ),
+                    ButtonSegment(
+                      value: 'projected',
+                      label: Text('Prévisionnel'),
+                      icon: Icon(Icons.event_available),
+                    ),
+                  ],
+                  selected: {_viewMode},
+                  onSelectionChanged: (val) {
+                    setState(() {
+                      _viewMode = val.first;
+                    });
+                  },
+                ),
+              ),
+            ),
+          );
   }
 
-  Widget _buildSummaryCard(StatsState state) {
-    final realIncome = state.realIncomeByCategory.values.fold(
-      0.0,
-      (a, b) => a + b,
-    );
-    final realExpense = state.realExpenseByCategory.values.fold(
-      0.0,
-      (a, b) => a + b,
-    );
-    final realBalance = realIncome - realExpense;
+  Widget _buildGlobalSummary(StatsState state) {
+    double totalRealIncome = 0;
+    double totalRealExpense = 0;
+    double totalProjectedIncome = 0;
+    double totalProjectedExpense = 0;
 
-    final projectedIncome = state.projectedIncomeByCategory.values.fold(
-      0.0,
-      (a, b) => a + b,
-    );
-    final projectedExpense = state.projectedExpenseByCategory.values.fold(
-      0.0,
-      (a, b) => a + b,
-    );
-    final projectedBalance = projectedIncome - projectedExpense;
+    for (final stats in state.statsByAccount.values) {
+      totalRealIncome += stats.realIncomeByCategory.values.fold(
+        0,
+        (a, b) => a + b,
+      );
+      totalRealExpense += stats.realExpenseByCategory.values.fold(
+        0,
+        (a, b) => a + b,
+      );
+      totalProjectedIncome += stats.projectedIncomeByCategory.values.fold(
+        0,
+        (a, b) => a + b,
+      );
+      totalProjectedExpense += stats.projectedExpenseByCategory.values.fold(
+        0,
+        (a, b) => a + b,
+      );
+    }
+
+    final realBalance = totalRealIncome - totalRealExpense;
+    final projectedBalance = totalProjectedIncome - totalProjectedExpense;
 
     return Card(
+      margin: const EdgeInsets.all(16),
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
@@ -139,7 +201,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
         child: Column(
           children: [
             Text(
-              'Bilan Annuel ${state.selectedYear}',
+              'Bilan Global ${state.selectedYear}',
               style: const TextStyle(
                 fontSize: 16,
                 color: Colors.grey,
@@ -153,8 +215,8 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                   child: _buildBalanceItem(
                     'Réel',
                     realBalance,
-                    realIncome,
-                    realExpense,
+                    totalRealIncome,
+                    totalRealExpense,
                     Colors.blueGrey,
                   ),
                 ),
@@ -167,8 +229,8 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                   child: _buildBalanceItem(
                     'Prévisionnel',
                     projectedBalance,
-                    projectedIncome,
-                    projectedExpense,
+                    totalProjectedIncome,
+                    totalProjectedExpense,
                     Colors.blueAccent,
                   ),
                 ),
@@ -229,20 +291,80 @@ class _StatsPageState extends ConsumerState<StatsPage> {
 
   Widget _buildSectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 24, left: 4),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       child: Text(
         title,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
       ),
     );
   }
 
-  Widget _buildPieChart(Map<String, double> data, Color baseColor) {
+  Widget _buildDualCharts({
+    required Map<String, double> realData,
+    required Map<String, double> projectedData,
+    required String viewMode,
+    required Color baseColor,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth > 800;
+
+        if (isWide) {
+          return Row(
+            children: [
+              Expanded(
+                child: _buildPieChart(realData, baseColor, title: 'Réel'),
+              ),
+              Expanded(
+                child: _buildPieChart(
+                  projectedData,
+                  baseColor,
+                  title: 'Prévisionnel',
+                ),
+              ),
+            ],
+          );
+        } else {
+          return Center(
+            child: SizedBox(
+              width: 500,
+              child: _buildPieChart(
+                viewMode == 'real' ? realData : projectedData,
+                baseColor,
+              ),
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  Widget _buildPieChart(
+    Map<String, double> data,
+    Color baseColor, {
+    String? title,
+  }) {
     if (data.isEmpty) {
-      return const SizedBox(
-        height: 100,
+      return SizedBox(
+        height: 150,
         child: Center(
-          child: Text('Aucune donnée', style: TextStyle(color: Colors.grey)),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (title != null)
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              const Text(
+                'Aucune donnée',
+                style: TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -251,7 +373,6 @@ class _StatsPageState extends ConsumerState<StatsPage> {
     final sortedEntries = data.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    // Generate colors
     final List<Color> palette = [
       baseColor,
       baseColor.withValues(alpha: 0.8),
@@ -263,12 +384,20 @@ class _StatsPageState extends ConsumerState<StatsPage> {
 
     return Column(
       children: [
+        if (title != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
         SizedBox(
-          height: 200,
+          height: 180,
           child: PieChart(
             PieChartData(
               sectionsSpace: 2,
-              centerSpaceRadius: 40,
+              centerSpaceRadius: 35,
               sections: sortedEntries.asMap().entries.map((entry) {
                 final index = entry.key;
                 final val = entry.value;
@@ -277,12 +406,12 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                 return PieChartSectionData(
                   color: palette[index % palette.length],
                   value: val.value,
-                  title: percentage > 5
+                  title: percentage > 10
                       ? '${percentage.toStringAsFixed(0)}%'
                       : '',
-                  radius: 50,
+                  radius: 45,
                   titleStyle: const TextStyle(
-                    fontSize: 12,
+                    fontSize: 10,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -291,32 +420,35 @@ class _StatsPageState extends ConsumerState<StatsPage> {
             ),
           ),
         ),
-        const SizedBox(height: 24),
-        Wrap(
-          spacing: 16,
-          runSpacing: 8,
-          children: sortedEntries.asMap().entries.map((entry) {
-            final index = entry.key;
-            final val = entry.value;
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: palette[index % palette.length],
-                    shape: BoxShape.circle,
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            children: sortedEntries.asMap().entries.map((entry) {
+              final index = entry.key;
+              final val = entry.value;
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: palette[index % palette.length],
+                      shape: BoxShape.circle,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  '${val.key}: ${formatCurrency(val.value)}',
-                  style: const TextStyle(fontSize: 12),
-                ),
-              ],
-            );
-          }).toList(),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${val.key}: ${formatCurrency(val.value)}',
+                    style: const TextStyle(fontSize: 10),
+                  ),
+                ],
+              );
+            }).toList(),
+          ),
         ),
       ],
     );

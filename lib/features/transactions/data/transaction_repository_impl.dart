@@ -32,7 +32,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
         .getFullList(
           filter: filter,
           sort: '-date',
-          expand: 'account,recurrence,member',
+          expand: 'account,recurrence,member,category',
         );
 
     return records.map((e) => e.toJson()).toList();
@@ -63,7 +63,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
           filter: filter,
           sort:
               '-date', // Most recent overdue first? Or oldest? Maybe oldest on top to clear them? Let's stick to -date consistent with main list
-          expand: 'account,recurrence,member',
+          expand: 'account,recurrence,member,category',
         );
 
     return records.map((e) => e.toJson()).toList();
