@@ -230,7 +230,7 @@ class DashboardPage extends ConsumerWidget {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: const Text(
-                                  'v1.8.1',
+                                  'v1.8.2',
                                   style: TextStyle(
                                     fontSize: 10,
                                     color: Colors.blueGrey,
