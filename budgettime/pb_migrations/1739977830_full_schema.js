@@ -1,11 +1,11 @@
 migrate((db) => {
     const dao = new Dao(db);
 
-    const matchByName = (collection, name) => {
+    const getFieldByName = (collection, name) => {
         try {
-            return collection.schema.getFieldByName(name) !== null;
+            return collection.schema.getFieldByName(name);
         } catch (_) {
-            return false;
+            return null;
         }
     }
 
@@ -34,15 +34,17 @@ migrate((db) => {
         // Process Schema
         const schema = collection.schema;
         config.schema.forEach((fieldDef) => {
-            if (matchByName(collection, fieldDef.name)) {
-                // Field exists.
-                // In a robust migration, we might update it, but for now we assume existence is enough
-                // to avoid data loss by changing field IDs.
-                // We *could* update options if needed.
+            const existingField = getFieldByName(collection, fieldDef.name);
+            if (existingField) {
+                // Field exists, update options if provided
+                if (fieldDef.options) {
+                    existingField.options = {
+                        ...existingField.options,
+                        ...fieldDef.options
+                    };
+                }
             } else {
                 // Field does not exist, add it.
-                // We construct a new SchemaField.
-                // Note: SchemaField constructor takes plain object.
                 schema.addField(new SchemaField(fieldDef));
             }
         });
