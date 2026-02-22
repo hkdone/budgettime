@@ -1,6 +1,7 @@
 migrate((db) => {
-    const settings = db.findCollectionByNameOrId("settings000000");
-    const rawinbox = db.findCollectionByNameOrId("rawinbox000000");
+    const dao = new Dao(db);
+    const settings = dao.findCollectionByNameOrId("settings000000");
+    const rawinbox = dao.findCollectionByNameOrId("rawinbox000000");
 
     // 1. Update settings to add active_parsers
     settings.schema.addField(new SchemaField({
@@ -52,15 +53,16 @@ migrate((db) => {
         "options": {}
     }));
 
-    return db.saveCollection(settings) && db.saveCollection(rawinbox);
+    return dao.saveCollection(settings) && dao.saveCollection(rawinbox);
 }, (db) => {
-    const settings = db.findCollectionByNameOrId("settings000000");
-    const rawinbox = db.findCollectionByNameOrId("rawinbox000000");
+    const dao = new Dao(db);
+    const settings = dao.findCollectionByNameOrId("settings000000");
+    const rawinbox = dao.findCollectionByNameOrId("rawinbox000000");
 
     settings.schema.removeField("set_parsers");
     rawinbox.schema.removeField("rawinbox_proc");
     rawinbox.schema.removeField("rawinbox_payl");
     rawinbox.schema.removeField("rawinbox_meta");
 
-    return db.saveCollection(settings) && db.saveCollection(rawinbox);
+    return dao.saveCollection(settings) && dao.saveCollection(rawinbox);
 })
