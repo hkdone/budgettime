@@ -180,7 +180,7 @@ migrate((db) => {
         ],
         "listRule": "user = @request.auth.id",
         "viewRule": "user = @request.auth.id",
-        "createRule": "user = @request.auth.id",
+        "createRule": "",
         "updateRule": "user = @request.auth.id",
         "deleteRule": "user = @request.auth.id",
         "options": {}
