@@ -40,7 +40,7 @@ class _TransactionListState extends ConsumerState<TransactionList> {
     for (final t in widget.transactions) {
       final dateStr = DateFormat(
         'yyyy-MM-dd',
-      ).format(DateTime.parse(t['date']));
+      ).format(DateTime.parse(t['date']).toLocal());
       groupedTransactions.putIfAbsent(dateStr, () => []).add(t);
     }
 
@@ -159,7 +159,9 @@ class _TransactionListState extends ConsumerState<TransactionList> {
                         children: [
                           if (isProjected)
                             Text(
-                              DateTime.parse(transaction['date']).isBefore(
+                              DateTime.parse(
+                                    transaction['date'],
+                                  ).toLocal().isBefore(
                                     DateTime.now().subtract(
                                       const Duration(days: 1),
                                     ),
@@ -171,7 +173,7 @@ class _TransactionListState extends ConsumerState<TransactionList> {
                                 color:
                                     DateTime.parse(
                                       transaction['date'],
-                                    ).isBefore(
+                                    ).toLocal().isBefore(
                                       DateTime.now().subtract(
                                         const Duration(days: 1),
                                       ),
@@ -181,7 +183,7 @@ class _TransactionListState extends ConsumerState<TransactionList> {
                                 fontWeight:
                                     DateTime.parse(
                                       transaction['date'],
-                                    ).isBefore(
+                                    ).toLocal().isBefore(
                                       DateTime.now().subtract(
                                         const Duration(days: 1),
                                       ),

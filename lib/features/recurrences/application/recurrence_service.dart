@@ -19,7 +19,7 @@ class RecurrenceService {
     required Recurrence recurrence,
     required DateTime periodEnd,
   }) async {
-    DateTime nextDate = recurrence.nextDueDate;
+    DateTime nextDate = recurrence.nextDueDate.toLocal();
 
     // Safety check to avoid infinite loops
     const int maxIterations = 52; // Max 1 year of weekly for safety in one go
