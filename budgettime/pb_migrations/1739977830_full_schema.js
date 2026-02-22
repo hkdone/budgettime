@@ -1,4 +1,3 @@
-/// <reference path="../pb_data/types.d.ts" />
 migrate((db) => {
     const dao = new Dao(db);
 
@@ -174,7 +173,10 @@ migrate((db) => {
             { "id": "rawinbox_date", "name": "date", "type": "date", "required": true, "presentable": false, "unique": false, "options": { "min": "", "max": "" } },
             { "id": "rawinbox_label", "name": "label", "type": "text", "required": true, "presentable": true, "unique": false, "options": { "min": null, "max": null, "pattern": "" } },
             { "id": "rawinbox_amount", "name": "amount", "type": "number", "required": true, "presentable": false, "unique": false, "options": { "min": null, "max": null, "noDecimal": false } },
-            { "id": "rawinbox_user", "name": "user", "type": "relation", "required": true, "presentable": false, "unique": false, "options": { "collectionId": "_pb_users_auth_", "cascadeDelete": true, "minSelect": null, "maxSelect": 1, "displayFields": null } }
+            { "id": "rawinbox_user", "name": "user", "type": "relation", "required": true, "presentable": false, "unique": false, "options": { "collectionId": "_pb_users_auth_", "cascadeDelete": true, "minSelect": null, "maxSelect": 1, "displayFields": null } },
+            { "id": "rawinbox_proc", "name": "is_processed", "type": "bool", "required": false, "presentable": false, "unique": false, "options": {} },
+            { "id": "rawinbox_payl", "name": "raw_payload", "type": "text", "required": false, "presentable": false, "unique": false, "options": { "min": null, "max": null, "pattern": "" } },
+            { "id": "rawinbox_meta", "name": "metadata", "type": "json", "required": false, "presentable": false, "unique": false, "options": {} }
         ],
         "listRule": "user = @request.auth.id",
         "viewRule": "user = @request.auth.id",
@@ -192,7 +194,8 @@ migrate((db) => {
         "system": false,
         "schema": [
             { "id": "settings_fiscal", "name": "fiscal_day_start", "type": "number", "required": true, "presentable": false, "unique": false, "options": { "min": 1, "max": 31, "noDecimal": true } },
-            { "id": "settings_user", "name": "user", "type": "relation", "required": true, "presentable": false, "unique": false, "options": { "collectionId": "_pb_users_auth_", "cascadeDelete": true, "minSelect": null, "maxSelect": 1, "displayFields": null } }
+            { "id": "settings_user", "name": "user", "type": "relation", "required": true, "presentable": false, "unique": false, "options": { "collectionId": "_pb_users_auth_", "cascadeDelete": true, "minSelect": null, "maxSelect": 1, "displayFields": null } },
+            { "id": "set_parsers", "name": "active_parsers", "type": "json", "required": false, "presentable": false, "unique": false, "options": {} }
         ],
         "listRule": "user = @request.auth.id",
         "viewRule": "user = @request.auth.id",
