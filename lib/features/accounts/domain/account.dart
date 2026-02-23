@@ -6,6 +6,7 @@ class Account {
   final String name;
   final String type; // 'checking', 'savings', 'cash'
   final String currency;
+  final String? externalId;
   final double initialBalance;
   final String created;
   final String updated;
@@ -16,6 +17,7 @@ class Account {
     required this.name,
     required this.type,
     this.currency = 'EUR',
+    this.externalId,
     this.initialBalance = 0.0,
     required this.created,
     required this.updated,
@@ -28,6 +30,7 @@ class Account {
       name: record.getStringValue('name'),
       type: record.getStringValue('type'),
       currency: record.getStringValue('currency', 'EUR'),
+      externalId: record.getStringValue('external_id'),
       initialBalance: record.getDoubleValue('initial_balance'),
       created: record.getStringValue('created'),
       updated: record.getStringValue('updated'),
@@ -40,6 +43,7 @@ class Account {
       'name': name,
       'type': type,
       'currency': currency,
+      'external_id': externalId,
       'initial_balance': initialBalance,
     };
   }

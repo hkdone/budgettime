@@ -18,6 +18,9 @@ class _ManageAccountsPageState extends ConsumerState<ManageAccountsPage> {
     final balanceController = TextEditingController(
       text: accountToEdit?.initialBalance.toString(),
     );
+    final externalIdController = TextEditingController(
+      text: accountToEdit?.externalId,
+    );
     String selectedType = accountToEdit?.type ?? 'checking';
 
     showDialog(
@@ -61,6 +64,14 @@ class _ManageAccountsPageState extends ConsumerState<ManageAccountsPage> {
                   decimal: true,
                 ),
               ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: externalIdController,
+                decoration: const InputDecoration(
+                  labelText: 'ID Externe (ex: XXX90101)',
+                  helperText: 'Utilisé pour le matching auto des SMS',
+                ),
+              ),
             ],
           ),
           actions: [
@@ -87,11 +98,17 @@ class _ManageAccountsPageState extends ConsumerState<ManageAccountsPage> {
                             name,
                             selectedType,
                             balance,
+                            externalIdController.text.trim(),
                           );
                     } else {
                       await ref
                           .read(accountControllerProvider.notifier)
-                          .addAccount(name, selectedType, balance);
+                          .addAccount(
+                            name,
+                            selectedType,
+                            balance,
+                            externalIdController.text.trim(),
+                          );
                     }
 
                     if (context.mounted) {

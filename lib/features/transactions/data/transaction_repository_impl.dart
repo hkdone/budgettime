@@ -95,21 +95,81 @@ class TransactionRepositoryImpl implements TransactionRepository {
       filter += ' && date <= "$dateStr"';
     }
 
-    // Optimized fetch: only get amount and type
+    // Optimized fetch: get amount, type, date and bank_balance for anchor logic
     final records = await _dbService.pb
         .collection('transactions')
-        .getFullList(filter: filter, fields: 'amount,type');
+        .getFullList(
+          filter: filter,
+          fields: 'amount,type,date,bank_balance,status',
+        );
 
-    double total = 0.0;
+    // 1. Find the latest anchor (last bank_balance received)
+    Map<String, dynamic>? latestAnchor;
+    DateTime? anchorDate;
+
     for (final r in records) {
-      final amount = (r.data['amount'] as num).toDouble();
-      final type = r.data['type'];
-      if (type == 'income') {
-        total += amount;
-      } else {
-        total -= amount;
+      final bb = r.data['bank_balance'];
+      if (bb != null) {
+        final d = DateTime.parse(r.data['date']);
+        if (anchorDate == null || d.isAfter(anchorDate)) {
+          anchorDate = d;
+          latestAnchor = r.data;
+        }
       }
     }
+
+    double total = 0.0;
+
+    if (latestAnchor != null && anchorDate != null) {
+      // Start from the anchor balance
+      total = (latestAnchor['bank_balance'] as num).toDouble();
+
+      // We only count:
+      // - Effective transactions STRICTLY AFTER the anchor day
+      // - Projected transactions STRICTLY AFTER the anchor day (as requested)
+
+      // Define "Anchor Day" for comparison (we use day precision as per user "même journée")
+      final anchorDay = DateTime(
+        anchorDate.year,
+        anchorDate.month,
+        anchorDate.day,
+      );
+
+      for (final r in records) {
+        if (r.data == latestAnchor) continue; // Already counted
+
+        final d = DateTime.parse(r.data['date']);
+        final currentDay = DateTime(d.year, d.month, d.day);
+
+        final isAfterAnchor = currentDay.isAfter(anchorDay);
+        final isProjected = r.data['status'] == 'projected';
+
+        // Anchor logic:
+        // Everything "Effective" before or on anchor day is ignored (it's in the anchor).
+        // Everything "Projected" remains countable if it's today or in the future.
+        if (isAfterAnchor || isProjected) {
+          final amount = (r.data['amount'] as num).toDouble();
+          final type = r.data['type'];
+          if (type == 'income') {
+            total += amount;
+          } else {
+            total -= amount;
+          }
+        }
+      }
+    } else {
+      // No anchor, use standard sum
+      for (final r in records) {
+        final amount = (r.data['amount'] as num).toDouble();
+        final type = r.data['type'];
+        if (type == 'income') {
+          total += amount;
+        } else {
+          total -= amount;
+        }
+      }
+    }
+
     return total;
   }
 

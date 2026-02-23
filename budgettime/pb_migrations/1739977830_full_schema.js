@@ -60,6 +60,8 @@ migrate((db) => {
         "system": false,
         "schema": [
             { "id": "accounts_name", "name": "name", "type": "text", "required": true, "presentable": true, "unique": false, "options": { "min": null, "max": null, "pattern": "" } },
+            { "id": "accounts_curr", "name": "currency", "type": "text", "required": true, "presentable": false, "unique": false, "options": { "min": null, "max": null, "pattern": "" } },
+            { "id": "accounts_extid", "name": "external_id", "type": "text", "required": false, "presentable": false, "unique": false, "options": { "min": null, "max": null, "pattern": "" } },
             { "id": "accounts_type", "name": "type", "type": "select", "required": true, "presentable": false, "unique": false, "options": { "maxSelect": 1, "values": ["checking", "savings"] } },
             { "id": "accounts_initial_balance", "name": "initial_balance", "type": "number", "required": false, "presentable": false, "unique": false, "options": { "min": null, "max": null, "noDecimal": false } },
             { "id": "accounts_user", "name": "user", "type": "relation", "required": true, "presentable": false, "unique": false, "options": { "collectionId": "_pb_users_auth_", "cascadeDelete": true, "minSelect": null, "maxSelect": 1, "displayFields": null } }
@@ -155,6 +157,7 @@ migrate((db) => {
             { "id": "transactions_cat", "name": "category", "type": "text", "required": false, "presentable": false, "unique": false, "options": { "min": null, "max": null, "pattern": "" } },
             { "id": "transactions_recur", "name": "recurrence", "type": "relation", "required": false, "presentable": false, "unique": false, "options": { "collectionId": "recurrences000", "cascadeDelete": false, "minSelect": null, "maxSelect": 1, "displayFields": null } },
             { "id": "transactions_member", "name": "member", "type": "relation", "required": false, "presentable": false, "unique": false, "options": { "collectionId": "members000000", "cascadeDelete": false, "minSelect": null, "maxSelect": 1, "displayFields": null } },
+            { "id": "transactions_bank", "name": "bank_balance", "type": "number", "required": false, "presentable": false, "unique": false, "options": { "min": null, "max": null, "noDecimal": false } },
             { "id": "transactions_target", "name": "target_account", "type": "relation", "required": false, "presentable": false, "unique": false, "options": { "collectionId": "accounts000000", "cascadeDelete": false, "minSelect": null, "maxSelect": 1, "displayFields": null } }, // New Field
             { "id": "transactions_user", "name": "user", "type": "relation", "required": true, "presentable": false, "unique": false, "options": { "collectionId": "_pb_users_auth_", "cascadeDelete": true, "minSelect": null, "maxSelect": 1, "displayFields": null } }
         ],

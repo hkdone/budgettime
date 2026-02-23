@@ -9,7 +9,7 @@ class CreditMutuelSmsParser implements InboxProcessingStrategy {
   );
 
   final RegExp _patternStatement = RegExp(
-    r'(?:Crédit Mutuel|CM)\s?:.*?Opération\s+(créditrice|débitrice)\s+(\d+[.,]\d{2})\s?EUR\s*\((.*)\)',
+    r'(?:Crédit Mutuel|CM)\s?:.*?Cpt:\s*(\S+).*?Solde=\s*([+-]?[\d\s,.]+)\s?EUR.*?Opération\s+(créditrice|débitrice)\s+(\d+[.,]\d{2})\s?EUR\s*\((.*)\)',
     caseSensitive: false,
   );
 
@@ -32,12 +32,20 @@ class CreditMutuelSmsParser implements InboxProcessingStrategy {
     // Try Statement pattern first (richer)
     final statementMatch = _patternStatement.firstMatch(payload);
     if (statementMatch != null) {
-      final typeStr = statementMatch.group(1)?.toLowerCase() ?? 'débitrice';
-      final amountStr = statementMatch.group(2)?.replaceAll(',', '.') ?? '0.0';
-      final label = statementMatch.group(3)?.trim() ?? 'CM Opération';
+      final externalId = statementMatch.group(1);
+      final balanceStr =
+          statementMatch
+              .group(2)
+              ?.replaceAll(RegExp(r'\s'), '')
+              .replaceAll(',', '.') ??
+          '0.0';
+      final typeStr = statementMatch.group(3)?.toLowerCase() ?? 'débitrice';
+      final amountStr = statementMatch.group(4)?.replaceAll(',', '.') ?? '0.0';
+      final label = statementMatch.group(5)?.trim() ?? 'CM Opération';
 
       final isCredit = typeStr.contains('crédit');
       final amount = double.tryParse(amountStr) ?? 0.0;
+      final bankBalance = double.tryParse(balanceStr) ?? 0.0;
 
       return {
         'amount': isCredit ? amount : -amount,
@@ -45,6 +53,9 @@ class CreditMutuelSmsParser implements InboxProcessingStrategy {
         'type': isCredit ? 'income' : 'expense',
         'date': DateTime.now().toIso8601String(),
         'category': 'Autre',
+        'account_external_id': externalId,
+        'bank_balance': bankBalance,
+        'status': 'effective', // Pre-select "Réel"
       };
     }
 

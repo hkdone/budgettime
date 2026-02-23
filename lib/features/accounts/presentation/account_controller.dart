@@ -4,12 +4,14 @@ import '../../../../core/start_app.dart';
 import '../domain/account.dart';
 import '../domain/account_repository.dart';
 import '../data/account_repository_impl.dart';
+import '../../transactions/domain/transaction_repository.dart';
 
 class AccountController extends StateNotifier<AsyncValue<List<Account>>> {
   final AccountRepository _repository;
+  final TransactionRepository _transactionRepository;
   final String? _userId;
 
-  AccountController(this._repository, this._userId)
+  AccountController(this._repository, this._transactionRepository, this._userId)
     : super(const AsyncValue.loading()) {
     loadAccounts();
   }
@@ -27,15 +29,31 @@ class AccountController extends StateNotifier<AsyncValue<List<Account>>> {
     String name,
     String type,
     double initialBalance,
+    String? externalId,
   ) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      await _repository.createAccount({
+      final account = await _repository.createAccount({
         'name': name,
         'type': type,
-        'initial_balance': initialBalance,
+        'initial_balance': initialBalance, // Legacy keep
         'currency': 'EUR',
+        'external_id': externalId,
       });
+
+      // Create Initial Anchor Transaction
+      await _transactionRepository.addTransaction({
+        'amount': 0.0,
+        'label': 'Solde Initial',
+        'type': 'income',
+        'date': DateTime.now(),
+        'account': account.id,
+        'status': 'effective',
+        'is_automatic': true,
+        'bank_balance': initialBalance,
+        'category': 'Ajustement',
+      });
+
       return _repository.getAccounts();
     });
   }
@@ -45,14 +63,30 @@ class AccountController extends StateNotifier<AsyncValue<List<Account>>> {
     String name,
     String type,
     double initialBalance,
+    String? externalId,
   ) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       await _repository.updateAccount(id, {
         'name': name,
         'type': type,
-        'initial_balance': initialBalance,
+        'external_id': externalId,
+        'initial_balance': initialBalance, // Legacy keep
       });
+
+      // Create Update Anchor Transaction
+      await _transactionRepository.addTransaction({
+        'amount': 0.0,
+        'label': 'Mise à jour solde',
+        'type': 'income',
+        'date': DateTime.now(),
+        'account': id,
+        'status': 'effective',
+        'is_automatic': true,
+        'bank_balance': initialBalance,
+        'category': 'Ajustement',
+      });
+
       return _repository.getAccounts();
     });
   }
@@ -69,8 +103,9 @@ class AccountController extends StateNotifier<AsyncValue<List<Account>>> {
 final accountControllerProvider =
     StateNotifierProvider<AccountController, AsyncValue<List<Account>>>((ref) {
       final repository = ref.watch(accountRepositoryProvider);
+      final transactionRepository = ref.watch(transactionRepositoryProvider);
       final userId = DatabaseService().userId;
-      return AccountController(repository, userId);
+      return AccountController(repository, transactionRepository, userId);
     });
 
 final accountBalanceProvider = FutureProvider.family<double, Account>((
@@ -78,9 +113,6 @@ final accountBalanceProvider = FutureProvider.family<double, Account>((
   account,
 ) async {
   final transactionRepo = ref.watch(transactionRepositoryProvider);
-  final effectiveBalance = await transactionRepo.getBalance(
-    accountId: account.id,
-    status: 'effective',
-  );
-  return account.initialBalance + effectiveBalance;
+  // getBalance is now absolute (it handles anchor logic)
+  return transactionRepo.getBalance(accountId: account.id);
 });

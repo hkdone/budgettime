@@ -98,8 +98,13 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
       if (t['memberId'] != null) {
         _selectedMemberId = t['memberId'];
       }
+      if (t['status'] != null) {
+        _status = t['status'];
+      }
     }
   }
+
+  bool _createAdjustment = false;
 
   @override
   void dispose() {
@@ -260,6 +265,52 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
           } else {
             await ref.read(transactionRepositoryProvider).addTransaction(data);
           }
+
+          // --- AUTO ADJUSTMENT ---
+          if (_createAdjustment &&
+              widget.transactionToEdit?['bank_balance'] != null &&
+              _selectedAccountId != null) {
+            final bankBalance =
+                widget.transactionToEdit!['bank_balance'] as double;
+
+            // 1. Get current balance
+            final accounts = ref.read(accountControllerProvider).value ?? [];
+            final account = accounts.firstWhere(
+              (a) => a.id == _selectedAccountId,
+            );
+            final currentBalance = await ref.read(
+              accountBalanceProvider(account).future,
+            );
+
+            // 2. Note: currentBalance already includes the transaction above
+            // because PocketBase is fast? No, usually not immediately.
+            // Let's assume currentBalance is the balanced BEFORE the addTransaction call.
+            // Wait, we just refresh the dashboard at line 265, but let's be safe.
+
+            // Re-calculate projected balance after this transaction
+            final transactionSign = _type == 'income' ? 1 : -1;
+            final projectedBalance =
+                currentBalance + (amount * transactionSign);
+
+            final diff = bankBalance - projectedBalance;
+
+            if (diff.abs() > 0.01) {
+              final adjData = {
+                'amount': diff.abs(),
+                'label': 'Ajustement solde (Banque)',
+                'type': diff > 0 ? 'income' : 'expense',
+                'date': _date.toUtc().toString().split('.')[0],
+                'category': 'Ajustement',
+                'account': _selectedAccountId,
+                'status': 'effective',
+                'is_automatic': true,
+                'bank_balance': bankBalance,
+              };
+              await ref
+                  .read(transactionRepositoryProvider)
+                  .addTransaction(adjData);
+            }
+          }
         }
 
         await ref.read(dashboardControllerProvider.notifier).refresh();
@@ -366,6 +417,48 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                   });
                 },
               ),
+              if (widget.transactionToEdit?['bank_balance'] != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.blue.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.account_balance, color: Colors.blue),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Solde bancaire détecté : ${widget.transactionToEdit!['bank_balance']} €',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      CheckboxListTile(
+                        title: const Text(
+                          'Ajuster le solde de mon compte après cette opération',
+                          style: TextStyle(fontSize: 14),
+                        ),
+                        value: _createAdjustment,
+                        onChanged: (val) =>
+                            setState(() => _createAdjustment = val ?? false),
+                        dense: true,
+                        controlAffinity: ListTileControlAffinity.leading,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
               TextFormField(
                 controller: _amountController,
@@ -594,10 +687,24 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                         );
                       }
                       if (_selectedAccountId == null && accounts.isNotEmpty) {
+                        final hintExtId =
+                            widget.transactionToEdit?['account_external_id'];
+                        String? matchedId;
+                        if (hintExtId != null) {
+                          try {
+                            matchedId = accounts
+                                .firstWhere((a) => a.externalId == hintExtId)
+                                .id;
+                          } catch (_) {
+                            matchedId = null;
+                          }
+                        }
+
                         Future.microtask(() {
                           if (mounted) {
                             setState(() {
-                              _selectedAccountId = accounts.first.id;
+                              _selectedAccountId =
+                                  matchedId ?? accounts.first.id;
                             });
                           }
                         });
