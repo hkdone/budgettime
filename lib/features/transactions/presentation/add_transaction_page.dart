@@ -295,9 +295,9 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
 
             if (diff.abs() > 0.01) {
               final adjData = {
-                'amount': diff.abs(),
+                'amount': 0, // Technical anchor (hidden in UI)
                 'label': 'Ajustement solde (Banque)',
-                'type': diff > 0 ? 'income' : 'expense',
+                'type': 'income', // Doesn't matter if amount is 0
                 'date': formatDateForPb(_date),
                 'category': 'Ajustement',
                 'account': _selectedAccountId,

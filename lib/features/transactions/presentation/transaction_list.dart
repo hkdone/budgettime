@@ -38,6 +38,11 @@ class _TransactionListState extends ConsumerState<TransactionList> {
     // 1. Group transactions by date
     final groupedTransactions = <String, List<dynamic>>{};
     for (final t in widget.transactions) {
+      // Hide technical anchors (automatic with 0 amount)
+      final isAutomatic = t['is_automatic'] == true;
+      final amount = (t['amount'] as num?)?.toDouble() ?? 0.0;
+      if (isAutomatic && amount == 0) continue;
+
       final dateStr = DateFormat(
         'yyyy-MM-dd',
       ).format(DateTime.parse(t['date']).toLocal());
