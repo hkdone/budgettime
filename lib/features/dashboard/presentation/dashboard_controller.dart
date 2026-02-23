@@ -152,47 +152,20 @@ class DashboardController extends StateNotifier<DashboardState> {
       // Note: effective transactions from previous months are NOT fetched (as per design), only overdue projected.
       final allTransactions = [...overdueTransactions, ...transactions];
 
-      // 4. Calculate Balances
-      // 4. Calculate Balances (Now absolute via Anchor Logic)
+      // 4. Calculate Balances (Centralized via Repository)
 
-      // Effective Balance (Real transactions only)
-      double effectiveBalance = 0;
-      if (state.selectedAccount != null) {
-        effectiveBalance = await _transactionRepo.getBalance(
-          accountId: state.selectedAccount?.id,
-          status: 'effective',
-        );
-      } else {
-        // Sum for all accounts
-        for (final account in currentAccounts) {
-          effectiveBalance += await _transactionRepo.getBalance(
-            accountId: account.id,
-            status: 'effective',
-          );
-        }
-      }
-
-      // Projected Balance (Solde Actuel + Projected within CURRENT period)
-      // We start from current effective balance and add only projected until 'end'
-      double projectedBalance = effectiveBalance;
-
-      final currentPeriodProjected = await _transactionRepo.getTransactions(
-        start: now.add(const Duration(days: 1)), // Only from tomorrow
-        end: end,
+      // Effective Balance (Real transactions only, catch-all)
+      final effectiveBalance = await _transactionRepo.getBalance(
         accountId: state.selectedAccount?.id,
+        status: 'effective',
       );
 
-      for (final t in currentPeriodProjected) {
-        if (t['status'] == 'projected') {
-          final amount = (t['amount'] as num).toDouble();
-          final type = t['type'];
-          if (type == 'income') {
-            projectedBalance += amount;
-          } else {
-            projectedBalance -= amount;
-          }
-        }
-      }
+      // Projected Balance (until end of fiscal period)
+      // Includes all effective + all projected up to 'end'
+      final projectedBalance = await _transactionRepo.getBalance(
+        accountId: state.selectedAccount?.id,
+        maxDate: end,
+      );
 
       state = state.copyWith(
         transactions: allTransactions,
