@@ -28,7 +28,7 @@ class DashboardPage extends ConsumerWidget {
 
     for (final t in state.transactions) {
       final amount = (t['amount'] as num).toDouble();
-      final isEffective = t['status'] == 'effective';
+      final isProjected = t['status'] == 'projected';
       final isTransfer =
           t['target_account'] != null &&
           t['target_account'].toString().isNotEmpty;
@@ -37,7 +37,7 @@ class DashboardPage extends ConsumerWidget {
 
       if (isTransfer) {
         if (state.selectedAccount == null) {
-          // Global view: transfers are neutral
+          // Global view: transfers are neutral for sums
           continue;
         } else {
           // Account specific view
@@ -51,12 +51,28 @@ class DashboardPage extends ConsumerWidget {
         }
       }
 
-      if (isIncomeFlow) {
-        if (isEffective) realIncome += amount;
-        projectedIncome += amount;
+      if (isProjected) {
+        // Projected sums: include everything visible (including overdue)
+        if (isIncomeFlow) {
+          projectedIncome += amount;
+        } else {
+          projectedExpense += amount;
+        }
       } else {
-        if (isEffective) realExpense += amount;
-        projectedExpense += amount;
+        // Real sums: strictly for the current fiscal period in this list
+        // Note: state.transactions already filtered by controller, but we re-check for safety
+        final date = DateTime.parse(t['date']);
+        final isWithinPeriod =
+            (date.isAfter(state.start) || date.isAtSameMomentAs(state.start)) &&
+            (date.isBefore(state.end) || date.isAtSameMomentAs(state.end));
+
+        if (isWithinPeriod) {
+          if (isIncomeFlow) {
+            realIncome += amount;
+          } else {
+            realExpense += amount;
+          }
+        }
       }
     }
 
@@ -264,7 +280,7 @@ class DashboardPage extends ConsumerWidget {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: const Text(
-                                  'v1.9.20',
+                                  'v1.9.21',
                                   style: TextStyle(
                                     fontSize: 10,
                                     color: Colors.blueGrey,

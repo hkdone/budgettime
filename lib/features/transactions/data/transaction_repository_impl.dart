@@ -72,6 +72,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
   }
 
   @override
+  @override
   Future<double> getBalance({
     String? accountId,
     String? status,
@@ -86,8 +87,6 @@ class TransactionRepositoryImpl implements TransactionRepository {
       filter += ' && status = "$status"';
     }
 
-    // If accountId is provided, we must check both account AND target_account
-    // to catch incoming transfers.
     if (accountId != null) {
       filter += ' && (account = "$accountId" || target_account = "$accountId")';
     }
@@ -103,116 +102,113 @@ class TransactionRepositoryImpl implements TransactionRepository {
       filter += ' && date <= "$dateStr"';
     }
 
-    // Optimized fetch: get amount, type, date and bank_balance for anchor logic
-    // We fetch ALL records and sort by date DESC to find the latest anchor.
     final records = await _dbService.pb
         .collection('transactions')
         .getFullList(
           filter: filter,
           fields:
-              'id,amount,type,date,bank_balance,status,account,target_account',
-          sort: '-date,-created', // Latest first, tie-break with creation time
+              'id,amount,type,date,bank_balance,status,account,target_account,created',
+          sort: '-date,-created',
         );
 
-    // 1. Find the latest anchor (first record with bank_balance since sorted DESC)
-    Map<String, dynamic>? latestAnchorData;
-    DateTime? anchorDate;
-    String? latestAnchorId;
-
+    // Grouping items by account to process them independently (Anchor per account logic)
+    final Map<String, List<Map<String, dynamic>>> accountGroups = {};
     for (final r in records) {
-      if (r.data['bank_balance'] != null) {
-        latestAnchorData = r.data;
-        latestAnchorId = r.id;
-        anchorDate = DateTime.parse(r.data['date']);
-        break; // Found the latest
+      final data = r.toJson();
+      final accId = data['account'] as String?;
+      if (accId != null) {
+        accountGroups.putIfAbsent(accId, () => []).add(data);
+      }
+      final targetId = data['target_account'] as String?;
+      if (targetId != null && targetId.isNotEmpty) {
+        accountGroups.putIfAbsent(targetId, () => []).add(data);
       }
     }
 
-    double total = 0.0;
+    double grandTotal = 0.0;
+    // If accountId is specified, only calculate for that one.
+    // Otherwise, calculate for all accounts that have transactions in the result.
+    final targetAccountIds = accountId != null
+        ? [accountId]
+        : accountGroups.keys.toList();
 
-    if (latestAnchorData != null && anchorDate != null) {
-      // Start from the anchor balance
-      total = (latestAnchorData['bank_balance'] as num).toDouble();
+    for (final targetAccId in targetAccountIds) {
+      final group = accountGroups[targetAccId] ?? [];
 
-      // We only count:
-      // - Effective transactions STRICTLY AFTER the anchor day
-      // - Projected transactions ALWAYS counted if they are after the anchor day
-
-      // Define "Anchor Day" for comparison
-      final anchorDay = DateTime(
-        anchorDate.year,
-        anchorDate.month,
-        anchorDate.day,
-      );
-
-      for (final r in records) {
-        if (r.id == latestAnchorId) continue; // Already counted
-
-        final d = DateTime.parse(r.data['date']);
-        final currentDay = DateTime(d.year, d.month, d.day);
-
-        final isAfterAnchor = currentDay.isAfter(anchorDay);
-        final isProjected = r.data['status'] == 'projected';
-
-        // Anchor logic: ignore effective on same day or before.
-        if (isAfterAnchor || isProjected) {
-          final amount = (r.data['amount'] as num).toDouble();
-
-          final String? tAccount = r.data['account'];
-          final String? tTargetAccount = r.data['target_account'];
-
-          // Transfer logic
-          if (tTargetAccount != null && tTargetAccount.isNotEmpty) {
-            if (accountId == null) {
-              // Global balance: transfers are neutral
-              continue;
-            } else if (tAccount == accountId) {
-              // Money leaving this account
-              total -= amount;
-            } else if (tTargetAccount == accountId) {
-              // Money entering this account
-              total += amount;
-            }
-          } else {
-            // Standard transaction
-            final type = r.data['type'];
-            if (type == 'income') {
-              total += amount;
-            } else {
-              total -= amount;
-            }
-          }
+      // 1. Find the latest anchor (bank_balance) for THIS account
+      Map<String, dynamic>? anchor;
+      for (final r in group) {
+        // An anchor MUST be a bank balance update FOR THIS account
+        if (r['bank_balance'] != null && r['account'] == targetAccId) {
+          anchor = r;
+          break;
         }
       }
-    } else {
-      // No anchor, use standard sum
-      for (final r in records) {
-        final amount = (r.data['amount'] as num).toDouble();
 
-        final String? tAccount = r.data['account'];
-        final String? tTargetAccount = r.data['target_account'];
+      double accTotal = 0.0;
+      DateTime? anchorDate;
+      DateTime? anchorCreated;
 
-        if (tTargetAccount != null && tTargetAccount.isNotEmpty) {
-          if (accountId == null) {
-            // Global balance neutral
-            continue;
-          } else if (tAccount == accountId) {
-            total -= amount;
-          } else if (tTargetAccount == accountId) {
-            total += amount;
+      if (anchor != null) {
+        accTotal = (anchor['bank_balance'] as num).toDouble();
+        anchorDate = DateTime.parse(anchor['date']);
+        anchorCreated = DateTime.parse(anchor['created']);
+      }
+
+      // 2. Sum up all other records relative to the anchor
+      for (final r in group) {
+        if (anchor != null && r['id'] == anchor['id']) continue;
+
+        final rStatus = r['status'];
+        final rDate = DateTime.parse(r['date']);
+        final rCreated = DateTime.parse(r['created']);
+        final isProjected = rStatus == 'projected';
+
+        bool shouldCount = false;
+        if (isProjected) {
+          // Projected items are always counted (they represent missing money from bank balance)
+          shouldCount = true;
+        } else if (anchor != null) {
+          // Effective items: only count if after anchor
+          if (rDate.isAfter(anchorDate!)) {
+            shouldCount = true;
+          } else if (rDate.isAtSameMomentAs(anchorDate)) {
+            // Created AFTER the anchor on the same day? Then it's not in the bank balance yet.
+            if (rCreated.isAfter(anchorCreated!)) {
+              shouldCount = true;
+            }
           }
         } else {
-          final type = r.data['type'];
-          if (type == 'income') {
-            total += amount;
+          // No anchor ever: sum everything effective
+          shouldCount = true;
+        }
+
+        if (shouldCount) {
+          final amount = (r['amount'] as num).toDouble();
+          final String? tSource = r['account'];
+          final String? tTarget = r['target_account'];
+
+          if (tTarget != null && tTarget.isNotEmpty) {
+            // Bidirectional Transfer
+            if (tSource == targetAccId) {
+              accTotal -= amount;
+            } else if (tTarget == targetAccId) {
+              accTotal += amount;
+            }
           } else {
-            total -= amount;
+            // Standard Transaction
+            if (r['type'] == 'income') {
+              accTotal += amount;
+            } else {
+              accTotal -= amount;
+            }
           }
         }
       }
+      grandTotal += accTotal;
     }
 
-    return total;
+    return grandTotal;
   }
 
   @override
