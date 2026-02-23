@@ -1,3 +1,4 @@
+import '../../../../core/utils/formatters.dart';
 import '../inbox_processing_strategy.dart';
 
 class CreditMutuelSmsParser implements InboxProcessingStrategy {
@@ -37,19 +38,14 @@ class CreditMutuelSmsParser implements InboxProcessingStrategy {
     if (statementMatch != null) {
       final dateStr = statementMatch.group(1); // Optional: "23/02"
       final externalId = statementMatch.group(2);
-      final balanceStr =
-          statementMatch
-              .group(3)
-              ?.replaceAll(RegExp(r'\s'), '')
-              .replaceAll(',', '.') ??
-          '0.0';
+      final balanceStr = statementMatch.group(3) ?? '0.0';
       final typeStr = statementMatch.group(4)?.toLowerCase() ?? 'débitrice';
-      final amountStr = statementMatch.group(5)?.replaceAll(',', '.') ?? '0.0';
+      final amountStr = statementMatch.group(5) ?? '0.0';
       final label = statementMatch.group(6)?.trim() ?? 'CM Opération';
 
       final isCredit = typeStr.contains('crédit');
-      final amount = double.tryParse(amountStr) ?? 0.0;
-      final bankBalance = double.tryParse(balanceStr) ?? 0.0;
+      final amount = parseAmount(amountStr);
+      final bankBalance = parseAmount(balanceStr);
 
       // Handle date if extracted (DD/MM format)
       DateTime transactionDate = DateTime.now();
@@ -62,7 +58,7 @@ class CreditMutuelSmsParser implements InboxProcessingStrategy {
           // Assume current year (or previous if month is later than now)
           int year = now.year;
           if (month > now.month) year--;
-          transactionDate = DateTime(year, month, day, 12, 0);
+          transactionDate = DateTime(year, month, day);
         } catch (_) {}
       }
 
@@ -70,7 +66,7 @@ class CreditMutuelSmsParser implements InboxProcessingStrategy {
         'amount': isCredit ? amount : -amount,
         'label': label,
         'type': isCredit ? 'income' : 'expense',
-        'date': transactionDate.toIso8601String(),
+        'date': formatDateForPb(transactionDate),
         'category': 'Autre',
         'account_external_id': externalId,
         'bank_balance': bankBalance,

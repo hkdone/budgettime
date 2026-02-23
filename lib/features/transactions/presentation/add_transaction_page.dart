@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:budgettime/core/utils/formatters.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/start_app.dart';
@@ -135,9 +136,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
       });
 
       try {
-        final amount = double.parse(
-          _amountController.text.replaceAll(',', '.'),
-        );
+        final amount = parseAmount(_amountController.text);
         final label = _labelController.text;
         final category = _categoryController.text;
 
@@ -271,7 +270,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
               widget.transactionToEdit?['bank_balance'] != null &&
               _selectedAccountId != null) {
             final bankBalance =
-                widget.transactionToEdit!['bank_balance'] as double;
+                (widget.transactionToEdit!['bank_balance'] as num).toDouble();
 
             // 1. Get current balance
             final accounts = ref.read(accountControllerProvider).value ?? [];
@@ -474,7 +473,8 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                   if (value == null || value.isEmpty) {
                     return 'Veuillez entrer un montant';
                   }
-                  if (double.tryParse(value.replaceAll(',', '.')) == null) {
+                  final p = parseAmount(value);
+                  if (p == 0 && value != "0") {
                     return 'Veuillez entrer un nombre valide';
                   }
                   return null;

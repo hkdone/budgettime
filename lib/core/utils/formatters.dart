@@ -20,3 +20,13 @@ String formatDateForPb(DateTime date) {
   // Standardizing on NOON to stay far from day boundaries even if another conversion happens.
   return '$y-$m-$d 12:00:00';
 }
+
+double parseAmount(String input) {
+  if (input.isEmpty) return 0.0;
+  // Remove all spaces and non-breaking spaces
+  final clean = input
+      .replaceAll(RegExp(r'\s+'), '')
+      .replaceAll('\u00A0', '')
+      .replaceAll(',', '.');
+  return double.tryParse(clean) ?? 0.0;
+}

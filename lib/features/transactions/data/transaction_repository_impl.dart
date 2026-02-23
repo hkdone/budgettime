@@ -96,39 +96,40 @@ class TransactionRepositoryImpl implements TransactionRepository {
     }
 
     // Optimized fetch: get amount, type, date and bank_balance for anchor logic
+    // We fetch ALL records and sort by date DESC to find the latest anchor.
     final records = await _dbService.pb
         .collection('transactions')
         .getFullList(
           filter: filter,
-          fields: 'amount,type,date,bank_balance,status',
+          fields: 'id,amount,type,date,bank_balance,status',
+          sort: '-date,-created', // Latest first, tie-break with creation time
         );
 
-    // 1. Find the latest anchor (last bank_balance received)
-    Map<String, dynamic>? latestAnchor;
+    // 1. Find the latest anchor (first record with bank_balance since sorted DESC)
+    Map<String, dynamic>? latestAnchorData;
     DateTime? anchorDate;
+    String? latestAnchorId;
 
     for (final r in records) {
-      final bb = r.data['bank_balance'];
-      if (bb != null) {
-        final d = DateTime.parse(r.data['date']);
-        if (anchorDate == null || d.isAfter(anchorDate)) {
-          anchorDate = d;
-          latestAnchor = r.data;
-        }
+      if (r.data['bank_balance'] != null) {
+        latestAnchorData = r.data;
+        latestAnchorId = r.id;
+        anchorDate = DateTime.parse(r.data['date']);
+        break; // Found the latest
       }
     }
 
     double total = 0.0;
 
-    if (latestAnchor != null && anchorDate != null) {
+    if (latestAnchorData != null && anchorDate != null) {
       // Start from the anchor balance
-      total = (latestAnchor['bank_balance'] as num).toDouble();
+      total = (latestAnchorData['bank_balance'] as num).toDouble();
 
       // We only count:
       // - Effective transactions STRICTLY AFTER the anchor day
-      // - Projected transactions STRICTLY AFTER the anchor day (as requested)
+      // - Projected transactions ALWAYS counted if they are after the anchor day
 
-      // Define "Anchor Day" for comparison (we use day precision as per user "même journée")
+      // Define "Anchor Day" for comparison
       final anchorDay = DateTime(
         anchorDate.year,
         anchorDate.month,
@@ -136,7 +137,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
       );
 
       for (final r in records) {
-        if (r.data == latestAnchor) continue; // Already counted
+        if (r.id == latestAnchorId) continue; // Already counted
 
         final d = DateTime.parse(r.data['date']);
         final currentDay = DateTime(d.year, d.month, d.day);
@@ -144,9 +145,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
         final isAfterAnchor = currentDay.isAfter(anchorDay);
         final isProjected = r.data['status'] == 'projected';
 
-        // Anchor logic:
-        // Everything "Effective" before or on anchor day is ignored (it's in the anchor).
-        // Everything "Projected" remains countable if it's today or in the future.
+        // Anchor logic: ignore effective on same day or before.
         if (isAfterAnchor || isProjected) {
           final amount = (r.data['amount'] as num).toDouble();
           final type = r.data['type'];

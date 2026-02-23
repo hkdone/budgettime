@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:budgettime/core/utils/formatters.dart';
 import '../domain/account.dart';
 import 'account_controller.dart';
 
@@ -83,11 +84,7 @@ class _ManageAccountsPageState extends ConsumerState<ManageAccountsPage> {
             FilledButton(
               onPressed: () async {
                 final name = nameController.text;
-                final balance =
-                    double.tryParse(
-                      balanceController.text.replaceAll(',', '.'),
-                    ) ??
-                    0.0;
+                final balance = parseAmount(balanceController.text);
 
                 if (name.isNotEmpty) {
                   try {
