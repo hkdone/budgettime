@@ -152,20 +152,49 @@ class DashboardController extends StateNotifier<DashboardState> {
       // Note: effective transactions from previous months are NOT fetched (as per design), only overdue projected.
       final allTransactions = [...overdueTransactions, ...transactions];
 
-      // 4. Calculate Balances (Centralized via Repository)
+      // 4. Calculate Balances (Simplified & Manual for total transparency)
 
-      // Effective Balance (Real transactions only, catch-all)
+      // Effective Balance (The absolute source of truth from bank/pointing)
       final effectiveBalance = await _transactionRepo.getBalance(
         accountId: state.selectedAccount?.id,
         status: 'effective',
       );
 
-      // Projected Balance (until end of fiscal period)
-      // Includes all effective + all projected up to 'end'
-      final projectedBalance = await _transactionRepo.getBalance(
-        accountId: state.selectedAccount?.id,
-        maxDate: end,
-      );
+      // Projected Balance = Effective Balance + Delta of ALL visible projected transactions
+      double projectedDelta = 0;
+      for (final t in allTransactions) {
+        if (t['status'] == 'projected') {
+          final amount = (t['amount'] as num).toDouble();
+          final isTransfer =
+              t['target_account'] != null &&
+              t['target_account'].toString().isNotEmpty;
+
+          bool isIncome = t['type'] == 'income';
+
+          if (isTransfer) {
+            if (state.selectedAccount != null) {
+              if (t['target_account'] == state.selectedAccount!.id) {
+                isIncome = true;
+              } else if (t['account'] == state.selectedAccount!.id) {
+                isIncome = false;
+              } else {
+                continue; // Should not happen with account filter
+              }
+            } else {
+              // Global view: transfers are neutral
+              continue;
+            }
+          }
+
+          if (isIncome) {
+            projectedDelta += amount;
+          } else {
+            projectedDelta -= amount;
+          }
+        }
+      }
+
+      final projectedBalance = effectiveBalance + projectedDelta;
 
       state = state.copyWith(
         transactions: allTransactions,
