@@ -148,49 +148,42 @@ class DashboardController extends StateNotifier<DashboardState> {
       final allTransactions = [...overdueTransactions, ...transactions];
 
       // 4. Calculate Balances
-      // Initial Balance (Always part of Effective)
-      double initialBalance = 0;
-      if (state.selectedAccount != null) {
-        initialBalance = state.selectedAccount!.initialBalance;
-      } else {
-        // Only sum accounts that are currently loaded
-        initialBalance = currentAccounts.fold(
-          0,
-          (sum, account) => sum + account.initialBalance,
-        );
-      }
+      // 4. Calculate Balances (Now absolute via Anchor Logic)
 
       // Effective Balance (Real transactions only)
-      // We only count effective transactions that occurred AFTER the last time the account's initial balance was set/updated
-      // to avoid double counting if the user sets initial balance as a "current snapshot".
-      double effectiveTransactionBalance = 0;
+      double effectiveBalance = 0;
       if (state.selectedAccount != null) {
-        effectiveTransactionBalance = await _transactionRepo.getBalance(
+        effectiveBalance = await _transactionRepo.getBalance(
           accountId: state.selectedAccount?.id,
           status: 'effective',
-          minDate: DateTime.parse(state.selectedAccount!.updated),
         );
       } else {
-        // For "All Accounts", we need to sum for each account separately with its own updated date
+        // Sum for all accounts
         for (final account in currentAccounts) {
-          effectiveTransactionBalance += await _transactionRepo.getBalance(
+          effectiveBalance += await _transactionRepo.getBalance(
             accountId: account.id,
             status: 'effective',
-            minDate: DateTime.parse(account.updated),
           );
         }
       }
-      final effectiveBalance = initialBalance + effectiveTransactionBalance;
 
-      // Projected Balance (Effective + Projected up to end of period)
-      // Note: We only include projected transactions that are WITHIN the current view period
-      final projectedTransactionBalance = await _transactionRepo.getBalance(
-        accountId: state.selectedAccount?.id,
-        status: 'projected',
-        maxDate: end, // Include projected up to the end of the month
-      );
-
-      final projectedBalance = effectiveBalance + projectedTransactionBalance;
+      // Projected Balance (Effective + Projected)
+      // Our getBalance handles this automatically if we don't filter by status
+      double projectedBalance = 0;
+      if (state.selectedAccount != null) {
+        projectedBalance = await _transactionRepo.getBalance(
+          accountId: state.selectedAccount?.id,
+          // No status filter = Effective after anchor + Projected
+          maxDate: end,
+        );
+      } else {
+        for (final account in currentAccounts) {
+          projectedBalance += await _transactionRepo.getBalance(
+            accountId: account.id,
+            maxDate: end,
+          );
+        }
+      }
 
       state = state.copyWith(
         transactions: allTransactions,

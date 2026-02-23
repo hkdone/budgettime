@@ -57,11 +57,12 @@ class _ManageAccountsPageState extends ConsumerState<ManageAccountsPage> {
               const SizedBox(height: 16),
               TextField(
                 controller: balanceController,
-                decoration: const InputDecoration(
-                  labelText: 'Solde initial (€)',
-                ),
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Solde actuel',
+                  helperText: 'Valeur de référence pour le calcul du solde',
                 ),
               ),
               const SizedBox(height: 16),
