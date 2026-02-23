@@ -144,7 +144,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
           'amount': amount,
           'label': label,
           'type': _type,
-          'date': _date.toUtc().toString().split('.')[0],
+          'date': formatDateForPb(_date),
           'category': category,
           'account': _selectedAccountId,
           'member': _selectedMemberId,
@@ -298,7 +298,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                 'amount': diff.abs(),
                 'label': 'Ajustement solde (Banque)',
                 'type': diff > 0 ? 'income' : 'expense',
-                'date': _date.toUtc().toString().split('.')[0],
+                'date': formatDateForPb(_date),
                 'category': 'Ajustement',
                 'account': _selectedAccountId,
                 'status': 'effective',
@@ -474,7 +474,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                     return 'Veuillez entrer un montant';
                   }
                   final p = parseAmount(value);
-                  if (p == 0 && value != "0") {
+                  if (p == 0 && value != '0') {
                     return 'Veuillez entrer un nombre valide';
                   }
                   return null;

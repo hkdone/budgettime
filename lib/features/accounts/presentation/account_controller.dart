@@ -1,3 +1,4 @@
+import 'package:budgettime/core/utils/formatters.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/database_service.dart';
 import '../../../../core/start_app.dart';
@@ -46,7 +47,7 @@ class AccountController extends StateNotifier<AsyncValue<List<Account>>> {
         'amount': 0,
         'label': 'Solde Initial',
         'type': 'income',
-        'date': DateTime.now(),
+        'date': formatDateForPb(DateTime.now()),
         'account': account.id,
         'status': 'effective',
         'is_automatic': true,
@@ -79,7 +80,7 @@ class AccountController extends StateNotifier<AsyncValue<List<Account>>> {
         'amount': 0,
         'label': 'Mise à jour solde',
         'type': 'income',
-        'date': DateTime.now(),
+        'date': formatDateForPb(DateTime.now()),
         'account': id,
         'status': 'effective',
         'is_automatic': true,
