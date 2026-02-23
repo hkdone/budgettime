@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../transactions/domain/transaction_repository.dart';
-import '../../settings/presentation/settings_controller.dart';
 import '../../../core/start_app.dart';
 
 class YearlyTrend {
@@ -73,9 +72,8 @@ class StatsState {
 
 class StatsController extends StateNotifier<StatsState> {
   final TransactionRepository _transactionRepo;
-  final Ref _ref;
 
-  StatsController(this._transactionRepo, this._ref)
+  StatsController(this._transactionRepo)
     : super(StatsState(selectedYear: DateTime.now().year)) {
     loadStats();
     fetchYearlyTrends();
@@ -84,13 +82,9 @@ class StatsController extends StateNotifier<StatsState> {
   Future<void> loadStats() async {
     state = state.copyWith(isLoading: true);
 
-    // Aligner sur l'année fiscale (12 mois glissants)
-    final settingsAsync = _ref.read(settingsControllerProvider);
-    final int fiscalDay = settingsAsync.value?.fiscalDayStart ?? 1;
-
-    // Adjust the annual range to cover 12 fiscal months
-    final start = DateTime(state.selectedYear - 1, 12, fiscalDay, 0, 0, 0);
-    final end = DateTime(state.selectedYear, 12, fiscalDay - 1, 23, 59, 59);
+    // Retour au calendrier civil pour l'analyse annuelle (plus intuitif)
+    final start = DateTime(state.selectedYear, 1, 1, 0, 0, 0);
+    final end = DateTime(state.selectedYear, 12, 31, 23, 59, 59);
 
     final transactions = await _transactionRepo.getTransactions(
       start: start,
@@ -101,6 +95,7 @@ class StatsController extends StateNotifier<StatsState> {
     final accountNames = <String, String>{};
 
     for (final t in transactions) {
+      if (t['is_automatic'] == true) continue;
       // Technical Filter
       final label = t['label']?.toString().toLowerCase() ?? '';
       if (label.contains('solde') || label.contains('ajustement')) continue;
@@ -165,10 +160,15 @@ class StatsController extends StateNotifier<StatsState> {
       // Try to find account name in expand
       if (t['expand'] != null) {
         if (isOutgoing && t['expand']['account'] != null) {
-          accountNames[accountId] = t['expand']['account']['name'] ?? 'Compte';
+          final List<dynamic> expAcc = t['expand']['account'];
+          if (expAcc.isNotEmpty) {
+            accountNames[accountId] = expAcc[0]['name'] ?? 'Compte';
+          }
         } else if (!isOutgoing && t['expand']['target_account'] != null) {
-          accountNames[accountId] =
-              t['expand']['target_account']['name'] ?? 'Compte';
+          final List<dynamic> expTarget = t['expand']['target_account'];
+          if (expTarget.isNotEmpty) {
+            accountNames[accountId] = expTarget[0]['name'] ?? 'Compte';
+          }
         }
       }
       accountNames.putIfAbsent(accountId, () => 'Compte');
@@ -181,10 +181,19 @@ class StatsController extends StateNotifier<StatsState> {
 
     String category = 'Commun';
     if (t['expand'] != null && t['expand']['category'] != null) {
-      category = t['expand']['category']['name'] ?? 'Commun';
+      final List<dynamic> expCat = t['expand']['category'];
+      if (expCat.isNotEmpty) {
+        category = expCat[0]['name'] ?? 'Commun';
+      }
     }
 
-    final member = t['expand']?['member']?['name'] ?? 'Commun';
+    String member = 'Commun';
+    if (t['expand'] != null && t['expand']['member'] != null) {
+      final List<dynamic> expMem = t['expand']['member'];
+      if (expMem.isNotEmpty) {
+        member = expMem[0]['name'] ?? 'Commun';
+      }
+    }
 
     // Type logic
     final bool isIncome;
@@ -279,5 +288,5 @@ class StatsController extends StateNotifier<StatsState> {
 
 final statsControllerProvider =
     StateNotifierProvider<StatsController, StatsState>((ref) {
-      return StatsController(ref.watch(transactionRepositoryProvider), ref);
+      return StatsController(ref.watch(transactionRepositoryProvider));
     });

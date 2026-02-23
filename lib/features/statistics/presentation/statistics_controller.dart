@@ -112,34 +112,55 @@ class StatisticsController extends StateNotifier<AsyncValue<StatisticsData>> {
       double totalIncome = 0;
 
       for (final t in transactions) {
-        // Transfer Neutrality & Automatic Filter
-        if (t['target_account'] != null &&
-            t['target_account'].toString().isNotEmpty) {
-          continue;
-        }
         if (t['is_automatic'] == true) continue;
         final label = t['label']?.toString().toLowerCase() ?? '';
         if (label.contains('solde') || label.contains('ajustement')) continue;
 
         final amount = (t['amount'] as num).toDouble();
-        final type = t['type'];
-        // Safe access to member ID
-        String memberId = '';
-        if (t['expand'] != null && t['expand']['member'] != null) {
-          memberId = t['expand']['member']['id'] ?? '';
-        } else if (t['member'] != null) {
-          memberId = t['member'].toString();
+        String type = t['type'];
+        final isTransfer =
+            t['target_account'] != null &&
+            t['target_account'].toString().isNotEmpty;
+
+        // Transfer logic for stats
+        if (isTransfer) {
+          if (accountId == null) {
+            // Global view: Transfers are neutral
+            continue;
+          } else {
+            // Account view: Determine if it's income or expense for THIS account
+            final sourceAccId = t['account'];
+            final targetAccId = t['target_account'];
+
+            if (accountId == targetAccId) {
+              type = 'income';
+            } else if (accountId == sourceAccId) {
+              type = 'expense';
+            } else {
+              // Should not happen with current getTransactions but for safety:
+              continue;
+            }
+          }
         }
-        if (memberId.isEmpty) memberId = 'common';
+
+        // Safe access to member Name
+        String member = 'Commun';
+        if (t['expand'] != null && t['expand']['member'] != null) {
+          final dynamic expandedMember = t['expand']['member'];
+          if (expandedMember is List && expandedMember.isNotEmpty) {
+            member = expandedMember[0]['name'] ?? 'Commun';
+          } else if (expandedMember is Map) {
+            member = expandedMember['name'] ?? 'Commun';
+          }
+        }
         if (type == 'expense') {
           totalExpense += amount;
           final catId = t['category'] ?? 'other';
           categoryMap[catId] = (categoryMap[catId] ?? 0) + amount;
-          memberExpenseMap[memberId] =
-              (memberExpenseMap[memberId] ?? 0) + amount;
+          memberExpenseMap[member] = (memberExpenseMap[member] ?? 0) + amount;
         } else if (type == 'income') {
           totalIncome += amount;
-          memberIncomeMap[memberId] = (memberIncomeMap[memberId] ?? 0) + amount;
+          memberIncomeMap[member] = (memberIncomeMap[member] ?? 0) + amount;
         }
       }
 
@@ -217,9 +238,31 @@ class StatisticsController extends StateNotifier<AsyncValue<StatisticsData>> {
         double mIncome = 0;
         double mExpense = 0;
         for (final t in monthTrans) {
+          if (t['is_automatic'] == true) continue;
+          final label = t['label']?.toString().toLowerCase() ?? '';
+          if (label.contains('solde') || label.contains('ajustement')) continue;
+
           final amount = (t['amount'] as num).toDouble();
-          if (t['type'] == 'income') mIncome += amount;
-          if (t['type'] == 'expense') mExpense += amount;
+          String type = t['type'];
+          final isTransfer =
+              t['target_account'] != null &&
+              t['target_account'].toString().isNotEmpty;
+
+          if (isTransfer) {
+            if (accountId == null) continue;
+            final sourceAccId = t['account'];
+            final targetAccId = t['target_account'];
+            if (accountId == targetAccId) {
+              type = 'income';
+            } else if (accountId == sourceAccId) {
+              type = 'expense';
+            } else {
+              continue;
+            }
+          }
+
+          if (type == 'income') mIncome += amount;
+          if (type == 'expense') mExpense += amount;
         }
         history.add(
           MonthlyStats(month: monthStart, income: mIncome, expense: mExpense),
@@ -289,38 +332,59 @@ final accountStatsProvider = FutureProvider.family<StatisticsData, String?>((
   double totalIncome = 0;
 
   for (final t in transactions) {
-    // Transfer Neutrality & Automatic Filter
-    if (t['target_account'] != null &&
-        t['target_account'].toString().isNotEmpty) {
-      continue;
-    }
     if (t['is_automatic'] == true) continue;
     final label = t['label']?.toString().toLowerCase() ?? '';
     if (label.contains('solde') || label.contains('ajustement')) continue;
 
     final amount = (t['amount'] as num).toDouble();
-    final type = t['type'];
+    String type = t['type'];
+    final isTransfer =
+        t['target_account'] != null &&
+        t['target_account'].toString().isNotEmpty;
+
+    if (isTransfer) {
+      if (accountId == null) {
+        continue;
+      } else {
+        final sourceAccId = t['account'];
+        final targetAccId = t['target_account'];
+
+        if (accountId == targetAccId) {
+          type = 'income';
+        } else if (accountId == sourceAccId) {
+          type = 'expense';
+        } else {
+          continue;
+        }
+      }
+    }
 
     // Safe access to category and member IDs/names
     String catId = t['category'] ?? 'other';
     if (t['expand'] != null && t['expand']['category'] != null) {
-      catId = t['expand']['category']['id'] ?? catId;
+      final List<dynamic> expCat = t['expand']['category'];
+      if (expCat.isNotEmpty) {
+        catId = expCat[0]['id'] ?? catId;
+      }
     }
 
-    String mId = 'common';
+    String mName = 'Commun';
     if (t['expand'] != null && t['expand']['member'] != null) {
-      mId = t['expand']['member']['id'] ?? 'common';
+      final List<dynamic> expMem = t['expand']['member'];
+      if (expMem.isNotEmpty) {
+        mName = expMem[0]['name'] ?? 'Commun';
+      }
     } else if (t['member'] != null) {
-      mId = t['member'].toString();
+      mName = t['member'].toString();
     }
 
     if (type == 'expense') {
       totalExpense += amount;
       categoryMap[catId] = (categoryMap[catId] ?? 0) + amount;
-      memberExpenseMap[mId] = (memberExpenseMap[mId] ?? 0) + amount;
+      memberExpenseMap[mName] = (memberExpenseMap[mName] ?? 0) + amount;
     } else if (type == 'income') {
       totalIncome += amount;
-      memberIncomeMap[mId] = (memberIncomeMap[mId] ?? 0) + amount;
+      memberIncomeMap[mName] = (memberIncomeMap[mName] ?? 0) + amount;
     }
   }
 
@@ -370,9 +434,31 @@ final accountStatsProvider = FutureProvider.family<StatisticsData, String?>((
     double mIncome = 0;
     double mExpense = 0;
     for (final t in monthTrans) {
+      if (t['is_automatic'] == true) continue;
+      final label = t['label']?.toString().toLowerCase() ?? '';
+      if (label.contains('solde') || label.contains('ajustement')) continue;
+
       final amount = (t['amount'] as num).toDouble();
-      if (t['type'] == 'income') mIncome += amount;
-      if (t['type'] == 'expense') mExpense += amount;
+      String type = t['type'];
+      final isTransfer =
+          t['target_account'] != null &&
+          t['target_account'].toString().isNotEmpty;
+
+      if (isTransfer) {
+        if (accountId == null) continue;
+        final sourceAccId = t['account'];
+        final targetAccId = t['target_account'];
+        if (accountId == targetAccId) {
+          type = 'income';
+        } else if (accountId == sourceAccId) {
+          type = 'expense';
+        } else {
+          continue;
+        }
+      }
+
+      if (type == 'income') mIncome += amount;
+      if (type == 'expense') mExpense += amount;
     }
     history.add(
       MonthlyStats(month: mStart, income: mIncome, expense: mExpense),

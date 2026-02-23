@@ -132,9 +132,7 @@ class _TransactionListState extends ConsumerState<TransactionList> {
                     shadowColor: isProjected ? null : Colors.black12,
                     color: isProjected
                         ? Colors.grey[50]
-                        : const Color(
-                            0xFFE1F5FE,
-                          ), // Light sky blue for effective
+                        : const Color(0xFFE1F5FE), // Light sky blue
                     margin: EdgeInsets.symmetric(
                       horizontal: 8,
                       vertical: isProjected ? 4 : 6,
@@ -148,317 +146,380 @@ class _TransactionListState extends ConsumerState<TransactionList> {
                         width: isProjected ? 0.5 : 1.5,
                       ),
                     ),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: isTransfer
-                            ? Colors.blue.withValues(alpha: 0.2)
-                            : (isIncome
-                                  ? Colors.green.withValues(alpha: 0.2)
-                                  : Colors.red.withValues(alpha: 0.2)),
-                        child: Icon(
-                          isTransfer
-                              ? Icons.swap_horiz
-                              : (isIncome
-                                    ? Icons.arrow_downward
-                                    : Icons.arrow_upward),
-                          color: isTransfer
-                              ? Colors.blue
-                              : (isIncome ? Colors.green : Colors.red),
-                        ),
-                      ),
-                      title: Text(
-                        transaction['label'] ?? 'No Label',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontStyle: isProjected
-                              ? FontStyle.italic
-                              : FontStyle.normal,
-                          color: isProjected ? Colors.grey[700] : null,
-                        ),
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (isProjected)
-                            Text(
-                              DateTime.parse(
-                                    transaction['date'],
-                                  ).toLocal().isBefore(
-                                    DateTime.now().subtract(
-                                      const Duration(days: 1),
-                                    ),
-                                  )
-                                  ? 'En retard (À consolider)'
-                                  : 'Prévisionnel',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color:
-                                    DateTime.parse(
-                                      transaction['date'],
-                                    ).toLocal().isBefore(
-                                      DateTime.now().subtract(
-                                        const Duration(days: 1),
-                                      ),
-                                    )
-                                    ? Colors.red
-                                    : Colors.blueGrey,
-                                fontWeight:
-                                    DateTime.parse(
-                                      transaction['date'],
-                                    ).toLocal().isBefore(
-                                      DateTime.now().subtract(
-                                        const Duration(days: 1),
-                                      ),
-                                    )
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                        ],
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (transaction['expand'] != null &&
-                              transaction['expand']['member'] != null) ...[
-                            Tooltip(
-                              message: transaction['expand']['member']['name'],
-                              child: Icon(
-                                IconData(
-                                  int.parse(
-                                    transaction['expand']['member']['icon'],
-                                  ),
-                                  fontFamily: 'MaterialIcons',
-                                ),
-                                size: 20,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                          ] else ...[
-                            const Tooltip(
-                              message: 'Commun',
-                              child: Icon(
-                                Icons.family_restroom,
-                                size: 20,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                          if (isProjected)
-                            IconButton(
-                              icon: const Icon(
-                                Icons.check_circle_outline,
-                                color: Colors.green,
-                              ),
-                              tooltip: 'Valider la transaction',
-                              onPressed: () async {
-                                await ref
-                                    .read(transactionRepositoryProvider)
-                                    .updateTransaction(transaction['id'], {
-                                      'status': 'effective',
-                                    });
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Transaction validée'),
-                                      backgroundColor: Colors.green,
-                                      duration: Duration(seconds: 1),
-                                    ),
-                                  );
-                                }
-                                await ref
-                                    .read(dashboardControllerProvider.notifier)
-                                    .refresh();
-                              },
-                            ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${isIncome ? '+' : '-'}${formatCurrency(amount)}',
+                    child: Consumer(
+                      builder: (context, ref, child) {
+                        final dashboardState = ref.watch(
+                          dashboardControllerProvider,
+                        );
+                        final viewingAccountId =
+                            dashboardState.selectedAccount?.id;
+
+                        // Transfer specific logic
+                        bool effectivelyIncome = isIncome;
+                        final effectivelyTransfer = isTransfer;
+
+                        if (isTransfer && viewingAccountId != null) {
+                          final sourceAccId = transaction['account'];
+                          final targetAccId = transaction['target_account'];
+
+                          if (viewingAccountId == targetAccId) {
+                            effectivelyIncome = true;
+                          } else if (viewingAccountId == sourceAccId) {
+                            effectivelyIncome = false;
+                          }
+                        }
+
+                        // Icon color logic
+                        final Color avatarBg;
+                        final Color iconColor;
+                        final IconData iconData;
+
+                        if (effectivelyTransfer) {
+                          avatarBg = Colors.blue.withValues(alpha: 0.2);
+                          iconColor = Colors.blue;
+                          iconData = Icons.swap_horiz;
+                        } else if (effectivelyIncome) {
+                          avatarBg = Colors.green.withValues(alpha: 0.2);
+                          iconColor = Colors.green;
+                          iconData = Icons.arrow_downward;
+                        } else {
+                          avatarBg = Colors.red.withValues(alpha: 0.2);
+                          iconColor = Colors.red;
+                          iconData = Icons.arrow_upward;
+                        }
+
+                        // Amount style logic
+                        final Color amountColor;
+                        if (isProjected) {
+                          amountColor = Colors.grey;
+                        } else if (effectivelyTransfer) {
+                          amountColor = Colors.blue;
+                        } else if (effectivelyIncome) {
+                          amountColor = Colors.green;
+                        } else {
+                          amountColor = Colors.red;
+                        }
+
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: avatarBg,
+                            child: Icon(iconData, color: iconColor),
+                          ),
+                          title: Text(
+                            transaction['label'] ?? 'No Label',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: isProjected
-                                  ? Colors.grey
-                                  : (isTransfer
-                                        ? Colors.blue
-                                        : (isIncome
-                                              ? Colors.green
-                                              : Colors.red)),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                              fontStyle: isProjected
+                                  ? FontStyle.italic
+                                  : FontStyle.normal,
+                              color: isProjected ? Colors.grey[700] : null,
                             ),
                           ),
-                          PopupMenuButton<String>(
-                            onSelected: (value) async {
-                              if (value == 'edit') {
-                                context
-                                    .push(
-                                      '/add-transaction',
-                                      extra: transaction,
-                                    )
-                                    .then(
-                                      (_) => ref
-                                          .read(
-                                            dashboardControllerProvider
-                                                .notifier,
-                                          )
-                                          .refresh(),
-                                    );
-                              } else if (value == 'delete') {
-                                final isRecurrent =
-                                    transaction['recurrence'] != null &&
-                                    transaction['recurrence']
-                                        .toString()
-                                        .isNotEmpty;
-
-                                if (!isRecurrent) {
-                                  final confirm = await showDialog<bool>(
-                                    context: context,
-                                    builder: (context) => AlertDialog(
-                                      title: const Text(
-                                        'Confirmer la suppression',
-                                      ),
-                                      content: const Text(
-                                        'Voulez-vous vraiment supprimer cette transaction ?',
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context, false),
-                                          child: const Text('Annuler'),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (isProjected)
+                                Text(
+                                  DateTime.parse(
+                                        transaction['date'],
+                                      ).toLocal().isBefore(
+                                        DateTime.now().subtract(
+                                          const Duration(days: 1),
                                         ),
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context, true),
-                                          child: const Text(
-                                            'Supprimer',
-                                            style: TextStyle(color: Colors.red),
+                                      )
+                                      ? 'En retard (À consolider)'
+                                      : 'Prévisionnel',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color:
+                                        DateTime.parse(
+                                          transaction['date'],
+                                        ).toLocal().isBefore(
+                                          DateTime.now().subtract(
+                                            const Duration(days: 1),
                                           ),
-                                        ),
-                                      ],
+                                        )
+                                        ? Colors.red
+                                        : Colors.blueGrey,
+                                    fontWeight:
+                                        DateTime.parse(
+                                          transaction['date'],
+                                        ).toLocal().isBefore(
+                                          DateTime.now().subtract(
+                                            const Duration(days: 1),
+                                          ),
+                                        )
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (transaction['expand'] != null &&
+                                  transaction['expand']['member'] != null) ...[
+                                Tooltip(
+                                  message:
+                                      transaction['expand']['member']['name'],
+                                  child: Icon(
+                                    IconData(
+                                      int.parse(
+                                        transaction['expand']['member']['icon'],
+                                      ),
+                                      fontFamily: 'MaterialIcons',
                                     ),
-                                  );
-
-                                  if (confirm == true) {
+                                    size: 20,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                              ] else ...[
+                                const Tooltip(
+                                  message: 'Commun',
+                                  child: Icon(
+                                    Icons.family_restroom,
+                                    size: 20,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                              if (isProjected)
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.check_circle_outline,
+                                    color: Colors.green,
+                                  ),
+                                  tooltip: 'Valider la transaction',
+                                  onPressed: () async {
                                     await ref
                                         .read(transactionRepositoryProvider)
-                                        .deleteTransaction(transaction['id']);
+                                        .updateTransaction(transaction['id'], {
+                                          'status': 'effective',
+                                        });
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Transaction validée'),
+                                          backgroundColor: Colors.green,
+                                          duration: Duration(seconds: 1),
+                                        ),
+                                      );
+                                    }
                                     await ref
                                         .read(
                                           dashboardControllerProvider.notifier,
                                         )
                                         .refresh();
-                                  }
-                                } else {
-                                  final choice = await showDialog<String>(
-                                    context: context,
-                                    builder: (context) => SimpleDialog(
-                                      title: const Text(
-                                        'Suppression récurrence',
-                                      ),
-                                      children: [
-                                        SimpleDialogOption(
-                                          onPressed: () =>
-                                              Navigator.pop(context, 'single'),
-                                          child: const Padding(
-                                            padding: EdgeInsets.symmetric(
-                                              vertical: 8.0,
-                                            ),
-                                            child: Text(
-                                              'Supprimer uniquement celle-ci',
-                                            ),
-                                          ),
-                                        ),
-                                        SimpleDialogOption(
-                                          onPressed: () =>
-                                              Navigator.pop(context, 'future'),
-                                          child: const Padding(
-                                            padding: EdgeInsets.symmetric(
-                                              vertical: 8.0,
-                                            ),
-                                            child: Text(
-                                              'Supprimer celle-ci et les futures',
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-
-                                  if (choice == 'single') {
-                                    await ref
-                                        .read(transactionRepositoryProvider)
-                                        .deleteTransaction(transaction['id']);
-                                  } else if (choice == 'future') {
-                                    String recurrenceId = '';
-                                    final rawRecurrence =
-                                        transaction['recurrence'];
-                                    if (rawRecurrence is String) {
-                                      recurrenceId = rawRecurrence;
-                                    } else if (rawRecurrence is Map) {
-                                      recurrenceId =
-                                          rawRecurrence['id']?.toString() ?? '';
-                                    }
-
-                                    if (recurrenceId.isNotEmpty) {
-                                      await ref
-                                          .read(transactionRepositoryProvider)
-                                          .deleteTransaction(transaction['id']);
-                                      await ref
-                                          .read(transactionRepositoryProvider)
-                                          .deleteFutureTransactions(
-                                            recurrenceId,
-                                            DateTime.parse(transaction['date']),
-                                          );
-                                    }
-                                  }
-
-                                  if (choice != null) {
-                                    await ref
-                                        .read(
-                                          dashboardControllerProvider.notifier,
-                                        )
-                                        .refresh();
-                                    ref.invalidate(
-                                      recurrenceControllerProvider,
-                                    );
-                                  }
-                                }
-                              }
-                            },
-                            itemBuilder: (context) => [
-                              const PopupMenuItem(
-                                value: 'edit',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.edit, size: 20),
-                                    SizedBox(width: 8),
-                                    Text('Modifier'),
-                                  ],
+                                  },
+                                ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${effectivelyIncome ? '+' : '-'}${formatCurrency(amount)}',
+                                style: TextStyle(
+                                  color: amountColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
                                 ),
                               ),
-                              const PopupMenuItem(
-                                value: 'delete',
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.delete,
-                                      color: Colors.red,
-                                      size: 20,
+                              PopupMenuButton<String>(
+                                onSelected: (value) async {
+                                  if (value == 'edit') {
+                                    context
+                                        .push(
+                                          '/add-transaction',
+                                          extra: transaction,
+                                        )
+                                        .then(
+                                          (_) => ref
+                                              .read(
+                                                dashboardControllerProvider
+                                                    .notifier,
+                                              )
+                                              .refresh(),
+                                        );
+                                  } else if (value == 'delete') {
+                                    final isRecurrent =
+                                        transaction['recurrence'] != null &&
+                                        transaction['recurrence']
+                                            .toString()
+                                            .isNotEmpty;
+
+                                    if (!isRecurrent) {
+                                      final confirm = await showDialog<bool>(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: const Text(
+                                            'Confirmer la suppression',
+                                          ),
+                                          content: const Text(
+                                            'Voulez-vous vraiment supprimer cette transaction ?',
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context, false),
+                                              child: const Text('Annuler'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context, true),
+                                              child: const Text(
+                                                'Supprimer',
+                                                style: TextStyle(
+                                                  color: Colors.red,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+
+                                      if (confirm == true) {
+                                        await ref
+                                            .read(transactionRepositoryProvider)
+                                            .deleteTransaction(
+                                              transaction['id'],
+                                            );
+                                        await ref
+                                            .read(
+                                              dashboardControllerProvider
+                                                  .notifier,
+                                            )
+                                            .refresh();
+                                      }
+                                    } else {
+                                      final choice = await showDialog<String>(
+                                        context: context,
+                                        builder: (context) => SimpleDialog(
+                                          title: const Text(
+                                            'Suppression récurrence',
+                                          ),
+                                          children: [
+                                            SimpleDialogOption(
+                                              onPressed: () => Navigator.pop(
+                                                context,
+                                                'single',
+                                              ),
+                                              child: const Padding(
+                                                padding: EdgeInsets.symmetric(
+                                                  vertical: 8.0,
+                                                ),
+                                                child: Text(
+                                                  'Supprimer uniquement celle-ci',
+                                                ),
+                                              ),
+                                            ),
+                                            SimpleDialogOption(
+                                              onPressed: () => Navigator.pop(
+                                                context,
+                                                'future',
+                                              ),
+                                              child: const Padding(
+                                                padding: EdgeInsets.symmetric(
+                                                  vertical: 8.0,
+                                                ),
+                                                child: Text(
+                                                  'Supprimer celle-ci et les futures',
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+
+                                      if (choice == 'single') {
+                                        await ref
+                                            .read(transactionRepositoryProvider)
+                                            .deleteTransaction(
+                                              transaction['id'],
+                                            );
+                                      } else if (choice == 'future') {
+                                        String recurrenceId = '';
+                                        final rawRecurrence =
+                                            transaction['recurrence'];
+                                        if (rawRecurrence is String) {
+                                          recurrenceId = rawRecurrence;
+                                        } else if (rawRecurrence is Map) {
+                                          recurrenceId =
+                                              rawRecurrence['id']?.toString() ??
+                                              '';
+                                        }
+
+                                        if (recurrenceId.isNotEmpty) {
+                                          await ref
+                                              .read(
+                                                transactionRepositoryProvider,
+                                              )
+                                              .deleteTransaction(
+                                                transaction['id'],
+                                              );
+                                          await ref
+                                              .read(
+                                                transactionRepositoryProvider,
+                                              )
+                                              .deleteFutureTransactions(
+                                                recurrenceId,
+                                                DateTime.parse(
+                                                  transaction['date'],
+                                                ),
+                                              );
+                                        }
+                                      }
+
+                                      if (choice != null) {
+                                        await ref
+                                            .read(
+                                              dashboardControllerProvider
+                                                  .notifier,
+                                            )
+                                            .refresh();
+                                        ref.invalidate(
+                                          recurrenceControllerProvider,
+                                        );
+                                      }
+                                    }
+                                  }
+                                },
+                                itemBuilder: (context) => [
+                                  const PopupMenuItem(
+                                    value: 'edit',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.edit, size: 20),
+                                        SizedBox(width: 8),
+                                        Text('Modifier'),
+                                      ],
                                     ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Supprimer',
-                                      style: TextStyle(color: Colors.red),
+                                  ),
+                                  const PopupMenuItem(
+                                    value: 'delete',
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.delete,
+                                          color: Colors.red,
+                                          size: 20,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Supprimer',
+                                          style: TextStyle(color: Colors.red),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
-                      ),
+                        );
+                      },
                     ),
                   );
                 }).toList(),

@@ -34,7 +34,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
         .getFullList(
           filter: filter,
           sort: '-date',
-          expand: 'account,recurrence,member,category',
+          expand: 'account,target_account,recurrence,member,category',
         );
 
     return records.map((e) => e.toJson()).toList();
@@ -253,7 +253,8 @@ class TransactionRepositoryImpl implements TransactionRepository {
     final effectiveStatus = status ?? 'effective';
 
     try {
-      // 1. Source Transaction (Expense)
+      // Unify transfer into a single transaction record.
+      // My balance logic already handles bidirectional transfers.
       await _dbService.pb
           .collection('transactions')
           .create(
@@ -263,27 +264,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
               'target_account': targetAccountId,
               'amount': amount,
               'label': label,
-              'type': 'expense', // Source pays
-              'date': dateStr,
-              'status': status ?? 'effective',
-              'category': category ?? 'transfer',
-              'recurrence': recurrenceId,
-              'member': memberId,
-              'is_automatic': false,
-            },
-          );
-
-      // 2. Target Transaction (Income)
-      await _dbService.pb
-          .collection('transactions')
-          .create(
-            body: {
-              'user': user.id,
-              'account': targetAccountId,
-              'target_account': sourceAccountId,
-              'amount': amount,
-              'label': label,
-              'type': 'income', // Target receives
+              'type': 'expense', // Standardized as expense from source account
               'date': dateStr,
               'status': effectiveStatus,
               'category': category ?? 'transfer',
