@@ -26,7 +26,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
         'user = "${user.id}" && date >= "$startStr" && date <= "$endStr"';
 
     if (accountId != null) {
-      filter += ' && account = "$accountId"';
+      filter += ' && (account = "$accountId" || target_account = "$accountId")';
     }
 
     final records = await _dbService.pb
@@ -82,12 +82,16 @@ class TransactionRepositoryImpl implements TransactionRepository {
     if (user == null) return 0.0;
 
     String filter = 'user = "${user.id}"';
-    if (accountId != null) {
-      filter += ' && account = "$accountId"';
-    }
     if (status != null) {
       filter += ' && status = "$status"';
     }
+
+    // If accountId is provided, we must check both account AND target_account
+    // to catch incoming transfers.
+    if (accountId != null) {
+      filter += ' && (account = "$accountId" || target_account = "$accountId")';
+    }
+
     if (minDate != null) {
       final dateStr =
           '${minDate.year}-${minDate.month.toString().padLeft(2, '0')}-${minDate.day.toString().padLeft(2, '0')} 00:00:00';
@@ -105,7 +109,8 @@ class TransactionRepositoryImpl implements TransactionRepository {
         .collection('transactions')
         .getFullList(
           filter: filter,
-          fields: 'id,amount,type,date,bank_balance,status',
+          fields:
+              'id,amount,type,date,bank_balance,status,account,target_account',
           sort: '-date,-created', // Latest first, tie-break with creation time
         );
 
@@ -152,11 +157,30 @@ class TransactionRepositoryImpl implements TransactionRepository {
         // Anchor logic: ignore effective on same day or before.
         if (isAfterAnchor || isProjected) {
           final amount = (r.data['amount'] as num).toDouble();
-          final type = r.data['type'];
-          if (type == 'income') {
-            total += amount;
+
+          final String? tAccount = r.data['account'];
+          final String? tTargetAccount = r.data['target_account'];
+
+          // Transfer logic
+          if (tTargetAccount != null && tTargetAccount.isNotEmpty) {
+            if (accountId == null) {
+              // Global balance: transfers are neutral
+              continue;
+            } else if (tAccount == accountId) {
+              // Money leaving this account
+              total -= amount;
+            } else if (tTargetAccount == accountId) {
+              // Money entering this account
+              total += amount;
+            }
           } else {
-            total -= amount;
+            // Standard transaction
+            final type = r.data['type'];
+            if (type == 'income') {
+              total += amount;
+            } else {
+              total -= amount;
+            }
           }
         }
       }
@@ -164,11 +188,26 @@ class TransactionRepositoryImpl implements TransactionRepository {
       // No anchor, use standard sum
       for (final r in records) {
         final amount = (r.data['amount'] as num).toDouble();
-        final type = r.data['type'];
-        if (type == 'income') {
-          total += amount;
+
+        final String? tAccount = r.data['account'];
+        final String? tTargetAccount = r.data['target_account'];
+
+        if (tTargetAccount != null && tTargetAccount.isNotEmpty) {
+          if (accountId == null) {
+            // Global balance neutral
+            continue;
+          } else if (tAccount == accountId) {
+            total -= amount;
+          } else if (tTargetAccount == accountId) {
+            total += amount;
+          }
         } else {
-          total -= amount;
+          final type = r.data['type'];
+          if (type == 'income') {
+            total += amount;
+          } else {
+            total -= amount;
+          }
         }
       }
     }

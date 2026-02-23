@@ -38,11 +38,11 @@ class _TransactionListState extends ConsumerState<TransactionList> {
     // 1. Group transactions by date
     final groupedTransactions = <String, List<dynamic>>{};
     for (final t in widget.transactions) {
-      // Hide technical anchors (automatic or technical labels)
-      final isAutomatic = t['is_automatic'] == true;
       final label = t['label']?.toString() ?? '';
+
+      // We only hide purely technical transactions.
+      // Automatic transfers from recurrences MUST be visible to be validated.
       final isTechnical =
-          isAutomatic ||
           label == 'Solde Initial' ||
           label == 'Mise à jour solde' ||
           label.contains('Ajustement solde');

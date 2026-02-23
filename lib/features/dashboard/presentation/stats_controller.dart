@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../transactions/domain/transaction_repository.dart';
+import '../../settings/presentation/settings_controller.dart';
 import '../../../core/start_app.dart';
 
 class YearlyTrend {
@@ -72,8 +73,9 @@ class StatsState {
 
 class StatsController extends StateNotifier<StatsState> {
   final TransactionRepository _transactionRepo;
+  final Ref _ref;
 
-  StatsController(this._transactionRepo)
+  StatsController(this._transactionRepo, this._ref)
     : super(StatsState(selectedYear: DateTime.now().year)) {
     loadStats();
     fetchYearlyTrends();
@@ -82,8 +84,13 @@ class StatsController extends StateNotifier<StatsState> {
   Future<void> loadStats() async {
     state = state.copyWith(isLoading: true);
 
-    final start = DateTime(state.selectedYear, 1, 1);
-    final end = DateTime(state.selectedYear, 12, 31, 23, 59, 59);
+    // Aligner sur l'année fiscale (12 mois glissants)
+    final settingsAsync = _ref.read(settingsControllerProvider);
+    final int fiscalDay = settingsAsync.value?.fiscalDayStart ?? 1;
+
+    // Adjust the annual range to cover 12 fiscal months
+    final start = DateTime(state.selectedYear - 1, 12, fiscalDay, 0, 0, 0);
+    final end = DateTime(state.selectedYear, 12, fiscalDay - 1, 23, 59, 59);
 
     final transactions = await _transactionRepo.getTransactions(
       start: start,
@@ -94,68 +101,38 @@ class StatsController extends StateNotifier<StatsState> {
     final accountNames = <String, String>{};
 
     for (final t in transactions) {
-      // Transfer Neutrality: Exclude transfers from statistics
-      if (t['target_account'] != null &&
-          t['target_account'].toString().isNotEmpty) {
-        continue;
-      }
+      // Technical Filter
+      final label = t['label']?.toString().toLowerCase() ?? '';
+      if (label.contains('solde') || label.contains('ajustement')) continue;
 
-      final accountId = t['account'] ?? 'unknown';
-      if (!statsByAccount.containsKey(accountId)) {
-        statsByAccount[accountId] = AccountStats(
-          realIncomeByCategory: {},
-          projectedIncomeByCategory: {},
-          realExpenseByCategory: {},
-          projectedExpenseByCategory: {},
-          realIncomeByMember: {},
-          projectedIncomeByMember: {},
-          realExpenseByMember: {},
-          projectedExpenseByMember: {},
+      final String? tAccount = t['account'];
+      final String? tTargetAccount = t['target_account'];
+
+      // Global View: Neutralize transfers
+      // Transfers are handled per account, not globally in this loop.
+      // The original logic for processing source and target accounts is retained.
+
+      final accountId = tAccount ?? 'unknown';
+      final targetId = tTargetAccount;
+
+      // Handle main account stats
+      _processTransactionForAccount(
+        t: t,
+        accountId: accountId,
+        statsByAccount: statsByAccount,
+        accountNames: accountNames,
+        isOutgoing: true,
+      );
+
+      // Handle target account stats if transfer
+      if (targetId != null && targetId.isNotEmpty) {
+        _processTransactionForAccount(
+          t: t,
+          accountId: targetId,
+          statsByAccount: statsByAccount,
+          accountNames: accountNames,
+          isOutgoing: false,
         );
-
-        if (t['expand'] != null && t['expand']['account'] != null) {
-          accountNames[accountId] = t['expand']['account']['name'] ?? 'Compte';
-        } else {
-          accountNames[accountId] = 'Compte';
-        }
-      }
-
-      final stats = statsByAccount[accountId]!;
-      final amount = (t['amount'] as num).toDouble();
-      final type = t['type'];
-      final status = t['status'] ?? 'effective';
-      final isReal = status == 'effective';
-
-      // Always expand category for reliable display
-      String category = 'Inconnu';
-      if (t['expand'] != null && t['expand']['category'] != null) {
-        category = t['expand']['category']['name'] ?? 'Inconnu';
-      }
-
-      final member = t['expand']?['member']?['name'] ?? 'Commun';
-
-      if (type == 'income') {
-        if (isReal) {
-          stats.realIncomeByCategory[category] =
-              (stats.realIncomeByCategory[category] ?? 0) + amount;
-          stats.realIncomeByMember[member] =
-              (stats.realIncomeByMember[member] ?? 0) + amount;
-        }
-        stats.projectedIncomeByCategory[category] =
-            (stats.projectedIncomeByCategory[category] ?? 0) + amount;
-        stats.projectedIncomeByMember[member] =
-            (stats.projectedIncomeByMember[member] ?? 0) + amount;
-      } else {
-        if (isReal) {
-          stats.realExpenseByCategory[category] =
-              (stats.realExpenseByCategory[category] ?? 0) + amount;
-          stats.realExpenseByMember[member] =
-              (stats.realExpenseByMember[member] ?? 0) + amount;
-        }
-        stats.projectedExpenseByCategory[category] =
-            (stats.projectedExpenseByCategory[category] ?? 0) + amount;
-        stats.projectedExpenseByMember[member] =
-            (stats.projectedExpenseByMember[member] ?? 0) + amount;
       }
     }
 
@@ -164,6 +141,84 @@ class StatsController extends StateNotifier<StatsState> {
       statsByAccount: statsByAccount,
       accountNames: accountNames,
     );
+  }
+
+  void _processTransactionForAccount({
+    required Map<String, dynamic> t,
+    required String accountId,
+    required Map<String, AccountStats> statsByAccount,
+    required Map<String, String> accountNames,
+    required bool isOutgoing,
+  }) {
+    if (!statsByAccount.containsKey(accountId)) {
+      statsByAccount[accountId] = AccountStats(
+        realIncomeByCategory: {},
+        projectedIncomeByCategory: {},
+        realExpenseByCategory: {},
+        projectedExpenseByCategory: {},
+        realIncomeByMember: {},
+        projectedIncomeByMember: {},
+        realExpenseByMember: {},
+        projectedExpenseByMember: {},
+      );
+
+      // Try to find account name in expand
+      if (t['expand'] != null) {
+        if (isOutgoing && t['expand']['account'] != null) {
+          accountNames[accountId] = t['expand']['account']['name'] ?? 'Compte';
+        } else if (!isOutgoing && t['expand']['target_account'] != null) {
+          accountNames[accountId] =
+              t['expand']['target_account']['name'] ?? 'Compte';
+        }
+      }
+      accountNames.putIfAbsent(accountId, () => 'Compte');
+    }
+
+    final stats = statsByAccount[accountId]!;
+    final amount = (t['amount'] as num).toDouble();
+    final status = t['status'] ?? 'effective';
+    final isReal = status == 'effective';
+
+    String category = 'Commun';
+    if (t['expand'] != null && t['expand']['category'] != null) {
+      category = t['expand']['category']['name'] ?? 'Commun';
+    }
+
+    final member = t['expand']?['member']?['name'] ?? 'Commun';
+
+    // Type logic
+    final bool isIncome;
+    if (t['target_account'] != null &&
+        t['target_account'].toString().isNotEmpty) {
+      // It's a transfer
+      isIncome = !isOutgoing;
+    } else {
+      isIncome = t['type'] == 'income';
+    }
+
+    if (isIncome) {
+      if (isReal) {
+        stats.realIncomeByCategory[category] =
+            (stats.realIncomeByCategory[category] ?? 0) + amount;
+        stats.realIncomeByMember[member] =
+            (stats.realIncomeByMember[member] ?? 0) + amount;
+      }
+      stats.projectedIncomeByCategory[category] =
+          (stats.projectedIncomeByCategory[category] ?? 0) + amount;
+      stats.projectedIncomeByMember[member] =
+          (stats.projectedIncomeByMember[member] ?? 0) + amount;
+    } else {
+      if (isReal) {
+        stats.realExpenseByCategory[category] =
+            (stats.realExpenseByCategory[category] ?? 0) + amount;
+        stats.realExpenseByMember[member] =
+            (stats.realExpenseByMember[member] ?? 0) + amount;
+      }
+      stats.projectedExpenseByCategory[category] =
+          (stats.projectedExpenseByCategory[category] ?? 0) + amount;
+      stats.projectedExpenseByMember[member] =
+          (stats.projectedExpenseByMember[member] ?? 0) + amount;
+    }
   }
 
   void changeYear(int year) {
@@ -190,10 +245,16 @@ class StatsController extends StateNotifier<StatsState> {
       double yearExpense = 0;
 
       for (final t in transactions) {
-        if (t['target_account'] != null &&
-            t['target_account'].toString().isNotEmpty) {
-          continue;
+        // Technical Filter: Hide purely technical adjustments
+        final label = t['label']?.toString().toLowerCase() ?? '';
+        if (label.contains('solde') || label.contains('ajustement')) continue;
+
+        // Transfer logic: Neutralize transfers for global yearly trends
+        final String? tTargetAccount = t['target_account'];
+        if (tTargetAccount != null && tTargetAccount.isNotEmpty) {
+          continue; // Skip transfers for global yearly trends
         }
+
         final amount = (t['amount'] as num).toDouble();
         if (t['type'] == 'income') {
           yearIncome += amount;
@@ -218,5 +279,5 @@ class StatsController extends StateNotifier<StatsState> {
 
 final statsControllerProvider =
     StateNotifierProvider<StatsController, StatsState>((ref) {
-      return StatsController(ref.watch(transactionRepositoryProvider));
+      return StatsController(ref.watch(transactionRepositoryProvider), ref);
     });
