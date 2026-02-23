@@ -2,21 +2,24 @@ import '../inbox_processing_strategy.dart';
 
 class CreditMutuelSmsParser implements InboxProcessingStrategy {
   // Example 1 (Purchase): "CM: Achat CB 25,00 EUR le 21/02 a RESTO LYON"
-  // Example 2 (Statement): "Crédit Mutuel : 23/02 Cpt: XXX90101 Solde=+1 646,41 EUR - Opération créditrice 100,00 EUR (VIR INST WERO MME FABIENNE BRIAN)."
+  // Example 2 (Statement): " 23/02 Cpt: XXX90101 Solde=+1 646,41 EUR - Opération créditrice 100,00 EUR (VIR INST WERO MME FABIENNE BRIAN)."
   final RegExp _patternAchat = RegExp(
     r'CM:.*?Achat CB.*?(\d+[.,]\d{2})\s?EUR.*?le.*?a\s?(.*)',
     caseSensitive: false,
   );
 
   final RegExp _patternStatement = RegExp(
-    r'(?:Crédit Mutuel|CM)\s?:.*?Cpt:\s*(\S+).*?Solde=\s*([+-]?[\d\s,.]+)\s?EUR.*?Opération\s+(créditrice|débitrice)\s+(\d+[.,]\d{2})\s?EUR\s*\((.*)\)',
+    r'(?:(\d{2}/\d{2})\s+)?.*?Cpt:\s*(\S+).*?Solde\s*=\s*([+-]?[\d\s,.]+)\s?EUR.*?Opération\s+(créditrice|débitrice)\s+(\d+[.,]\d{2})\s?EUR\s*\((.*)\)',
     caseSensitive: false,
   );
 
   @override
   double canHandle(Map<String, dynamic> item) {
     final payload = item['raw_payload'] as String? ?? '';
-    final isCM = payload.contains('CM:') || payload.contains('Crédit Mutuel');
+    final isCM =
+        payload.contains('CM:') ||
+        payload.contains('Crédit Mutuel') ||
+        (payload.contains('Cpt:') && payload.contains('Solde='));
     final hasKeywords =
         payload.contains('Achat') ||
         payload.contains('Opération') ||
@@ -32,26 +35,42 @@ class CreditMutuelSmsParser implements InboxProcessingStrategy {
     // Try Statement pattern first (richer)
     final statementMatch = _patternStatement.firstMatch(payload);
     if (statementMatch != null) {
-      final externalId = statementMatch.group(1);
+      final dateStr = statementMatch.group(1); // Optional: "23/02"
+      final externalId = statementMatch.group(2);
       final balanceStr =
           statementMatch
-              .group(2)
+              .group(3)
               ?.replaceAll(RegExp(r'\s'), '')
               .replaceAll(',', '.') ??
           '0.0';
-      final typeStr = statementMatch.group(3)?.toLowerCase() ?? 'débitrice';
-      final amountStr = statementMatch.group(4)?.replaceAll(',', '.') ?? '0.0';
-      final label = statementMatch.group(5)?.trim() ?? 'CM Opération';
+      final typeStr = statementMatch.group(4)?.toLowerCase() ?? 'débitrice';
+      final amountStr = statementMatch.group(5)?.replaceAll(',', '.') ?? '0.0';
+      final label = statementMatch.group(6)?.trim() ?? 'CM Opération';
 
       final isCredit = typeStr.contains('crédit');
       final amount = double.tryParse(amountStr) ?? 0.0;
       final bankBalance = double.tryParse(balanceStr) ?? 0.0;
 
+      // Handle date if extracted (DD/MM format)
+      DateTime transactionDate = DateTime.now();
+      if (dateStr != null && dateStr.contains('/')) {
+        try {
+          final parts = dateStr.split('/');
+          final day = int.parse(parts[0]);
+          final month = int.parse(parts[1]);
+          final now = DateTime.now();
+          // Assume current year (or previous if month is later than now)
+          int year = now.year;
+          if (month > now.month) year--;
+          transactionDate = DateTime(year, month, day, 12, 0);
+        } catch (_) {}
+      }
+
       return {
         'amount': isCredit ? amount : -amount,
         'label': label,
         'type': isCredit ? 'income' : 'expense',
-        'date': DateTime.now().toIso8601String(),
+        'date': transactionDate.toIso8601String(),
         'category': 'Autre',
         'account_external_id': externalId,
         'bank_balance': bankBalance,
