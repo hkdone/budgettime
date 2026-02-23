@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/start_app.dart';
 import '../../transactions/data/transaction_repository_impl.dart';
+import '../../settings/presentation/settings_controller.dart';
 
 class MonthlyStats {
   final DateTime month;
@@ -58,8 +59,10 @@ class StatisticsData {
 
 class StatisticsController extends StateNotifier<AsyncValue<StatisticsData>> {
   final TransactionRepositoryImpl _repository;
+  final Ref _ref;
 
-  StatisticsController(this._repository) : super(const AsyncValue.loading());
+  StatisticsController(this._repository, this._ref)
+    : super(const AsyncValue.loading());
 
   Future<void> loadStats({
     required DateTime targetMonth,
@@ -68,15 +71,32 @@ class StatisticsController extends StateNotifier<AsyncValue<StatisticsData>> {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       // 1. Fetch data for the target month (for Pie Chart)
-      final start = DateTime(targetMonth.year, targetMonth.month, 1);
-      final end = DateTime(
-        targetMonth.year,
-        targetMonth.month + 1,
-        0,
-        23,
-        59,
-        59,
-      );
+      // 1. Get Settings for fiscal day
+      final settingsAsync = _ref.read(settingsControllerProvider);
+      final int fiscalDay = settingsAsync.value?.fiscalDayStart ?? 1;
+
+      // 2. Calculate Fiscal Period Month
+      late DateTime start, end;
+      if (targetMonth.day >= fiscalDay) {
+        start = DateTime(targetMonth.year, targetMonth.month, fiscalDay);
+        final nextMonthStart = DateTime(
+          targetMonth.year,
+          targetMonth.month + 1,
+          fiscalDay,
+        );
+        end = nextMonthStart.subtract(const Duration(days: 1));
+      } else {
+        start = DateTime(targetMonth.year, targetMonth.month - 1, fiscalDay);
+        final currentMonthStart = DateTime(
+          targetMonth.year,
+          targetMonth.month,
+          fiscalDay,
+        );
+        end = currentMonthStart.subtract(const Duration(days: 1));
+      }
+
+      start = DateTime(start.year, start.month, start.day, 0, 0, 0);
+      end = DateTime(end.year, end.month, end.day, 23, 59, 59);
 
       final transactions = await _repository.getTransactions(
         start: start,
@@ -92,6 +112,15 @@ class StatisticsController extends StateNotifier<AsyncValue<StatisticsData>> {
       double totalIncome = 0;
 
       for (final t in transactions) {
+        // Transfer Neutrality & Automatic Filter
+        if (t['target_account'] != null &&
+            t['target_account'].toString().isNotEmpty) {
+          continue;
+        }
+        if (t['is_automatic'] == true) continue;
+        final label = t['label']?.toString().toLowerCase() ?? '';
+        if (label.contains('solde') || label.contains('ajustement')) continue;
+
         final amount = (t['amount'] as num).toDouble();
         final type = t['type'];
         // Safe access to member ID
@@ -147,11 +176,33 @@ class StatisticsController extends StateNotifier<AsyncValue<StatisticsData>> {
       // 2. Fetch history (Last 6 months)
       final history = <MonthlyStats>[];
       for (int i = 5; i >= 0; i--) {
-        final monthStart = DateTime(targetMonth.year, targetMonth.month - i, 1);
-        final monthEnd = DateTime(
+        final baseDate = DateTime(
+          targetMonth.year,
+          targetMonth.month - i,
+          fiscalDay,
+        );
+        late DateTime monthStart, monthEnd;
+
+        monthStart = baseDate;
+        final nextMonthStart = DateTime(
           monthStart.year,
           monthStart.month + 1,
+          fiscalDay,
+        );
+        monthEnd = nextMonthStart.subtract(const Duration(days: 1));
+
+        monthStart = DateTime(
+          monthStart.year,
+          monthStart.month,
+          monthStart.day,
           0,
+          0,
+          0,
+        );
+        monthEnd = DateTime(
+          monthEnd.year,
+          monthEnd.month,
+          monthEnd.day,
           23,
           59,
           59,
@@ -193,7 +244,7 @@ final statisticsControllerProvider =
     ) {
       final repo =
           ref.watch(transactionRepositoryProvider) as TransactionRepositoryImpl;
-      return StatisticsController(repo);
+      return StatisticsController(repo, ref);
     });
 
 final accountStatsProvider = FutureProvider.family<StatisticsData, String?>((
@@ -203,10 +254,26 @@ final accountStatsProvider = FutureProvider.family<StatisticsData, String?>((
   final repo =
       ref.watch(transactionRepositoryProvider) as TransactionRepositoryImpl;
 
-  // 1. Fetch data for the target month (for Pie Chart)
+  // 1. Get Settings for fiscal day
+  final settingsAsync = ref.read(settingsControllerProvider);
+  final int fiscalDay = settingsAsync.value?.fiscalDayStart ?? 1;
+
+  // 1b. Fetch data for the current fiscal period
   final now = DateTime.now();
-  final start = DateTime(now.year, now.month, 1);
-  final end = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+  late DateTime start, end;
+
+  if (now.day >= fiscalDay) {
+    start = DateTime(now.year, now.month, fiscalDay);
+    final nextMonthStart = DateTime(now.year, now.month + 1, fiscalDay);
+    end = nextMonthStart.subtract(const Duration(days: 1));
+  } else {
+    start = DateTime(now.year, now.month - 1, fiscalDay);
+    final currentMonthStart = DateTime(now.year, now.month, fiscalDay);
+    end = currentMonthStart.subtract(const Duration(days: 1));
+  }
+
+  start = DateTime(start.year, start.month, start.day, 0, 0, 0);
+  end = DateTime(end.year, end.month, end.day, 23, 59, 59);
 
   final transactions = await repo.getTransactions(
     start: start,
@@ -222,11 +289,14 @@ final accountStatsProvider = FutureProvider.family<StatisticsData, String?>((
   double totalIncome = 0;
 
   for (final t in transactions) {
-    // Transfer Neutrality: Exclude transfers from statistics
+    // Transfer Neutrality & Automatic Filter
     if (t['target_account'] != null &&
         t['target_account'].toString().isNotEmpty) {
       continue;
     }
+    if (t['is_automatic'] == true) continue;
+    final label = t['label']?.toString().toLowerCase() ?? '';
+    if (label.contains('solde') || label.contains('ajustement')) continue;
 
     final amount = (t['amount'] as num).toDouble();
     final type = t['type'];
@@ -281,19 +351,19 @@ final accountStatsProvider = FutureProvider.family<StatisticsData, String?>((
   // 2. Fetch history (Last 6 months)
   final history = <MonthlyStats>[];
   for (int i = 5; i >= 0; i--) {
-    final monthStart = DateTime(now.year, now.month - i, 1);
-    final monthEnd = DateTime(
-      monthStart.year,
-      monthStart.month + 1,
-      0,
-      23,
-      59,
-      59,
-    );
+    final baseDate = DateTime(now.year, now.month - i, fiscalDay);
+    late DateTime mStart, mEnd;
+
+    mStart = baseDate;
+    final nMonthStart = DateTime(mStart.year, mStart.month + 1, fiscalDay);
+    mEnd = nMonthStart.subtract(const Duration(days: 1));
+
+    mStart = DateTime(mStart.year, mStart.month, mStart.day, 0, 0, 0);
+    mEnd = DateTime(mEnd.year, mEnd.month, mEnd.day, 23, 59, 59);
 
     final monthTrans = await repo.getTransactions(
-      start: monthStart,
-      end: monthEnd,
+      start: mStart,
+      end: mEnd,
       accountId: accountId,
     );
 
@@ -305,7 +375,7 @@ final accountStatsProvider = FutureProvider.family<StatisticsData, String?>((
       if (t['type'] == 'expense') mExpense += amount;
     }
     history.add(
-      MonthlyStats(month: monthStart, income: mIncome, expense: mExpense),
+      MonthlyStats(month: mStart, income: mIncome, expense: mExpense),
     );
   }
 

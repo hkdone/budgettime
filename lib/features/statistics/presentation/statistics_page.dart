@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'statistics_controller.dart';
 import '../../transactions/domain/categories.dart';
 import '../../accounts/presentation/account_controller.dart';
+import '../../settings/presentation/settings_controller.dart';
 import '../../members/domain/member.dart';
 import '../../members/presentation/member_controller.dart';
 
@@ -115,6 +116,38 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
   }
 
   Widget _buildMonthSelector() {
+    final settingsAsync = ref.watch(settingsControllerProvider);
+    final fiscalDay = settingsAsync.value?.fiscalDayStart ?? 1;
+
+    // Calculate start and end of the fiscal month based on _selectedMonth
+    late DateTime start, end;
+    if (_selectedMonth.day >= fiscalDay) {
+      start = DateTime(_selectedMonth.year, _selectedMonth.month, fiscalDay);
+      final nextMonthStart = DateTime(
+        _selectedMonth.year,
+        _selectedMonth.month + 1,
+        fiscalDay,
+      );
+      end = nextMonthStart.subtract(const Duration(days: 1));
+    } else {
+      start = DateTime(
+        _selectedMonth.year,
+        _selectedMonth.month - 1,
+        fiscalDay,
+      );
+      final currentMonthStart = DateTime(
+        _selectedMonth.year,
+        _selectedMonth.month,
+        fiscalDay,
+      );
+      end = currentMonthStart.subtract(const Duration(days: 1));
+    }
+
+    final rangeText = fiscalDay == 1
+        ? DateFormat('MMMM yyyy', 'fr_FR').format(_selectedMonth).toUpperCase()
+        : '${DateFormat('d MMM', 'fr_FR').format(start)} - ${DateFormat('d MMM y', 'fr_FR').format(end)}'
+              .toUpperCase();
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -128,16 +161,14 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
                   _selectedMonth = DateTime(
                     _selectedMonth.year,
                     _selectedMonth.month - 1,
+                    _selectedMonth.day, // Keep day for context
                   );
                 });
                 _loadData();
               },
             ),
             Text(
-              DateFormat(
-                'MMMM yyyy',
-                'fr_FR',
-              ).format(_selectedMonth).toUpperCase(),
+              rangeText,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             IconButton(
@@ -147,6 +178,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
                   _selectedMonth = DateTime(
                     _selectedMonth.year,
                     _selectedMonth.month + 1,
+                    _selectedMonth.day, // Keep day for context
                   );
                 });
                 _loadData();
