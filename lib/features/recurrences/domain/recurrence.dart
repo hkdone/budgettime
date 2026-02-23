@@ -10,6 +10,7 @@ class Recurrence {
   final bool active;
   final String? targetAccountId;
   final String? memberId;
+  final String? categoryId;
 
   Recurrence({
     required this.id,
@@ -23,6 +24,7 @@ class Recurrence {
     required this.active,
     this.targetAccountId,
     this.memberId,
+    this.categoryId,
   });
 
   factory Recurrence.fromRecord(dynamic record) {
@@ -38,6 +40,7 @@ class Recurrence {
       active: record.data['active'] ?? true,
       targetAccountId: record.data['target_account'],
       memberId: record.data['member'],
+      categoryId: record.data['category'],
     );
   }
 
@@ -54,6 +57,7 @@ class Recurrence {
       active: json['active'] ?? true,
       targetAccountId: json['target_account'],
       memberId: json['member'],
+      categoryId: json['category'],
     );
   }
 }

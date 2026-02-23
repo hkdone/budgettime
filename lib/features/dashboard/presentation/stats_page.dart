@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'stats_controller.dart';
 import '../../../core/utils/formatters.dart';
+import '../../transactions/domain/categories.dart';
 
 import 'package:fl_chart/fl_chart.dart';
 
@@ -432,6 +433,18 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                 displayName = state.memberNames[val.key]!;
               } else if (state.categoryNames.containsKey(val.key)) {
                 displayName = state.categoryNames[val.key]!;
+              } else {
+                // Try to find in global categories list
+                try {
+                  displayName = kTransactionCategories
+                      .firstWhere((c) => c.id == val.key)
+                      .name;
+                } catch (_) {
+                  // Fallback to name-cased ID if it's the old 'Recurrence' string
+                  if (val.key == 'Recurrence') {
+                    displayName = 'Récurrence';
+                  }
+                }
               }
 
               return Row(

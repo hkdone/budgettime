@@ -33,7 +33,7 @@ class RecurrenceService {
           amount: recurrence.amount,
           date: nextDate,
           label: recurrence.label,
-          category: 'Recurrence',
+          category: recurrence.categoryId ?? 'other',
           recurrenceId: recurrence.id,
           status: 'projected',
           memberId: recurrence.memberId,
@@ -47,7 +47,7 @@ class RecurrenceService {
           'account': recurrence.accountId,
           'member': recurrence.memberId,
           'status': 'projected',
-          'category': 'Recurrence',
+          'category': recurrence.categoryId ?? 'other',
           'recurrence': recurrence.id,
           'is_automatic': true,
         };

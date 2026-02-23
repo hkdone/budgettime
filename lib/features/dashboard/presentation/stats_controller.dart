@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../transactions/domain/transaction_repository.dart';
 import '../../../core/start_app.dart';
+import '../../transactions/domain/categories.dart';
 
 class YearlyTrend {
   final int year;
@@ -81,8 +82,9 @@ class StatsState {
 
 class StatsController extends StateNotifier<StatsState> {
   final TransactionRepository _transactionRepo;
+  final Ref _ref;
 
-  StatsController(this._transactionRepo)
+  StatsController(this._transactionRepo, this._ref)
     : super(StatsState(selectedYear: DateTime.now().year)) {
     loadStats();
     fetchYearlyTrends();
@@ -105,6 +107,23 @@ class StatsController extends StateNotifier<StatsState> {
       final accountNames = <String, String>{};
       final memberNames = <String, String>{};
       final categoryNames = <String, String>{};
+
+      // 1. Pre-populate category names from hardcoded list
+      for (final cat in kTransactionCategories) {
+        categoryNames[cat.id] = cat.name;
+      }
+
+      // 2. Fetch all members to ensure complete mapping
+      try {
+        final memberRepo = _ref.read(memberRepositoryProvider);
+        final members = await memberRepo.getMembers();
+        for (final m in members) {
+          memberNames[m.id] = m.name;
+        }
+      } catch (e) {
+        debugPrint('Warning: Could not fetch members in StatsController: $e');
+      }
+      memberNames.putIfAbsent('common', () => 'Commun');
 
       for (final t in transactions) {
         if (t['is_automatic'] == true) continue;
@@ -308,5 +327,6 @@ class StatsController extends StateNotifier<StatsState> {
 
 final statsControllerProvider =
     StateNotifierProvider<StatsController, StatsState>((ref) {
-      return StatsController(ref.watch(transactionRepositoryProvider));
+      final repo = ref.watch(transactionRepositoryProvider);
+      return StatsController(repo, ref);
     });
