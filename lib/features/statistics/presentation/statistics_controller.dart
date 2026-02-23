@@ -143,24 +143,21 @@ class StatisticsController extends StateNotifier<AsyncValue<StatisticsData>> {
           }
         }
 
-        // Safe access to member Name
-        String member = 'Commun';
+        // Safe access to member ID (unified via TransactionRepositoryImpl)
+        String memberId = 'common';
         if (t['expand'] != null && t['expand']['member'] != null) {
           final dynamic expandedMember = t['expand']['member'];
-          if (expandedMember is List && expandedMember.isNotEmpty) {
-            member = expandedMember[0]['name'] ?? 'Commun';
-          } else if (expandedMember is Map) {
-            member = expandedMember['name'] ?? 'Commun';
-          }
+          memberId = expandedMember['id'] ?? 'common';
         }
         if (type == 'expense') {
           totalExpense += amount;
           final catId = t['category'] ?? 'other';
           categoryMap[catId] = (categoryMap[catId] ?? 0) + amount;
-          memberExpenseMap[member] = (memberExpenseMap[member] ?? 0) + amount;
+          memberExpenseMap[memberId] =
+              (memberExpenseMap[memberId] ?? 0) + amount;
         } else if (type == 'income') {
           totalIncome += amount;
-          memberIncomeMap[member] = (memberIncomeMap[member] ?? 0) + amount;
+          memberIncomeMap[memberId] = (memberIncomeMap[memberId] ?? 0) + amount;
         }
       }
 
@@ -359,36 +356,28 @@ final accountStatsProvider = FutureProvider.family<StatisticsData, String?>((
       }
     }
 
-    // Safe access to category and member IDs/names
+    // Safe access to category and member IDs (unified mapping)
     String catId = t['category'] ?? 'other';
     if (t['expand'] != null && t['expand']['category'] != null) {
       final dynamic expCat = t['expand']['category'];
-      if (expCat is List && expCat.isNotEmpty) {
-        catId = expCat[0]['id'] ?? catId;
-      } else if (expCat is Map) {
-        catId = expCat['id'] ?? catId;
-      }
+      catId = expCat['id'] ?? catId;
     }
 
-    String mName = 'Commun';
+    String mId = 'common';
     if (t['expand'] != null && t['expand']['member'] != null) {
       final dynamic expMem = t['expand']['member'];
-      if (expMem is List && expMem.isNotEmpty) {
-        mName = expMem[0]['name'] ?? 'Commun';
-      } else if (expMem is Map) {
-        mName = expMem['name'] ?? 'Commun';
-      }
+      mId = expMem['id'] ?? 'common';
     } else if (t['member'] != null) {
-      mName = t['member'].toString();
+      mId = t['member'].toString();
     }
 
     if (type == 'expense') {
       totalExpense += amount;
       categoryMap[catId] = (categoryMap[catId] ?? 0) + amount;
-      memberExpenseMap[mName] = (memberExpenseMap[mName] ?? 0) + amount;
+      memberExpenseMap[mId] = (memberExpenseMap[mId] ?? 0) + amount;
     } else if (type == 'income') {
       totalIncome += amount;
-      memberIncomeMap[mName] = (memberIncomeMap[mName] ?? 0) + amount;
+      memberIncomeMap[mId] = (memberIncomeMap[mId] ?? 0) + amount;
     }
   }
 

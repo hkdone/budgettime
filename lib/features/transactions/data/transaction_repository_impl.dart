@@ -52,11 +52,11 @@ class TransactionRepositoryImpl implements TransactionRepository {
         try {
           final expanded = e.get<List<dynamic>>('expand.$key');
           if (expanded.isNotEmpty) {
-            expandMap[key] = expanded.map((v) => v.toJson()).toList();
+            // Unify: If there is only one item, we can take it directly
+            // This simplifies access in the UI/Controllers
+            expandMap[key] = expanded[0].toJson();
           }
-        } catch (_) {
-          // Key might not exist in this specific record's expansion
-        }
+        } catch (_) {}
       }
 
       if (expandMap.isNotEmpty) {
@@ -102,11 +102,9 @@ class TransactionRepositoryImpl implements TransactionRepository {
         try {
           final expanded = e.get<List<dynamic>>('expand.$key');
           if (expanded.isNotEmpty) {
-            expandMap[key] = expanded.map((v) => v.toJson()).toList();
+            expandMap[key] = expanded[0].toJson();
           }
-        } catch (_) {
-          // Key might not exist in this specific expansion
-        }
+        } catch (_) {}
       }
 
       if (expandMap.isNotEmpty) {

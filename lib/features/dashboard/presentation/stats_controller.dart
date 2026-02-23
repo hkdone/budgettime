@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../transactions/domain/transaction_repository.dart';
 import '../../../core/start_app.dart';
@@ -86,56 +87,54 @@ class StatsController extends StateNotifier<StatsState> {
     final start = DateTime(state.selectedYear, 1, 1, 0, 0, 0);
     final end = DateTime(state.selectedYear, 12, 31, 23, 59, 59);
 
-    final transactions = await _transactionRepo.getTransactions(
-      start: start,
-      end: end,
-    );
-
-    final statsByAccount = <String, AccountStats>{};
-    final accountNames = <String, String>{};
-
-    for (final t in transactions) {
-      if (t['is_automatic'] == true) continue;
-      // Technical Filter
-      final label = t['label']?.toString().toLowerCase() ?? '';
-      if (label.contains('solde') || label.contains('ajustement')) continue;
-
-      final String? tAccount = t['account'];
-      final String? tTargetAccount = t['target_account'];
-
-      // Global View: Neutralize transfers
-      // Transfers are handled per account, not globally in this loop.
-      // The original logic for processing source and target accounts is retained.
-
-      final accountId = tAccount ?? 'unknown';
-      final targetId = tTargetAccount;
-
-      // Handle main account stats
-      _processTransactionForAccount(
-        t: t,
-        accountId: accountId,
-        statsByAccount: statsByAccount,
-        accountNames: accountNames,
-        isOutgoing: true,
+    try {
+      final transactions = await _transactionRepo.getTransactions(
+        start: start,
+        end: end,
       );
 
-      // Handle target account stats if transfer
-      if (targetId != null && targetId.isNotEmpty) {
+      final statsByAccount = <String, AccountStats>{};
+      final accountNames = <String, String>{};
+
+      for (final t in transactions) {
+        if (t['is_automatic'] == true) continue;
+        final label = t['label']?.toString().toLowerCase() ?? '';
+        if (label.contains('solde') || label.contains('ajustement')) continue;
+
+        final String? tAccount = t['account'];
+        final String? tTargetAccount = t['target_account'];
+
+        final accountId = tAccount ?? 'unknown';
+        final targetId = tTargetAccount;
+
         _processTransactionForAccount(
           t: t,
-          accountId: targetId,
+          accountId: accountId,
           statsByAccount: statsByAccount,
           accountNames: accountNames,
-          isOutgoing: false,
+          isOutgoing: true,
         );
-      }
-    }
 
-    state = state.copyWith(
-      isLoading: false,
-      statsByAccount: statsByAccount,
-      accountNames: accountNames,
-    );
+        if (targetId != null && targetId.isNotEmpty) {
+          _processTransactionForAccount(
+            t: t,
+            accountId: targetId,
+            statsByAccount: statsByAccount,
+            accountNames: accountNames,
+            isOutgoing: false,
+          );
+        }
+      }
+
+      state = state.copyWith(
+        isLoading: false,
+        statsByAccount: statsByAccount,
+        accountNames: accountNames,
+      );
+    } catch (e, stack) {
+      debugPrint('Error in loadStats: $e\n$stack');
+      state = state.copyWith(isLoading: false);
+    }
   }
 
   void _processTransactionForAccount({
@@ -160,15 +159,11 @@ class StatsController extends StateNotifier<StatsState> {
       // Try to find account name in expand
       if (t['expand'] != null) {
         if (isOutgoing && t['expand']['account'] != null) {
-          final List<dynamic> expAcc = t['expand']['account'];
-          if (expAcc.isNotEmpty) {
-            accountNames[accountId] = expAcc[0]['name'] ?? 'Compte';
-          }
+          final dynamic expAcc = t['expand']['account'];
+          accountNames[accountId] = expAcc['name'] ?? 'Compte';
         } else if (!isOutgoing && t['expand']['target_account'] != null) {
-          final List<dynamic> expTarget = t['expand']['target_account'];
-          if (expTarget.isNotEmpty) {
-            accountNames[accountId] = expTarget[0]['name'] ?? 'Compte';
-          }
+          final dynamic expTarget = t['expand']['target_account'];
+          accountNames[accountId] = expTarget['name'] ?? 'Compte';
         }
       }
       accountNames.putIfAbsent(accountId, () => 'Compte');
@@ -179,20 +174,20 @@ class StatsController extends StateNotifier<StatsState> {
     final status = t['status'] ?? 'effective';
     final isReal = status == 'effective';
 
-    String category = 'Commun';
+    String categoryId = 'other';
     if (t['expand'] != null && t['expand']['category'] != null) {
-      final List<dynamic> expCat = t['expand']['category'];
-      if (expCat.isNotEmpty) {
-        category = expCat[0]['name'] ?? 'Commun';
-      }
+      final dynamic expCat = t['expand']['category'];
+      categoryId = expCat['id'] ?? 'other';
+    } else if (t['category'] != null) {
+      categoryId = t['category'].toString();
     }
 
-    String member = 'Commun';
+    String memberId = 'common';
     if (t['expand'] != null && t['expand']['member'] != null) {
-      final List<dynamic> expMem = t['expand']['member'];
-      if (expMem.isNotEmpty) {
-        member = expMem[0]['name'] ?? 'Commun';
-      }
+      final dynamic expMem = t['expand']['member'];
+      memberId = expMem['id'] ?? 'common';
+    } else if (t['member'] != null) {
+      memberId = t['member'].toString();
     }
 
     // Type logic
@@ -207,26 +202,26 @@ class StatsController extends StateNotifier<StatsState> {
 
     if (isIncome) {
       if (isReal) {
-        stats.realIncomeByCategory[category] =
-            (stats.realIncomeByCategory[category] ?? 0) + amount;
-        stats.realIncomeByMember[member] =
-            (stats.realIncomeByMember[member] ?? 0) + amount;
+        stats.realIncomeByCategory[categoryId] =
+            (stats.realIncomeByCategory[categoryId] ?? 0) + amount;
+        stats.realIncomeByMember[memberId] =
+            (stats.realIncomeByMember[memberId] ?? 0) + amount;
       }
-      stats.projectedIncomeByCategory[category] =
-          (stats.projectedIncomeByCategory[category] ?? 0) + amount;
-      stats.projectedIncomeByMember[member] =
-          (stats.projectedIncomeByMember[member] ?? 0) + amount;
+      stats.projectedIncomeByCategory[categoryId] =
+          (stats.projectedIncomeByCategory[categoryId] ?? 0) + amount;
+      stats.projectedIncomeByMember[memberId] =
+          (stats.projectedIncomeByMember[memberId] ?? 0) + amount;
     } else {
       if (isReal) {
-        stats.realExpenseByCategory[category] =
-            (stats.realExpenseByCategory[category] ?? 0) + amount;
-        stats.realExpenseByMember[member] =
-            (stats.realExpenseByMember[member] ?? 0) + amount;
+        stats.realExpenseByCategory[categoryId] =
+            (stats.realExpenseByCategory[categoryId] ?? 0) + amount;
+        stats.realExpenseByMember[memberId] =
+            (stats.realExpenseByMember[memberId] ?? 0) + amount;
       }
-      stats.projectedExpenseByCategory[category] =
-          (stats.projectedExpenseByCategory[category] ?? 0) + amount;
-      stats.projectedExpenseByMember[member] =
-          (stats.projectedExpenseByMember[member] ?? 0) + amount;
+      stats.projectedExpenseByCategory[categoryId] =
+          (stats.projectedExpenseByCategory[categoryId] ?? 0) + amount;
+      stats.projectedExpenseByMember[memberId] =
+          (stats.projectedExpenseByMember[memberId] ?? 0) + amount;
     }
   }
 
@@ -239,50 +234,54 @@ class StatsController extends StateNotifier<StatsState> {
     final currentYear = DateTime.now().year;
     final List<YearlyTrend> trends = [];
 
-    // Fetch last 5 years
-    for (int i = 0; i < 5; i++) {
-      final year = currentYear - i;
-      final start = DateTime(year, 1, 1);
-      final end = DateTime(year, 12, 31, 23, 59, 59);
+    try {
+      // Fetch last 5 years
+      for (int i = 0; i < 5; i++) {
+        final year = currentYear - i;
+        final start = DateTime(year, 1, 1);
+        final end = DateTime(year, 12, 31, 23, 59, 59);
 
-      final transactions = await _transactionRepo.getTransactions(
-        start: start,
-        end: end,
-      );
+        final transactions = await _transactionRepo.getTransactions(
+          start: start,
+          end: end,
+        );
 
-      double yearIncome = 0;
-      double yearExpense = 0;
+        double yearIncome = 0;
+        double yearExpense = 0;
 
-      for (final t in transactions) {
-        // Technical Filter: Hide purely technical adjustments
-        final label = t['label']?.toString().toLowerCase() ?? '';
-        if (label.contains('solde') || label.contains('ajustement')) continue;
+        for (final t in transactions) {
+          // Technical Filter: Hide purely technical adjustments
+          final label = t['label']?.toString().toLowerCase() ?? '';
+          if (label.contains('solde') || label.contains('ajustement')) continue;
 
-        // Transfer logic: Neutralize transfers for global yearly trends
-        final String? tTargetAccount = t['target_account'];
-        if (tTargetAccount != null && tTargetAccount.isNotEmpty) {
-          continue; // Skip transfers for global yearly trends
+          // Transfer logic: Neutralize transfers for global yearly trends
+          final String? tTargetAccount = t['target_account'];
+          if (tTargetAccount != null && tTargetAccount.isNotEmpty) {
+            continue; // Skip transfers for global yearly trends
+          }
+
+          final amount = (t['amount'] as num).toDouble();
+          if (t['type'] == 'income') {
+            yearIncome += amount;
+          } else {
+            yearExpense += amount;
+          }
         }
 
-        final amount = (t['amount'] as num).toDouble();
-        if (t['type'] == 'income') {
-          yearIncome += amount;
-        } else {
-          yearExpense += amount;
-        }
+        trends.add(
+          YearlyTrend(
+            year: year,
+            income: yearIncome,
+            expense: yearExpense,
+            balance: yearIncome - yearExpense,
+          ),
+        );
       }
 
-      trends.add(
-        YearlyTrend(
-          year: year,
-          income: yearIncome,
-          expense: yearExpense,
-          balance: yearIncome - yearExpense,
-        ),
-      );
+      state = state.copyWith(yearlyTrends: trends.reversed.toList());
+    } catch (e, stack) {
+      debugPrint('Error in fetchYearlyTrends: $e\n$stack');
     }
-
-    state = state.copyWith(yearlyTrends: trends.reversed.toList());
   }
 }
 
