@@ -38,10 +38,16 @@ class _TransactionListState extends ConsumerState<TransactionList> {
     // 1. Group transactions by date
     final groupedTransactions = <String, List<dynamic>>{};
     for (final t in widget.transactions) {
-      // Hide technical anchors (automatic with 0 amount)
+      // Hide technical anchors (automatic or technical labels)
       final isAutomatic = t['is_automatic'] == true;
-      final amount = (t['amount'] as num?)?.toDouble() ?? 0.0;
-      if (isAutomatic && amount == 0) continue;
+      final label = t['label']?.toString() ?? '';
+      final isTechnical =
+          isAutomatic ||
+          label == 'Solde Initial' ||
+          label == 'Mise à jour solde' ||
+          label.contains('Ajustement solde');
+
+      if (isTechnical) continue;
 
       final dateStr = DateFormat(
         'yyyy-MM-dd',
