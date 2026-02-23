@@ -15,7 +15,7 @@ class InboxRepositoryImpl implements InboxRepository {
         .collection('raw_inbox')
         .getFullList(
           filter: 'user = "${user.id}" && is_processed = false',
-          sort: '-received_at',
+          sort: '-date',
         );
 
     return records.map((e) => e.data..['id'] = e.id).toList();

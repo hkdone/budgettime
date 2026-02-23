@@ -13,16 +13,16 @@ class DefaultRegexStrategy implements InboxProcessingStrategy {
 
   @override
   double canHandle(Map<String, dynamic> item) {
-    final content = item['content'] as String?;
-    if (content == null) return 0.0;
+    final payload = item['raw_payload'] as String?;
+    if (payload == null) return 0.0;
 
-    return _pattern.hasMatch(content) ? 0.9 : 0.0;
+    return _pattern.hasMatch(payload) ? 0.9 : 0.0;
   }
 
   @override
   Map<String, dynamic>? extractTransactionData(Map<String, dynamic> item) {
-    final content = item['content'] as String;
-    final match = _pattern.firstMatch(content);
+    final payload = item['raw_payload'] as String? ?? '';
+    final match = _pattern.firstMatch(payload);
 
     if (match != null) {
       final typeStr = match.group(1)?.toLowerCase() ?? '';
@@ -39,7 +39,7 @@ class DefaultRegexStrategy implements InboxProcessingStrategy {
 
       return {
         'amount': amount,
-        'label': content.length > 50 ? content.substring(0, 50) : content,
+        'label': payload.length > 50 ? payload.substring(0, 50) : payload,
         'type': type,
         'date': DateTime.now().toUtc().toString().split(
           '.',

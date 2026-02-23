@@ -9,16 +9,16 @@ class LaBanquePostaleSmsParser implements InboxProcessingStrategy {
 
   @override
   double canHandle(Map<String, dynamic> item) {
-    final content = item['content'] as String? ?? '';
-    return (content.contains('LBP:') && content.contains('Paiement'))
+    final payload = item['raw_payload'] as String? ?? '';
+    return (payload.contains('LBP:') && payload.contains('Paiement'))
         ? 1.0
         : 0.0;
   }
 
   @override
   Map<String, dynamic>? extractTransactionData(Map<String, dynamic> item) {
-    final content = item['content'] as String;
-    final match = _pattern.firstMatch(content);
+    final payload = item['raw_payload'] as String? ?? '';
+    final match = _pattern.firstMatch(payload);
 
     if (match != null) {
       final amountStr = match.group(1)?.replaceAll(',', '.') ?? '0.0';
