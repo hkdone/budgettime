@@ -43,7 +43,7 @@ class AccountController extends StateNotifier<AsyncValue<List<Account>>> {
 
       // Create Initial Anchor Transaction
       await _transactionRepository.addTransaction({
-        'amount': 0.0,
+        'amount': 0,
         'label': 'Solde Initial',
         'type': 'income',
         'date': DateTime.now(),
@@ -76,7 +76,7 @@ class AccountController extends StateNotifier<AsyncValue<List<Account>>> {
 
       // Create Update Anchor Transaction
       await _transactionRepository.addTransaction({
-        'amount': 0.0,
+        'amount': 0,
         'label': 'Mise à jour solde',
         'type': 'income',
         'date': DateTime.now(),

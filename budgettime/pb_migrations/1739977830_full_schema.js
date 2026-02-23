@@ -147,7 +147,7 @@ migrate((db) => {
         "type": "base",
         "system": false,
         "schema": [
-            { "id": "transactions_amount", "name": "amount", "type": "number", "required": true, "presentable": false, "unique": false, "options": { "min": null, "max": null, "noDecimal": false } },
+            { "id": "transactions_amount", "name": "amount", "type": "number", "required": false, "presentable": false, "unique": false, "options": { "min": null, "max": null, "noDecimal": false } },
             { "id": "transactions_label", "name": "label", "type": "text", "required": true, "presentable": true, "unique": false, "options": { "min": null, "max": null, "pattern": "" } },
             { "id": "transactions_type", "name": "type", "type": "select", "required": true, "presentable": false, "unique": false, "options": { "maxSelect": 1, "values": ["income", "expense", "transfer"] } },
             { "id": "transactions_date", "name": "date", "type": "date", "required": true, "presentable": false, "unique": false, "options": { "min": "", "max": "" } },
