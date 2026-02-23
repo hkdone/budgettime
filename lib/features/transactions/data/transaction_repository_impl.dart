@@ -37,7 +37,33 @@ class TransactionRepositoryImpl implements TransactionRepository {
           expand: 'account,target_account,recurrence,member,category',
         );
 
-    return records.map((e) => e.toJson()).toList();
+    return records.map((e) {
+      final json = e.toJson();
+      final Map<String, dynamic> expandMap = {};
+
+      const expandKeys = [
+        'account',
+        'target_account',
+        'recurrence',
+        'member',
+        'category',
+      ];
+      for (final key in expandKeys) {
+        try {
+          final expanded = e.get<List<dynamic>>('expand.$key');
+          if (expanded.isNotEmpty) {
+            expandMap[key] = expanded.map((v) => v.toJson()).toList();
+          }
+        } catch (_) {
+          // Key might not exist in this specific record's expansion
+        }
+      }
+
+      if (expandMap.isNotEmpty) {
+        json['expand'] = expandMap;
+      }
+      return json;
+    }).toList();
   }
 
   @override
@@ -63,12 +89,31 @@ class TransactionRepositoryImpl implements TransactionRepository {
         .collection('transactions')
         .getFullList(
           filter: filter,
-          sort:
-              '-date', // Most recent overdue first? Or oldest? Maybe oldest on top to clear them? Let's stick to -date consistent with main list
+          sort: '-date',
           expand: 'account,recurrence,member,category',
         );
 
-    return records.map((e) => e.toJson()).toList();
+    return records.map((e) {
+      final json = e.toJson();
+      final Map<String, dynamic> expandMap = {};
+      const expandKeys = ['account', 'recurrence', 'member', 'category'];
+
+      for (final key in expandKeys) {
+        try {
+          final expanded = e.get<List<dynamic>>('expand.$key');
+          if (expanded.isNotEmpty) {
+            expandMap[key] = expanded.map((v) => v.toJson()).toList();
+          }
+        } catch (_) {
+          // Key might not exist in this specific expansion
+        }
+      }
+
+      if (expandMap.isNotEmpty) {
+        json['expand'] = expandMap;
+      }
+      return json;
+    }).toList();
   }
 
   @override

@@ -362,17 +362,21 @@ final accountStatsProvider = FutureProvider.family<StatisticsData, String?>((
     // Safe access to category and member IDs/names
     String catId = t['category'] ?? 'other';
     if (t['expand'] != null && t['expand']['category'] != null) {
-      final List<dynamic> expCat = t['expand']['category'];
-      if (expCat.isNotEmpty) {
+      final dynamic expCat = t['expand']['category'];
+      if (expCat is List && expCat.isNotEmpty) {
         catId = expCat[0]['id'] ?? catId;
+      } else if (expCat is Map) {
+        catId = expCat['id'] ?? catId;
       }
     }
 
     String mName = 'Commun';
     if (t['expand'] != null && t['expand']['member'] != null) {
-      final List<dynamic> expMem = t['expand']['member'];
-      if (expMem.isNotEmpty) {
+      final dynamic expMem = t['expand']['member'];
+      if (expMem is List && expMem.isNotEmpty) {
         mName = expMem[0]['name'] ?? 'Commun';
+      } else if (expMem is Map) {
+        mName = expMem['name'] ?? 'Commun';
       }
     } else if (t['member'] != null) {
       mName = t['member'].toString();
