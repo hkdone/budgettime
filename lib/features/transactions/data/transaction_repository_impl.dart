@@ -56,7 +56,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
         'user = "${user.id}" && status = "projected" && date < "$dateStr"';
 
     if (accountId != null) {
-      filter += ' && account = "$accountId"';
+      filter += ' && (account = "$accountId" || target_account = "$accountId")';
     }
 
     final records = await _dbService.pb

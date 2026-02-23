@@ -27,24 +27,31 @@ class DashboardPage extends ConsumerWidget {
     double projectedExpense = 0;
 
     for (final t in state.transactions) {
-      // Transfer Neutrality: Exclude transfers from statistics
-      if (t['target_account'] != null &&
-          t['target_account'].toString().isNotEmpty) {
-        continue;
-      }
-
-      final date = DateTime.parse(t['date']);
-      final isWithinPeriod =
-          date.isAtSameMomentAs(state.start) ||
-          date.isAtSameMomentAs(state.end) ||
-          (date.isAfter(state.start) && date.isBefore(state.end));
-
-      if (!isWithinPeriod) continue;
-
       final amount = (t['amount'] as num).toDouble();
       final isEffective = t['status'] == 'effective';
+      final isTransfer =
+          t['target_account'] != null &&
+          t['target_account'].toString().isNotEmpty;
 
-      if (t['type'] == 'income') {
+      bool isIncomeFlow = t['type'] == 'income';
+
+      if (isTransfer) {
+        if (state.selectedAccount == null) {
+          // Global view: transfers are neutral
+          continue;
+        } else {
+          // Account specific view
+          if (t['target_account'] == state.selectedAccount!.id) {
+            isIncomeFlow = true;
+          } else if (t['account'] == state.selectedAccount!.id) {
+            isIncomeFlow = false;
+          } else {
+            continue;
+          }
+        }
+      }
+
+      if (isIncomeFlow) {
         if (isEffective) realIncome += amount;
         projectedIncome += amount;
       } else {
@@ -257,7 +264,7 @@ class DashboardPage extends ConsumerWidget {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: const Text(
-                                  'v1.9.19',
+                                  'v1.9.20',
                                   style: TextStyle(
                                     fontSize: 10,
                                     color: Colors.blueGrey,
