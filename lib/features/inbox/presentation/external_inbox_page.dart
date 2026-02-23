@@ -93,14 +93,16 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
                 subtitle: Text(
                   DateFormat('dd/MM/yyyy HH:mm').format(item.date),
                 ),
-                trailing: Text(
-                  formatCurrency(item.amount),
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: item.amount >= 0 ? Colors.green : Colors.red,
-                  ),
-                ),
+                trailing: item.amount != 0
+                    ? Text(
+                        formatCurrency(item.amount),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: item.amount >= 0 ? Colors.green : Colors.red,
+                        ),
+                      )
+                    : null,
                 onTap: () => _processItem(item),
               ),
               if (_showDebug) _buildDebugPanel(item),

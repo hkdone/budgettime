@@ -51027,14 +51027,19 @@ A.aJf.prototype={
 $0(){return this.a.fz(0)},
 $S:0}
 A.aJ7.prototype={
-$2(a,b){var s=null,r=this.b[b],q=A.agI(B.aC.i0(0.1),B.a3s),p=A.ax(r.c,s,s,s,B.dw,s,s,s),o=A.ax(A.ja("dd/MM/yyyy HH:mm",s).fg(r.b),s,s,s,s,s,s,s),n=r.d,m=A.hO(n),l=this.a,k=t.p
-m=A.b([A.k6(!1,s,s,s,!0,s,s,!0,s,q,s,s,new A.aJ4(l,r),!1,s,s,s,s,o,s,p,s,A.ax(m,s,s,s,A.dJ(s,s,n>=0?B.bb:B.av,s,s,s,s,s,s,s,s,16,s,s,B.al,s,s,!0,s,s,s,s,s,s,s,s),s,s,s),s)],k)
-if(l.w){q=r.r
-q=A.b([B.apa,B.qw,A.aXe(q==null?"No raw payload available":q,B.an4)],k)
-p=r.w
-if(p!=null)B.b.L(q,A.b([B.bP,B.apw,A.aXe(J.cI(p),B.alt)],k))
-m.push(A.ei(s,A.bT(q,B.bg,B.q,B.w),B.x,B.rx,s,s,s,s,s,B.yC,s,s,1/0))}m.push(new A.b6(B.a0P,A.cf(A.b([A.bhh(B.a39,B.apC,new A.aJ5(l,r),A.I9(s,s,s,s,s,s,s,s,s,B.b4,s,s,s,s,s,s,s,s,s,s)),B.bk,A.bcZ(B.a36,B.apv,new A.aJ6(l,r))],k),B.u,B.hD,B.w,0),s))
-return A.wU(A.bT(m,B.u,B.q,B.w),B.cj,s,s,B.kv,s,s,s)},
+$2(a,b){var s,r,q=null,p=this.b[b],o=A.agI(B.aC.i0(0.1),B.a3s),n=A.ax(p.c,q,q,q,B.dw,q,q,q),m=A.ax(A.ja("dd/MM/yyyy HH:mm",q).fg(p.b),q,q,q,q,q,q,q),l=p.d
+if(l!==0){s=A.hO(l)
+s=A.ax(s,q,q,q,A.dJ(q,q,l>=0?B.bb:B.av,q,q,q,q,q,q,q,q,16,q,q,B.al,q,q,!0,q,q,q,q,q,q,q,q),q,q,q)
+l=s}else l=q
+s=this.a
+r=t.p
+l=A.b([A.k6(!1,q,q,q,!0,q,q,!0,q,o,q,q,new A.aJ4(s,p),!1,q,q,q,q,m,q,n,q,l,q)],r)
+if(s.w){o=p.r
+o=A.b([B.apa,B.qw,A.aXe(o==null?"No raw payload available":o,B.an4)],r)
+n=p.w
+if(n!=null)B.b.L(o,A.b([B.bP,B.apw,A.aXe(J.cI(n),B.alt)],r))
+l.push(A.ei(q,A.bT(o,B.bg,B.q,B.w),B.x,B.rx,q,q,q,q,q,B.yC,q,q,1/0))}l.push(new A.b6(B.a0P,A.cf(A.b([A.bhh(B.a39,B.apC,new A.aJ5(s,p),A.I9(q,q,q,q,q,q,q,q,q,B.b4,q,q,q,q,q,q,q,q,q,q)),B.bk,A.bcZ(B.a36,B.apv,new A.aJ6(s,p))],r),B.u,B.hD,B.w,0),q))
+return A.wU(A.bT(l,B.u,B.q,B.w),B.cj,q,q,B.kv,q,q,q)},
 $S:275}
 A.aJ4.prototype={
 $0(){return this.a.Xg(this.b)},
@@ -121456,7 +121461,7 @@ B.ap0=new A.an("R\xe9el (Mois)",null,B.S6,null,null,null,null,null,null,null)
 B.ap1=new A.an("Cette op\xe9ration est irr\xe9versible.",null,null,null,null,null,null,null,null,null)
 B.ap2=new A.an("INSTALLER",null,null,null,null,null,null,null,null,null)
 B.S7=new A.r(!0,B.b4,null,null,null,null,12,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.ap3=new A.an("v1.9.5",null,B.S7,B.eO,null,null,null,null,null,null)
+B.ap3=new A.an("v1.9.6",null,B.S7,B.eO,null,null,null,null,null,null)
 B.ap4=new A.an("Effacer",null,null,null,null,null,null,null,null,null)
 B.ap6=new A.an("Go to home page",null,B.S5,null,null,null,null,null,null,null)
 B.Sa=new A.r(!0,B.pS,null,null,null,null,12,B.al,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
@@ -121476,7 +121481,7 @@ B.app=new A.an("Home",null,null,null,null,null,null,null,null,null)
 B.aoh=new A.r(!0,null,null,null,null,null,20,B.al,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
 B.apr=new A.an("\xc9volution du Reste \xe0 Vivre",null,B.aoh,null,null,null,null,null,null,null)
 B.amF=new A.r(!0,B.dT,null,null,null,null,10,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.aps=new A.an("v1.9.5",null,B.amF,null,null,null,null,null,null,null)
+B.aps=new A.an("v1.9.6",null,B.amF,null,null,null,null,null,null,null)
 B.apt=new A.an("Suppression r\xe9currence",null,null,null,null,null,null,null,null,null)
 B.apv=new A.an("Valider",null,null,null,null,null,null,null,null,null)
 B.apw=new A.an("METADATA",null,B.Sa,null,null,null,null,null,null,null)

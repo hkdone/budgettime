@@ -99,8 +99,9 @@ migrate((db) => {
         "system": false,
         "schema": [
             { "id": "categories_name", "name": "name", "type": "text", "required": true, "presentable": true, "unique": false, "options": { "min": null, "max": null, "pattern": "" } },
-            { "id": "categories_icon", "name": "icon", "type": "text", "required": true, "presentable": false, "unique": false, "options": { "min": null, "max": null, "pattern": "" } },
-            { "id": "categories_color", "name": "color", "type": "text", "required": true, "presentable": false, "unique": false, "options": { "min": null, "max": null, "pattern": "" } },
+            { "id": "categories_icon", "name": "icon_code_point", "type": "number", "required": true, "presentable": false, "unique": false, "options": { "min": null, "max": null, "noDecimal": true } },
+            { "id": "categories_color", "name": "color_hex", "type": "text", "required": true, "presentable": false, "unique": false, "options": { "min": null, "max": null, "pattern": "" } },
+            { "id": "categories_is_system", "name": "is_system", "type": "bool", "required": false, "presentable": false, "unique": false, "options": {} },
             { "id": "categories_user", "name": "user", "type": "relation", "required": true, "presentable": false, "unique": false, "options": { "collectionId": "_pb_users_auth_", "cascadeDelete": true, "minSelect": null, "maxSelect": 1, "displayFields": null } }
         ],
         "listRule": "user = @request.auth.id",
