@@ -45,6 +45,8 @@ class StatsState {
   final Map<String, String> accountNames; // accountId -> name
   final List<YearlyTrend> yearlyTrends;
   final int selectedYear;
+  final Map<String, String> memberNames; // memberId -> name
+  final Map<String, String> categoryNames; // categoryId -> name
 
   StatsState({
     this.isLoading = false,
@@ -52,6 +54,8 @@ class StatsState {
     this.accountNames = const {},
     this.yearlyTrends = const [],
     this.selectedYear = 0,
+    this.memberNames = const {},
+    this.categoryNames = const {},
   });
 
   StatsState copyWith({
@@ -60,6 +64,8 @@ class StatsState {
     Map<String, String>? accountNames,
     List<YearlyTrend>? yearlyTrends,
     int? selectedYear,
+    Map<String, String>? memberNames,
+    Map<String, String>? categoryNames,
   }) {
     return StatsState(
       isLoading: isLoading ?? this.isLoading,
@@ -67,6 +73,8 @@ class StatsState {
       accountNames: accountNames ?? this.accountNames,
       yearlyTrends: yearlyTrends ?? this.yearlyTrends,
       selectedYear: selectedYear ?? this.selectedYear,
+      memberNames: memberNames ?? this.memberNames,
+      categoryNames: categoryNames ?? this.categoryNames,
     );
   }
 }
@@ -95,6 +103,8 @@ class StatsController extends StateNotifier<StatsState> {
 
       final statsByAccount = <String, AccountStats>{};
       final accountNames = <String, String>{};
+      final memberNames = <String, String>{};
+      final categoryNames = <String, String>{};
 
       for (final t in transactions) {
         if (t['is_automatic'] == true) continue;
@@ -112,6 +122,8 @@ class StatsController extends StateNotifier<StatsState> {
           accountId: accountId,
           statsByAccount: statsByAccount,
           accountNames: accountNames,
+          memberNames: memberNames,
+          categoryNames: categoryNames,
           isOutgoing: true,
         );
 
@@ -121,6 +133,8 @@ class StatsController extends StateNotifier<StatsState> {
             accountId: targetId,
             statsByAccount: statsByAccount,
             accountNames: accountNames,
+            memberNames: memberNames,
+            categoryNames: categoryNames,
             isOutgoing: false,
           );
         }
@@ -130,6 +144,8 @@ class StatsController extends StateNotifier<StatsState> {
         isLoading: false,
         statsByAccount: statsByAccount,
         accountNames: accountNames,
+        memberNames: memberNames,
+        categoryNames: categoryNames,
       );
     } catch (e, stack) {
       debugPrint('Error in loadStats: $e\n$stack');
@@ -142,6 +158,8 @@ class StatsController extends StateNotifier<StatsState> {
     required String accountId,
     required Map<String, AccountStats> statsByAccount,
     required Map<String, String> accountNames,
+    required Map<String, String> memberNames,
+    required Map<String, String> categoryNames,
     required bool isOutgoing,
   }) {
     if (!statsByAccount.containsKey(accountId)) {
@@ -178,6 +196,7 @@ class StatsController extends StateNotifier<StatsState> {
     if (t['expand'] != null && t['expand']['category'] != null) {
       final dynamic expCat = t['expand']['category'];
       categoryId = expCat['id'] ?? 'other';
+      categoryNames.putIfAbsent(categoryId, () => expCat['name'] ?? 'Autre');
     } else if (t['category'] != null) {
       categoryId = t['category'].toString();
     }
@@ -186,9 +205,11 @@ class StatsController extends StateNotifier<StatsState> {
     if (t['expand'] != null && t['expand']['member'] != null) {
       final dynamic expMem = t['expand']['member'];
       memberId = expMem['id'] ?? 'common';
+      memberNames.putIfAbsent(memberId, () => expMem['name'] ?? 'Commun');
     } else if (t['member'] != null) {
       memberId = t['member'].toString();
     }
+    memberNames.putIfAbsent('common', () => 'Commun');
 
     // Type logic
     final bool isIncome;

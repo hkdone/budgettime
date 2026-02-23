@@ -171,22 +171,17 @@ class _StatsPageState extends ConsumerState<StatsPage> {
     double totalProjectedExpense = 0;
 
     for (final stats in state.statsByAccount.values) {
-      totalRealIncome += stats.realIncomeByCategory.values.fold(
-        0,
-        (a, b) => a + b,
-      );
-      totalRealExpense += stats.realExpenseByCategory.values.fold(
-        0,
-        (a, b) => a + b,
-      );
-      totalProjectedIncome += stats.projectedIncomeByCategory.values.fold(
-        0,
-        (a, b) => a + b,
-      );
-      totalProjectedExpense += stats.projectedExpenseByCategory.values.fold(
-        0,
-        (a, b) => a + b,
-      );
+      // Helper to sum excluding transfers
+      double sumSafe(Map<String, double> map) {
+        return map.entries
+            .where((e) => e.key != 'transfer')
+            .fold(0.0, (a, b) => a + b.value);
+      }
+
+      totalRealIncome += sumSafe(stats.realIncomeByCategory);
+      totalRealExpense += sumSafe(stats.realExpenseByCategory);
+      totalProjectedIncome += sumSafe(stats.projectedIncomeByCategory);
+      totalProjectedExpense += sumSafe(stats.projectedExpenseByCategory);
     }
 
     final realBalance = totalRealIncome - totalRealExpense;
@@ -344,6 +339,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
     Color baseColor, {
     String? title,
   }) {
+    final state = ref.read(statsControllerProvider);
     if (data.isEmpty) {
       return SizedBox(
         height: 150,
@@ -429,6 +425,15 @@ class _StatsPageState extends ConsumerState<StatsPage> {
             children: sortedEntries.asMap().entries.map((entry) {
               final index = entry.key;
               final val = entry.value;
+
+              // Map ID to Name
+              String displayName = val.key;
+              if (state.memberNames.containsKey(val.key)) {
+                displayName = state.memberNames[val.key]!;
+              } else if (state.categoryNames.containsKey(val.key)) {
+                displayName = state.categoryNames[val.key]!;
+              }
+
               return Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -442,7 +447,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    '${val.key}: ${formatCurrency(val.value)}',
+                    '$displayName: ${formatCurrency(val.value)}',
                     style: const TextStyle(fontSize: 10),
                   ),
                 ],
