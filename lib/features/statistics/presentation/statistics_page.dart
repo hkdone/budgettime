@@ -190,7 +190,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
                       (c) => c.id == catStat.categoryId,
                       orElse: () => const Category(
                         id: 'unknown',
-                        name: 'Inconnu',
+                        name: 'Commun',
                         icon: Icons.help,
                         color: Colors.grey,
                       ),
@@ -220,7 +220,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
                   (c) => c.id == catStat.categoryId,
                   orElse: () => const Category(
                     id: 'unknown',
-                    name: 'Inconnu',
+                    name: 'Commun',
                     icon: Icons.help,
                     color: Colors.grey,
                   ),
@@ -285,7 +285,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
                             (m) => m.id == stat.memberId,
                             orElse: () => const Member(
                               id: 'unknown',
-                              name: 'Inconnu',
+                              name: 'Commun',
                               icon: Icons.help,
                             ),
                           );
@@ -324,7 +324,7 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
                         (m) => m.id == stat.memberId,
                         orElse: () => const Member(
                           id: 'unknown',
-                          name: 'Inconnu',
+                          name: 'Commun',
                           icon: Icons.help,
                         ),
                       );

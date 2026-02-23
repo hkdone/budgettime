@@ -16,9 +16,11 @@ class TransactionRepositoryImpl implements TransactionRepository {
     final user = _dbService.pb.authStore.record;
     if (user == null) return [];
 
-    // Format dates for PocketBase filter (YYYY-MM-DD HH:MM:SS)
-    final startStr = formatDateForPb(start);
-    final endStr = formatDateForPb(end);
+    // Use full day range for filtering
+    final startStr =
+        '${start.year}-${start.month.toString().padLeft(2, '0')}-${start.day.toString().padLeft(2, '0')} 00:00:00';
+    final endStr =
+        '${end.year}-${end.month.toString().padLeft(2, '0')}-${end.day.toString().padLeft(2, '0')} 23:59:59';
 
     String filter =
         'user = "${user.id}" && date >= "$startStr" && date <= "$endStr"';
@@ -46,9 +48,9 @@ class TransactionRepositoryImpl implements TransactionRepository {
     final user = _dbService.pb.authStore.record;
     if (user == null) return [];
 
-    // Format date for PocketBase filter (YYYY-MM-DD HH:MM:SS)
-    // We want strictly LESS THAN start date.
-    final dateStr = formatDateForPb(beforeDate);
+    // We want strictly LESS THAN start date (exclusive of the start day)
+    final dateStr =
+        '${beforeDate.year}-${beforeDate.month.toString().padLeft(2, '0')}-${beforeDate.day.toString().padLeft(2, '0')} 00:00:00';
 
     String filter =
         'user = "${user.id}" && status = "projected" && date < "$dateStr"';
@@ -87,11 +89,13 @@ class TransactionRepositoryImpl implements TransactionRepository {
       filter += ' && status = "$status"';
     }
     if (minDate != null) {
-      final dateStr = formatDateForPb(minDate);
+      final dateStr =
+          '${minDate.year}-${minDate.month.toString().padLeft(2, '0')}-${minDate.day.toString().padLeft(2, '0')} 00:00:00';
       filter += ' && date >= "$dateStr"';
     }
     if (maxDate != null) {
-      final dateStr = formatDateForPb(maxDate);
+      final dateStr =
+          '${maxDate.year}-${maxDate.month.toString().padLeft(2, '0')}-${maxDate.day.toString().padLeft(2, '0')} 23:59:59';
       filter += ' && date <= "$dateStr"';
     }
 

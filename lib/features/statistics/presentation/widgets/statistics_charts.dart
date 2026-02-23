@@ -36,7 +36,7 @@ class CategoryPieChart extends StatelessWidget {
                   (c) => c.id == catStat.categoryId,
                   orElse: () => const Category(
                     id: 'unknown',
-                    name: 'Inconnu',
+                    name: 'Commun',
                     icon: Icons.help,
                     color: Colors.grey,
                   ),
@@ -68,7 +68,7 @@ class CategoryPieChart extends StatelessWidget {
                 (c) => c.id == catStat.categoryId,
                 orElse: () => const Category(
                   id: 'unknown',
-                  name: 'Inconnu',
+                  name: 'Commun',
                   icon: Icons.help,
                   color: Colors.grey,
                 ),
@@ -133,7 +133,7 @@ class MemberPieChart extends StatelessWidget {
                     (m) => m.id == stat.memberId,
                     orElse: () => const Member(
                       id: 'unknown',
-                      name: 'Inconnu',
+                      name: 'Commun',
                       icon: Icons.help,
                     ),
                   );
@@ -169,7 +169,7 @@ class MemberPieChart extends StatelessWidget {
                   (m) => m.id == stat.memberId,
                   orElse: () => const Member(
                     id: 'unknown',
-                    name: 'Inconnu',
+                    name: 'Commun',
                     icon: Icons.help,
                   ),
                 );

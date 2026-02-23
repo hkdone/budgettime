@@ -33,6 +33,14 @@ class DashboardPage extends ConsumerWidget {
         continue;
       }
 
+      final date = DateTime.parse(t['date']);
+      final isWithinPeriod =
+          date.isAtSameMomentAs(state.start) ||
+          date.isAtSameMomentAs(state.end) ||
+          (date.isAfter(state.start) && date.isBefore(state.end));
+
+      if (!isWithinPeriod) continue;
+
       final amount = (t['amount'] as num).toDouble();
       final isEffective = t['status'] == 'effective';
 
@@ -249,7 +257,7 @@ class DashboardPage extends ConsumerWidget {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: const Text(
-                                  'v1.9.14',
+                                  'v1.9.15',
                                   style: TextStyle(
                                     fontSize: 10,
                                     color: Colors.blueGrey,

@@ -114,6 +114,10 @@ final accountBalanceProvider = FutureProvider.family<double, Account>((
   account,
 ) async {
   final transactionRepo = ref.watch(transactionRepositoryProvider);
-  // getBalance is now absolute (it handles anchor logic)
-  return transactionRepo.getBalance(accountId: account.id);
+  // getBalance should show REAL balance (effective) for account cards
+  return transactionRepo.getBalance(
+    accountId: account.id,
+    status: 'effective',
+    maxDate: DateTime.now(),
+  );
 });

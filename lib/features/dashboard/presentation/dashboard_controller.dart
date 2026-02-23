@@ -117,17 +117,22 @@ class DashboardController extends StateNotifier<DashboardState> {
       DateTime start, end;
 
       if (now.day >= fiscalDay) {
-        // Current month period
+        // Current month period: from fiscalDay of this month 00:00:00
         start = DateTime(now.year, now.month, fiscalDay);
-        // End is next month start day - 1 second
+        // End is fiscalDay of next month - 1 day at 23:59:59
         final nextMonthStart = DateTime(now.year, now.month + 1, fiscalDay);
-        end = nextMonthStart.subtract(const Duration(seconds: 1));
+        end = nextMonthStart.subtract(const Duration(days: 1));
       } else {
-        // Previous month period
+        // Previous month period: from fiscalDay of last month 00:00:00
         start = DateTime(now.year, now.month - 1, fiscalDay);
+        // End is fiscalDay of this month - 1 day at 23:59:59
         final currentMonthStart = DateTime(now.year, now.month, fiscalDay);
-        end = currentMonthStart.subtract(const Duration(seconds: 1));
+        end = currentMonthStart.subtract(const Duration(days: 1));
       }
+
+      // Ensure start is at 00:00:00 and end is at 23:59:59
+      start = DateTime(start.year, start.month, start.day, 0, 0, 0);
+      end = DateTime(end.year, end.month, end.day, 23, 59, 59);
 
       // 3. Fetch Transactions (for the list view, current month)
       final transactions = await _transactionRepo.getTransactions(
@@ -167,21 +172,25 @@ class DashboardController extends StateNotifier<DashboardState> {
         }
       }
 
-      // Projected Balance (Effective + Projected)
-      // Our getBalance handles this automatically if we don't filter by status
-      double projectedBalance = 0;
-      if (state.selectedAccount != null) {
-        projectedBalance = await _transactionRepo.getBalance(
-          accountId: state.selectedAccount?.id,
-          // No status filter = Effective after anchor + Projected
-          maxDate: end,
-        );
-      } else {
-        for (final account in currentAccounts) {
-          projectedBalance += await _transactionRepo.getBalance(
-            accountId: account.id,
-            maxDate: end,
-          );
+      // Projected Balance (Solde Actuel + Projected within CURRENT period)
+      // We start from current effective balance and add only projected until 'end'
+      double projectedBalance = effectiveBalance;
+
+      final currentPeriodProjected = await _transactionRepo.getTransactions(
+        start: now.add(const Duration(days: 1)), // Only from tomorrow
+        end: end,
+        accountId: state.selectedAccount?.id,
+      );
+
+      for (final t in currentPeriodProjected) {
+        if (t['status'] == 'projected') {
+          final amount = (t['amount'] as num).toDouble();
+          final type = t['type'];
+          if (type == 'income') {
+            projectedBalance += amount;
+          } else {
+            projectedBalance -= amount;
+          }
         }
       }
 
