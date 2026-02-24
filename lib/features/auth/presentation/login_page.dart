@@ -137,10 +137,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                     const SizedBox(height: 16),
                     TextButton(
-                      onPressed: () => context.push('/signup'),
-                      child: const Text('Pas de compte ? Créer un compte'),
-                    ),
-                    TextButton(
                       onPressed: () async {
                         final dbService = ref.read(databaseServiceProvider);
                         final baseUrl = dbService.pb.baseURL;
@@ -167,7 +163,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                     const SizedBox(height: 24),
                     const Text(
-                      'v1.9.52',
+                      'v1.9.54',
                       style: TextStyle(color: Colors.grey, fontSize: 12),
                       textAlign: TextAlign.center,
                     ),

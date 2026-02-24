@@ -43,7 +43,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                             .changeYear(y);
                       }
                     },
-                    items: [for (int i = 0; i < 5; i++) DateTime.now().year - i]
+                    items: [for (int i = 0; i < 6; i++) DateTime.now().year + i]
                         .map((y) {
                           return DropdownMenuItem(
                             value: y,
