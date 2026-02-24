@@ -26,6 +26,8 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
       await _ref
           .read(authRepositoryProvider)
           .signUp(email, password, confirmPassword);
+      // Let the OS know that autofill is complete so it can save the credentials
+      TextInput.finishAutofillContext();
     });
   }
 

@@ -80,10 +80,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       ),
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
-                      autofillHints: const [
-                        AutofillHints.username,
-                        AutofillHints.email,
-                      ],
+                      autofillHints: const [AutofillHints.email],
                       autovalidateMode: AutovalidateMode.onUserInteraction,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -154,7 +151,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                     const SizedBox(height: 24),
                     const Text(
-                      'v1.9.37',
+                      'v1.9.38',
                       style: TextStyle(color: Colors.grey, fontSize: 12),
                       textAlign: TextAlign.center,
                     ),
