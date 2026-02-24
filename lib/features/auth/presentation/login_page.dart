@@ -56,9 +56,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           padding: const EdgeInsets.all(24.0),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 400),
-            child: AutofillGroup(
-              child: Form(
-                key: _formKey,
+            child: Form(
+              key: _formKey,
+              child: AutofillGroup(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -80,7 +80,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       ),
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
-                      autofillHints: const [AutofillHints.email],
+                      autofillHints: const [
+                        AutofillHints.email,
+                        AutofillHints.username,
+                      ],
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Veuillez entrer votre email';
@@ -150,7 +153,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                     const SizedBox(height: 24),
                     const Text(
-                      'v1.9.42',
+                      'v1.9.43',
                       style: TextStyle(color: Colors.grey, fontSize: 12),
                       textAlign: TextAlign.center,
                     ),
