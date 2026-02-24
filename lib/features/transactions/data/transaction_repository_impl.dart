@@ -150,7 +150,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
         .getFullList(
           filter: filter,
           fields:
-              'id,amount,type,date,bank_balance,status,account,target_account,created',
+              'id,amount,type,date,bank_balance,status,account,target_account,created,is_automatic',
           sort: '-date,-created',
         );
 
@@ -181,8 +181,10 @@ class TransactionRepositoryImpl implements TransactionRepository {
       // 1. Find the latest anchor (bank_balance) for THIS account
       Map<String, dynamic>? anchor;
       for (final r in group) {
-        // An anchor MUST be a bank balance update FOR THIS account
-        if (r['bank_balance'] != null && r['account'] == targetAccId) {
+        // An anchor MUST be an automatic bank balance update FOR THIS account
+        if (r['bank_balance'] != null &&
+            r['account'] == targetAccId &&
+            (r['is_automatic'] == true || r['is_automatic'] == 1)) {
           anchor = r;
           break;
         }

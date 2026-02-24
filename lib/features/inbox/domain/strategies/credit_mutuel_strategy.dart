@@ -71,6 +71,7 @@ class CreditMutuelSmsParser implements InboxProcessingStrategy {
         'account_external_id': externalId,
         'bank_balance': bankBalance,
         'status': 'effective', // Pre-select "Réel"
+        'is_automatic': true,
       };
     }
 
