@@ -12,7 +12,17 @@ import '../../../core/utils/formatters.dart';
 import '../../transactions/domain/transaction_repository.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
 
-class RecurrenceController extends StateNotifier<AsyncValue<List<Recurrence>>> {
+class RecurrenceState {
+  final List<Recurrence> recurrences;
+  final Map<String, int> projectionsCount;
+
+  RecurrenceState({
+    this.recurrences = const [],
+    this.projectionsCount = const {},
+  });
+}
+
+class RecurrenceController extends StateNotifier<AsyncValue<RecurrenceState>> {
   final RecurrenceRepositoryImpl _repository;
   final TransactionRepository _transactionRepo;
   final RecurrenceService _recurrenceService;
@@ -29,7 +39,43 @@ class RecurrenceController extends StateNotifier<AsyncValue<List<Recurrence>>> {
 
   Future<void> getRecurrences() async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() => _repository.getRecurrences());
+    state = await AsyncValue.guard(() async {
+      final recurrences = await _repository.getRecurrences();
+      final counts = await _transactionRepo.getRecurrenceProjectionsCount();
+
+      // Check for automatic recharge
+      bool needsRefresh = false;
+      for (final r in recurrences) {
+        if (r.active) {
+          final count = counts[r.id] ?? 0;
+          if (count <= 2) {
+            // Auto recharge for 1 year
+            final now = DateTime.now();
+            final periodEnd = DateTime(now.year + 1, 12, 31);
+            await _recurrenceService.generateProjectedTransactions(
+              recurrence: r,
+              periodEnd: periodEnd,
+            );
+            needsRefresh = true;
+          }
+        }
+      }
+
+      if (needsRefresh) {
+        // Refresh counts after auto-recharge
+        final newCounts = await _transactionRepo
+            .getRecurrenceProjectionsCount();
+        return RecurrenceState(
+          recurrences: recurrences,
+          projectionsCount: newCounts,
+        );
+      }
+
+      return RecurrenceState(
+        recurrences: recurrences,
+        projectionsCount: counts,
+      );
+    });
   }
 
   Future<Recurrence?> addRecurrence(
@@ -76,7 +122,27 @@ class RecurrenceController extends StateNotifier<AsyncValue<List<Recurrence>>> {
         _ref.read(dashboardControllerProvider.notifier).refresh();
       }
 
-      return _repository.getRecurrences();
+      if (createdRecurrence != null) {
+        // Generate projections for the next year
+        // Generate projections until end of next year
+        final now = DateTime.now();
+        final periodEnd = DateTime(now.year + 1, 12, 31);
+
+        await _recurrenceService.generateProjectedTransactions(
+          recurrence: createdRecurrence!,
+          periodEnd: periodEnd,
+        );
+
+        // Notify dashboard
+        _ref.read(dashboardControllerProvider.notifier).refresh();
+      }
+
+      final recurrences = await _repository.getRecurrences();
+      final counts = await _transactionRepo.getRecurrenceProjectionsCount();
+      return RecurrenceState(
+        recurrences: recurrences,
+        projectionsCount: counts,
+      );
     });
     return createdRecurrence;
   }
@@ -129,7 +195,11 @@ class RecurrenceController extends StateNotifier<AsyncValue<List<Recurrence>>> {
       // Notify dashboard
       _ref.read(dashboardControllerProvider.notifier).refresh();
 
-      return updatedRecurrences;
+      final counts = await _transactionRepo.getRecurrenceProjectionsCount();
+      return RecurrenceState(
+        recurrences: updatedRecurrences,
+        projectionsCount: counts,
+      );
     });
   }
 
@@ -145,13 +215,41 @@ class RecurrenceController extends StateNotifier<AsyncValue<List<Recurrence>>> {
       // Notify dashboard
       _ref.read(dashboardControllerProvider.notifier).refresh();
 
-      return _repository.getRecurrences();
+      final recurrences = await _repository.getRecurrences();
+      final counts = await _transactionRepo.getRecurrenceProjectionsCount();
+      return RecurrenceState(
+        recurrences: recurrences,
+        projectionsCount: counts,
+      );
+    });
+  }
+
+  /// Extends projections for a recurrence
+  Future<void> rechargeRecurrence(Recurrence recurrence) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final now = DateTime.now();
+      // Period end: end of current year + 1 (ensure at least 12-24 months)
+      // To get ~11 recurrences back if monthly, we need to go at least 1 year ahead
+      final periodEnd = DateTime(now.year + 1, 12, 31);
+
+      await _recurrenceService.generateProjectedTransactions(
+        recurrence: recurrence,
+        periodEnd: periodEnd,
+      );
+
+      final recurrences = await _repository.getRecurrences();
+      final counts = await _transactionRepo.getRecurrenceProjectionsCount();
+      return RecurrenceState(
+        recurrences: recurrences,
+        projectionsCount: counts,
+      );
     });
   }
 }
 
 final recurrenceControllerProvider =
-    StateNotifierProvider<RecurrenceController, AsyncValue<List<Recurrence>>>((
+    StateNotifierProvider<RecurrenceController, AsyncValue<RecurrenceState>>((
       ref,
     ) {
       final repository =

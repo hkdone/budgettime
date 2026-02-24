@@ -416,4 +416,26 @@ class TransactionRepositoryImpl implements TransactionRepository {
           .update(record.id, body: updateData);
     }
   }
+
+  @override
+  Future<Map<String, int>> getRecurrenceProjectionsCount() async {
+    final user = _dbService.pb.authStore.record;
+    if (user == null) return {};
+
+    final records = await _dbService.pb
+        .collection('transactions')
+        .getFullList(
+          filter: 'user = "${user.id}" && status = "projected"',
+          fields: 'recurrence',
+        );
+
+    final Map<String, int> counts = {};
+    for (final r in records) {
+      final String recurrenceId = r.getStringValue('recurrence');
+      if (recurrenceId.isNotEmpty) {
+        counts[recurrenceId] = (counts[recurrenceId] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }
 }

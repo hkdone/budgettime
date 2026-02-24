@@ -25,7 +25,10 @@ class _ManageRecurrencesPageState extends ConsumerState<ManageRecurrencesPage> {
     return Scaffold(
       appBar: AppBar(title: const Text('Récurrences')),
       body: recurrencesAsync.when(
-        data: (recurrences) {
+        data: (state) {
+          final recurrences = state.recurrences;
+          final counts = state.projectionsCount;
+
           if (recurrences.isEmpty) {
             return const Center(child: Text('Aucune récurrence configurée.'));
           }
@@ -35,6 +38,9 @@ class _ManageRecurrencesPageState extends ConsumerState<ManageRecurrencesPage> {
             itemCount: recurrences.length,
             itemBuilder: (context, index) {
               final r = recurrences[index];
+              final count = counts[r.id] ?? 0;
+              final isLow = count <= 5;
+
               final account = accounts.any((a) => a.id == r.accountId)
                   ? accounts.firstWhere((a) => a.id == r.accountId)
                   : null;
@@ -46,9 +52,59 @@ class _ManageRecurrencesPageState extends ConsumerState<ManageRecurrencesPage> {
                       : Icons.arrow_upward,
                   color: r.type == 'income' ? Colors.green : Colors.red,
                 ),
-                title: Text(r.label),
-                subtitle: Text(
-                  '${account?.name ?? "Inconnu"} - ${r.frequency} - Prochaine: ${DateFormat('dd/MM/yyyy').format(r.nextDueDate)}',
+                title: Row(
+                  children: [
+                    Expanded(child: Text(r.label)),
+                    if (isLow)
+                      const Tooltip(
+                        message: 'Bientôt à court de projections',
+                        child: Icon(
+                          Icons.warning,
+                          color: Colors.orange,
+                          size: 16,
+                        ),
+                      ),
+                  ],
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${account?.name ?? "Inconnu"} - ${r.frequency} - Prochaine: ${DateFormat('dd/MM/yyyy').format(r.nextDueDate)}',
+                    ),
+                    Row(
+                      children: [
+                        Text(
+                          'Projections restantes : $count',
+                          style: TextStyle(
+                            color: isLow ? Colors.orange : Colors.grey[600],
+                            fontWeight: isLow
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            fontSize: 12,
+                          ),
+                        ),
+                        if (isLow)
+                          TextButton(
+                            onPressed: () => ref
+                                .read(recurrenceControllerProvider.notifier)
+                                .rechargeRecurrence(r),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 0,
+                              ),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text(
+                              'Recharger (1 an)',
+                              style: TextStyle(fontSize: 11),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,

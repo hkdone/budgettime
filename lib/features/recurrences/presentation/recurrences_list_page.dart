@@ -3,9 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:intl/intl.dart';
 import '../../recurrences/presentation/recurrence_controller.dart';
-import '../../recurrences/domain/recurrence.dart'; // Import Recurrence model
 import '../../members/presentation/member_controller.dart';
-import 'package:budgettime/core/utils/formatters.dart';
+import '../../../core/utils/formatters.dart';
 import 'recurrence_dialog.dart';
 import '../../accounts/presentation/account_controller.dart';
 
@@ -38,7 +37,10 @@ class RecurrencesListPage extends ConsumerWidget {
               .getRecurrences();
         },
         child: recurrencesAsync.when(
-          data: (allRecurrences) {
+          data: (state) {
+            final allRecurrences = state.recurrences;
+            final counts = state.projectionsCount;
+
             final recurrences = allRecurrences
                 .where((r) => r.accountId == accountId && r.active)
                 .toList();
@@ -59,7 +61,8 @@ class RecurrencesListPage extends ConsumerWidget {
               itemCount: recurrences.length,
               itemBuilder: (context, index) {
                 final recurrence = recurrences[index];
-                final stats = _calculateStats(recurrence);
+                final count = counts[recurrence.id] ?? 0;
+                final isLow = count <= 5;
 
                 return Card(
                   elevation: 2,
@@ -173,7 +176,7 @@ class RecurrencesListPage extends ConsumerWidget {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              _translateFrequency(recurrence.frequency),
+                              formatFrequency(recurrence.frequency),
                               style: TextStyle(color: Colors.grey[800]),
                             ),
                             const SizedBox(width: 16),
@@ -197,7 +200,7 @@ class RecurrencesListPage extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Sur 1 an :',
+                                  'Projections :',
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: Colors.grey[600],
@@ -205,34 +208,28 @@ class RecurrencesListPage extends ConsumerWidget {
                                   ),
                                 ),
                                 Text(
-                                  '${stats.count} occurrences restantes',
-                                  style: const TextStyle(
+                                  '$count occurrences restantes',
+                                  style: TextStyle(
                                     fontWeight: FontWeight.w500,
+                                    color: isLow ? Colors.orange : null,
                                   ),
                                 ),
                               ],
                             ),
-                            if (stats.lastDate != null)
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    'Dernière projection :',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
-                                      fontStyle: FontStyle.italic,
-                                    ),
+                            if (isLow)
+                              ElevatedButton.icon(
+                                onPressed: () => ref
+                                    .read(recurrenceControllerProvider.notifier)
+                                    .rechargeRecurrence(recurrence),
+                                icon: const Icon(Icons.refresh, size: 16),
+                                label: const Text('Recharger (1 an)'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange.withValues(
+                                    alpha: 0.1,
                                   ),
-                                  Text(
-                                    DateFormat(
-                                      'dd/MM/yyyy',
-                                    ).format(stats.lastDate!),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
+                                  foregroundColor: Colors.orange,
+                                  elevation: 0,
+                                ),
                               ),
                           ],
                         ),
@@ -248,58 +245,5 @@ class RecurrencesListPage extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  String _translateFrequency(String frequency) {
-    switch (frequency) {
-      case 'daily':
-        return 'Quotidien';
-      case 'weekly':
-        return 'Hebdomadaire';
-      case 'biweekly':
-        return 'Bi-Hebdomadaire (2 sem)';
-      case 'monthly':
-        return 'Mensuel';
-      case 'bimonthly':
-        return 'Bi-Mensuel (2 mois)';
-      case 'yearly':
-        return 'Annuel';
-      default:
-        return frequency;
-    }
-  }
-
-  ({int count, DateTime? lastDate}) _calculateStats(Recurrence recurrence) {
-    DateTime current = recurrence.nextDueDate;
-    // Limit to 1 year from now as per system behavior
-    final end = DateTime.now().add(const Duration(days: 365));
-    int count = 0;
-    DateTime? lastDate;
-
-    // Safety constraint
-    int iterations = 0;
-    while (current.isBefore(end) && iterations < 366) {
-      count++;
-      lastDate = current;
-
-      if (recurrence.frequency == 'weekly') {
-        current = current.add(const Duration(days: 7));
-      } else if (recurrence.frequency == 'biweekly') {
-        current = current.add(const Duration(days: 14));
-      } else if (recurrence.frequency == 'monthly') {
-        current = DateTime(current.year, current.month + 1, current.day);
-      } else if (recurrence.frequency == 'bimonthly') {
-        current = DateTime(current.year, current.month + 2, current.day);
-      } else if (recurrence.frequency == 'yearly') {
-        current = DateTime(current.year + 1, current.month, current.day);
-      } else if (recurrence.frequency == 'daily') {
-        current = current.add(const Duration(days: 1));
-      } else {
-        break;
-      }
-      iterations++;
-    }
-
-    return (count: count, lastDate: lastDate);
   }
 }

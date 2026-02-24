@@ -50,4 +50,5 @@ abstract class TransactionRepository {
     DateTime fromDate,
     Map<String, dynamic> data,
   );
+  Future<Map<String, int>> getRecurrenceProjectionsCount();
 }

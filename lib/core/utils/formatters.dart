@@ -30,3 +30,22 @@ double parseAmount(String input) {
       .replaceAll(',', '.');
   return double.tryParse(clean) ?? 0.0;
 }
+
+String formatFrequency(String frequency) {
+  switch (frequency) {
+    case 'daily':
+      return 'Quotidien';
+    case 'weekly':
+      return 'Hebdomadaire';
+    case 'biweekly':
+      return 'Bi-Hebdomadaire (2 sem)';
+    case 'monthly':
+      return 'Mensuel';
+    case 'bimonthly':
+      return 'Bi-Mensuel (2 mois)';
+    case 'yearly':
+      return 'Annuel';
+    default:
+      return frequency;
+  }
+}
