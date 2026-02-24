@@ -55,86 +55,93 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                 ),
               ],
             ),
-            body: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _buildGlobalSummary(state),
-                  if (state.statsByAccount.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.all(32.0),
-                      child: Center(
-                        child: Text('Aucune donnée pour cette année'),
-                      ),
-                    )
-                  else
-                    ...state.statsByAccount.entries.map((entry) {
-                      final accountId = entry.key;
-                      final stats = entry.value;
-                      final accountName =
-                          state.accountNames[accountId] ?? 'Compte';
+            body: RefreshIndicator(
+              onRefresh: () async =>
+                  ref.read(statsControllerProvider.notifier).loadStats(),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  children: [
+                    _buildGlobalSummary(state),
+                    if (state.statsByAccount.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: Center(
+                          child: Text('Aucune donnée pour cette année'),
+                        ),
+                      )
+                    else
+                      ...state.statsByAccount.entries.map((entry) {
+                        final accountId = entry.key;
+                        final stats = entry.value;
+                        final accountName =
+                            state.accountNames[accountId] ?? 'Compte';
 
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.account_balance,
-                                  color: Colors.blue,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  accountName,
-                                  style: Theme.of(context).textTheme.titleLarge
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.blue[800],
-                                      ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Divider(indent: 16, endIndent: 16),
-
-                          // Dual View: Category Expenses (Real vs Projected)
-                          _buildSectionTitle('Dépenses par Catégorie'),
-                          _buildDualCharts(
-                            realData: stats.realExpenseByCategory,
-                            projectedData: stats.projectedExpenseByCategory,
-                            viewMode: _viewMode,
-                            baseColor: Colors.redAccent,
-                          ),
-
-                          // Dual View: Member Income (Real vs Projected)
-                          _buildSectionTitle('Revenus par Membre'),
-                          _buildDualCharts(
-                            realData: stats.realIncomeByMember,
-                            projectedData: stats.projectedIncomeByMember,
-                            viewMode: _viewMode,
-                            baseColor: Colors.teal,
-                          ),
-
-                          // Single View: Member Expenses (Projected)
-                          _buildSectionTitle(
-                            'Dépenses par Membre (Prévisionnel)',
-                          ),
-                          Center(
-                            child: SizedBox(
-                              width: 500,
-                              child: _buildPieChart(
-                                stats.projectedExpenseByMember,
-                                Colors.orangeAccent,
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.account_balance,
+                                    color: Colors.blue,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    accountName,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blue[800],
+                                        ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ),
+                            const Divider(indent: 16, endIndent: 16),
 
-                          const SizedBox(height: 32),
-                        ],
-                      );
-                    }),
-                ],
+                            // Dual View: Category Expenses (Real vs Projected)
+                            _buildSectionTitle('Dépenses par Catégorie'),
+                            _buildDualCharts(
+                              realData: stats.realExpenseByCategory,
+                              projectedData: stats.projectedExpenseByCategory,
+                              viewMode: _viewMode,
+                              baseColor: Colors.redAccent,
+                            ),
+
+                            // Dual View: Member Income (Real vs Projected)
+                            _buildSectionTitle('Revenus par Membre'),
+                            _buildDualCharts(
+                              realData: stats.realIncomeByMember,
+                              projectedData: stats.projectedIncomeByMember,
+                              viewMode: _viewMode,
+                              baseColor: Colors.teal,
+                            ),
+
+                            // Single View: Member Expenses (Projected)
+                            _buildSectionTitle(
+                              'Dépenses par Membre (Prévisionnel)',
+                            ),
+                            Center(
+                              child: SizedBox(
+                                width: 500,
+                                child: _buildPieChart(
+                                  stats.projectedExpenseByMember,
+                                  Colors.orangeAccent,
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 32),
+                          ],
+                        );
+                      }),
+                  ],
+                ),
               ),
             ),
             bottomNavigationBar: BottomAppBar(

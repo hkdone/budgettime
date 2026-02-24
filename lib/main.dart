@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'core/start_app.dart';
+import 'core/services/database_service.dart';
 
-void main() {
-  initializeDateFormatting('fr_FR', null).then((_) {
-    runApp(const ProviderScope(child: BudgetTimeApp()));
-  });
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('fr_FR', null);
+  await DatabaseService().init();
+  runApp(const ProviderScope(child: BudgetTimeApp()));
 }
 
 class BudgetTimeApp extends ConsumerWidget {

@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Service class to interact with PocketBase backend.
 /// Designed to be a Singleton.
@@ -10,21 +12,51 @@ class DatabaseService {
     return _instance;
   }
 
-  DatabaseService._internal();
+  DatabaseService._internal() {
+    // Basic setup in constructor, loading is async in init()
+  }
 
-  /// The PocketBase client instance.
-  ///
-  /// In development, ensuring your PocketBase server is running on 127.0.0.1:8090.
-  /// When deployed in `pb_public`, this should ideally be relative or the same origin.
-  /// Parsing `window.location` requires distinct handling for web vs mobile.
-  /// Using a relative path "/" often works fine if served from same origin (which is our case with pb_public).
-
-  // ignore: unnecessary_const
   final PocketBase pb = PocketBase(
     const bool.fromEnvironment('dart.library.js_util')
         ? '/'
         : 'http://127.0.0.1:8090',
   );
+
+  /// Initializes the persistence for the AuthStore.
+  /// Should be called at app startup.
+  Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // 1. Load existing session
+    final authData = prefs.getString('pb_auth');
+    if (authData != null) {
+      try {
+        final decoded = jsonDecode(authData);
+        final token = decoded['token'] as String;
+        final recordJson =
+            (decoded['record'] ?? decoded['model']) as Map<String, dynamic>;
+        final record = RecordModel.fromJson(recordJson);
+        pb.authStore.save(token, record);
+      } catch (e) {
+        // ignore: avoid_print
+        print('Error loading auth state: $e');
+        pb.authStore.clear();
+      }
+    }
+
+    // 2. Listen for changes and save them
+    pb.authStore.onChange.listen((e) {
+      if (pb.authStore.isValid) {
+        final data = jsonEncode({
+          'token': pb.authStore.token,
+          'record': pb.authStore.record,
+        });
+        prefs.setString('pb_auth', data);
+      } else {
+        prefs.remove('pb_auth');
+      }
+    });
+  }
 
   /// Returns true if the user is currently authenticated
   bool get isValid => pb.authStore.isValid;

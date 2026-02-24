@@ -72,44 +72,48 @@ class _StatisticsPageState extends ConsumerState<StatisticsPage> {
           const SizedBox(width: 16),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // Month Selector
-            _buildMonthSelector(),
-            const SizedBox(height: 24),
+      body: RefreshIndicator(
+        onRefresh: () async => _loadData(),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              // Month Selector
+              _buildMonthSelector(),
+              const SizedBox(height: 24),
 
-            statsAsync.when(
-              data: (data) => Column(
-                children: [
-                  // Pie Chart
-                  _buildPieChartSection(data),
-                  const SizedBox(height: 32),
-                  // Bar Chart
-                  _buildBarChartSection(data),
-                  const SizedBox(height: 32),
-                  // Member Expenses Pie Chart
-                  _buildMemberChartSection(
-                    data.expenseByMember,
-                    'Dépenses par Membre',
-                    data.totalExpense,
-                    ref,
-                  ),
-                  const SizedBox(height: 32),
-                  // Member Income Pie Chart
-                  _buildMemberChartSection(
-                    data.incomeByMember,
-                    'Revenus par Membre',
-                    data.totalIncome,
-                    ref,
-                  ),
-                ],
+              statsAsync.when(
+                data: (data) => Column(
+                  children: [
+                    // Pie Chart
+                    _buildPieChartSection(data),
+                    const SizedBox(height: 32),
+                    // Bar Chart
+                    _buildBarChartSection(data),
+                    const SizedBox(height: 32),
+                    // Member Expenses Pie Chart
+                    _buildMemberChartSection(
+                      data.expenseByMember,
+                      'Dépenses par Membre',
+                      data.totalExpense,
+                      ref,
+                    ),
+                    const SizedBox(height: 32),
+                    // Member Income Pie Chart
+                    _buildMemberChartSection(
+                      data.incomeByMember,
+                      'Revenus par Membre',
+                      data.totalIncome,
+                      ref,
+                    ),
+                  ],
+                ),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, stack) => Center(child: Text('Erreur: $err')),
               ),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, stack) => Center(child: Text('Erreur: $err')),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
