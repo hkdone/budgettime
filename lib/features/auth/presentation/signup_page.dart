@@ -97,7 +97,11 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                       ),
                       obscureText: true,
                       textInputAction: TextInputAction.next,
-                      autofillHints: const [AutofillHints.newPassword],
+                      autofillHints: const [
+                        AutofillHints.newPassword,
+                        'pass',
+                        'motdepasse',
+                      ],
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Veuillez entrer votre mot de passe';
@@ -118,7 +122,11 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                       ),
                       obscureText: true,
                       textInputAction: TextInputAction.done,
-                      autofillHints: const [AutofillHints.password],
+                      autofillHints: const [
+                        AutofillHints.password,
+                        'pass',
+                        'motdepasse',
+                      ],
                       onFieldSubmitted: (_) => _submit(),
                       validator: (value) {
                         if (value != _passwordController.text) {
