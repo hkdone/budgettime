@@ -78,7 +78,6 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                     ),
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
-                    autofillHints: const [AutofillHints.username],
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Veuillez entrer votre email';
@@ -96,7 +95,6 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                     ),
                     obscureText: true,
                     textInputAction: TextInputAction.next,
-                    autofillHints: const [AutofillHints.newPassword],
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Veuillez entrer votre mot de passe';
@@ -117,7 +115,6 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                     ),
                     obscureText: true,
                     textInputAction: TextInputAction.done,
-                    autofillHints: const [AutofillHints.password],
                     onFieldSubmitted: (_) => _submit(),
                     validator: (value) {
                       if (value != _passwordController.text) {

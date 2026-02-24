@@ -79,7 +79,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
-                    autofillHints: const [AutofillHints.username],
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Veuillez entrer votre email';
@@ -96,7 +95,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       prefixIcon: Icon(Icons.lock),
                     ),
                     obscureText: true,
-                    autofillHints: const [AutofillHints.password],
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) => _submit(),
                     validator: (value) {
@@ -147,7 +145,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   ),
                   const SizedBox(height: 24),
                   const Text(
-                    'v1.9.47',
+                    'v1.9.48',
                     style: TextStyle(color: Colors.grey, fontSize: 12),
                     textAlign: TextAlign.center,
                   ),
