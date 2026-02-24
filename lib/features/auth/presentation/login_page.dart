@@ -56,9 +56,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           padding: const EdgeInsets.all(24.0),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 400),
-            child: Form(
-              key: _formKey,
-              child: AutofillGroup(
+            child: AutofillGroup(
+              child: Form(
+                key: _formKey,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -80,10 +80,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       ),
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
-                      autofillHints: const [
-                        AutofillHints.email,
-                        AutofillHints.username,
-                      ],
+                      autofillHints: const [AutofillHints.email],
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Veuillez entrer votre email';
@@ -100,9 +97,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         prefixIcon: Icon(Icons.lock),
                       ),
                       obscureText: true,
-                      keyboardType: TextInputType.visiblePassword,
                       autofillHints: const [AutofillHints.password],
                       textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => _submit(),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Veuillez entrer votre mot de passe';
@@ -153,7 +150,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                     const SizedBox(height: 24),
                     const Text(
-                      'v1.9.41',
+                      'v1.9.42',
                       style: TextStyle(color: Colors.grey, fontSize: 12),
                       textAlign: TextAlign.center,
                     ),
