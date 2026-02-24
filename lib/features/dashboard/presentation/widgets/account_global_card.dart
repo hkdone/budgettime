@@ -5,6 +5,7 @@ import '../../../statistics/presentation/statistics_controller.dart';
 import '../../../statistics/presentation/widgets/statistics_charts.dart';
 import '../../../members/presentation/member_controller.dart';
 import '../../../accounts/presentation/account_controller.dart';
+import '../dashboard_controller.dart';
 import 'package:budgettime/core/utils/formatters.dart';
 
 class AccountGlobalCard extends ConsumerWidget {
@@ -22,159 +23,165 @@ class AccountGlobalCard extends ConsumerWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header: Account Name & Balance
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundColor: Colors.blue.withValues(alpha: 0.1),
-                        child: const Icon(
-                          Icons.account_balance,
-                          color: Colors.blue,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          account.name,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () {
+          ref.read(dashboardControllerProvider.notifier).selectAccount(account);
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header: Account Name & Balance
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: Colors.blue.withValues(alpha: 0.1),
+                          child: const Icon(
+                            Icons.account_balance,
+                            color: Colors.blue,
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                balanceAsync.when(
-                  data: (balance) => Text(
-                    formatCurrency(balance),
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: balance >= 0 ? Colors.green : Colors.red,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            account.name,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  loading: () => const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                  balanceAsync.when(
+                    data: (balance) => Text(
+                      formatCurrency(balance),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: balance >= 0 ? Colors.green : Colors.red,
+                      ),
+                    ),
+                    loading: () => const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    error: (e, s) => const Icon(Icons.error, color: Colors.red),
                   ),
-                  error: (e, s) => const Icon(Icons.error, color: Colors.red),
-                ),
-              ],
-            ),
-            const Divider(height: 24),
+                ],
+              ),
+              const Divider(height: 24),
 
-            // Statistics Content
-            statsAsync.when(
-              data: (stats) {
-                return LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isWide = constraints.maxWidth > 500;
+              // Statistics Content
+              statsAsync.when(
+                data: (stats) {
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isWide = constraints.maxWidth > 500;
 
-                    return Column(
-                      children: [
-                        if (isWide)
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: CategoryPieChart(
+                      return Column(
+                        children: [
+                          if (isWide)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: CategoryPieChart(
+                                    stats: stats.expenseByCategory,
+                                    totalAmount: stats.totalExpense,
+                                    showLegend: true,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: membersAsync.maybeWhen(
+                                    data: (members) => MemberPieChart(
+                                      stats: stats.expenseByMember,
+                                      members: members,
+                                      totalAmount: stats.totalExpense,
+                                      title: 'Dépenses membres',
+                                      showLegend: true,
+                                    ),
+                                    orElse: () => const SizedBox.shrink(),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: membersAsync.maybeWhen(
+                                    data: (members) => MemberPieChart(
+                                      stats: stats.incomeByMember,
+                                      members: members,
+                                      totalAmount: stats.totalIncome,
+                                      title: 'Recettes membres',
+                                      showLegend: true,
+                                    ),
+                                    orElse: () => const SizedBox.shrink(),
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            Column(
+                              children: [
+                                CategoryPieChart(
                                   stats: stats.expenseByCategory,
                                   totalAmount: stats.totalExpense,
                                   showLegend: true,
                                 ),
-                              ),
-                              Expanded(
-                                child: membersAsync.maybeWhen(
-                                  data: (members) => MemberPieChart(
-                                    stats: stats.expenseByMember,
-                                    members: members,
-                                    totalAmount: stats.totalExpense,
-                                    title: 'Dépenses membres',
-                                    showLegend: true,
-                                  ),
-                                  orElse: () => const SizedBox.shrink(),
-                                ),
-                              ),
-                              Expanded(
-                                child: membersAsync.maybeWhen(
-                                  data: (members) => MemberPieChart(
-                                    stats: stats.incomeByMember,
-                                    members: members,
-                                    totalAmount: stats.totalIncome,
-                                    title: 'Recettes membres',
-                                    showLegend: true,
-                                  ),
-                                  orElse: () => const SizedBox.shrink(),
-                                ),
-                              ),
-                            ],
-                          )
-                        else
-                          Column(
-                            children: [
-                              CategoryPieChart(
-                                stats: stats.expenseByCategory,
-                                totalAmount: stats.totalExpense,
-                                showLegend: true,
-                              ),
-                              const SizedBox(height: 16),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: membersAsync.maybeWhen(
-                                      data: (members) => MemberPieChart(
-                                        stats: stats.expenseByMember,
-                                        members: members,
-                                        totalAmount: stats.totalExpense,
-                                        title: 'Dépenses membres',
-                                        showLegend: true,
+                                const SizedBox(height: 16),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: membersAsync.maybeWhen(
+                                        data: (members) => MemberPieChart(
+                                          stats: stats.expenseByMember,
+                                          members: members,
+                                          totalAmount: stats.totalExpense,
+                                          title: 'Dépenses membres',
+                                          showLegend: true,
+                                        ),
+                                        orElse: () => const SizedBox.shrink(),
                                       ),
-                                      orElse: () => const SizedBox.shrink(),
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: membersAsync.maybeWhen(
-                                      data: (members) => MemberPieChart(
-                                        stats: stats.incomeByMember,
-                                        members: members,
-                                        totalAmount: stats.totalIncome,
-                                        title: 'Recettes membres',
-                                        showLegend: true,
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: membersAsync.maybeWhen(
+                                        data: (members) => MemberPieChart(
+                                          stats: stats.incomeByMember,
+                                          members: members,
+                                          totalAmount: stats.totalIncome,
+                                          title: 'Recettes membres',
+                                          showLegend: true,
+                                        ),
+                                        orElse: () => const SizedBox.shrink(),
                                       ),
-                                      orElse: () => const SizedBox.shrink(),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                      ],
-                    );
-                  },
-                );
-              },
-              loading: () => const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: CircularProgressIndicator(),
+                                  ],
+                                ),
+                              ],
+                            ),
+                        ],
+                      );
+                    },
+                  );
+                },
+                loading: () => const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: CircularProgressIndicator(),
+                  ),
                 ),
+                error: (e, s) => Center(child: Text('Erreur: $e')),
               ),
-              error: (e, s) => Center(child: Text('Erreur: $e')),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
