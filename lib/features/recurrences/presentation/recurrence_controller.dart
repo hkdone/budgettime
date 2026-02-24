@@ -41,6 +41,7 @@ class RecurrenceController extends StateNotifier<AsyncValue<List<Recurrence>>> {
     DateTime nextDueDate, {
     int? dayOfMonth,
     String? targetAccountId,
+    String? categoryId,
   }) async {
     state = const AsyncValue.loading();
     Recurrence? createdRecurrence;
@@ -55,12 +56,14 @@ class RecurrenceController extends StateNotifier<AsyncValue<List<Recurrence>>> {
         'day_of_month': dayOfMonth,
         'active': true,
         'target_account': targetAccountId,
+        'category': categoryId,
       });
 
       if (createdRecurrence != null) {
         // Generate projections for the next year
+        // Generate projections until end of next year
         final now = DateTime.now();
-        final periodEnd = now.add(const Duration(days: 365));
+        final periodEnd = DateTime(now.year + 1, 12, 31);
 
         await _recurrenceService.generateProjectedTransactions(
           recurrence: createdRecurrence!,
@@ -86,6 +89,7 @@ class RecurrenceController extends StateNotifier<AsyncValue<List<Recurrence>>> {
     required DateTime nextDueDate,
     int? dayOfMonth,
     String? targetAccountId,
+    String? categoryId,
   }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
@@ -102,14 +106,16 @@ class RecurrenceController extends StateNotifier<AsyncValue<List<Recurrence>>> {
         'next_due_date': formatDateForPb(nextDueDate),
         'day_of_month': dayOfMonth,
         'target_account': targetAccountId,
+        'category': categoryId,
       });
 
       final updatedRecurrences = await _repository.getRecurrences();
       final updated = updatedRecurrences.firstWhere((r) => r.id == id);
 
       // 3. Regenerate projections
+      // 3. Regenerate projections until end of next year
       final now = DateTime.now();
-      final periodEnd = now.add(const Duration(days: 365));
+      final periodEnd = DateTime(now.year + 1, 12, 31);
 
       await _recurrenceService.generateProjectedTransactions(
         recurrence: updated,

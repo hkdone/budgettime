@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../transactions/domain/transaction_repository.dart';
 import '../../../core/start_app.dart';
 import '../../transactions/domain/categories.dart';
+import '../../recurrences/data/recurrence_repository_impl.dart';
 
 class YearlyTrend {
   final int year;
@@ -107,6 +108,7 @@ class StatsController extends StateNotifier<StatsState> {
       final accountNames = <String, String>{};
       final memberNames = <String, String>{};
       final categoryNames = <String, String>{};
+      final recurrenceCategoryMap = <String, String>{};
 
       // 1. Pre-populate category names from hardcoded list
       for (final cat in kTransactionCategories) {
@@ -123,6 +125,22 @@ class StatsController extends StateNotifier<StatsState> {
       } catch (e) {
         debugPrint('Warning: Could not fetch members in StatsController: $e');
       }
+
+      // 3. Fetch all recurrences to map orphan categories
+      try {
+        final recurrenceRepo = _ref.read(recurrenceRepositoryProvider);
+        final recurrences = await recurrenceRepo.getRecurrences();
+        for (final r in recurrences) {
+          if (r.categoryId != null) {
+            recurrenceCategoryMap[r.id] = r.categoryId!;
+          }
+        }
+      } catch (e) {
+        debugPrint(
+          'Warning: Could not fetch recurrences in StatsController: $e',
+        );
+      }
+
       memberNames.putIfAbsent('common', () => 'Commun');
 
       for (final t in transactions) {
@@ -143,6 +161,7 @@ class StatsController extends StateNotifier<StatsState> {
           accountNames: accountNames,
           memberNames: memberNames,
           categoryNames: categoryNames,
+          recurrenceCategoryMap: recurrenceCategoryMap,
           isOutgoing: true,
         );
 
@@ -154,6 +173,7 @@ class StatsController extends StateNotifier<StatsState> {
             accountNames: accountNames,
             memberNames: memberNames,
             categoryNames: categoryNames,
+            recurrenceCategoryMap: recurrenceCategoryMap,
             isOutgoing: false,
           );
         }
@@ -179,6 +199,7 @@ class StatsController extends StateNotifier<StatsState> {
     required Map<String, String> accountNames,
     required Map<String, String> memberNames,
     required Map<String, String> categoryNames,
+    required Map<String, String> recurrenceCategoryMap,
     required bool isOutgoing,
   }) {
     if (!statsByAccount.containsKey(accountId)) {
@@ -218,6 +239,16 @@ class StatsController extends StateNotifier<StatsState> {
       categoryNames.putIfAbsent(categoryId, () => expCat['name'] ?? 'Autre');
     } else if (t['category'] != null) {
       categoryId = t['category'].toString();
+    }
+
+    // Retroactive mapping: if category is technical/generic, try to find it via recurrence
+    if (categoryId == 'Recurrence' ||
+        categoryId == 'other' ||
+        categoryId == 'Recurrence'.toLowerCase()) {
+      final String? rId = t['recurrence'];
+      if (rId != null && recurrenceCategoryMap.containsKey(rId)) {
+        categoryId = recurrenceCategoryMap[rId]!;
+      }
     }
 
     String memberId = 'common';

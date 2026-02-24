@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../accounts/domain/account.dart';
 import '../domain/recurrence.dart';
 import 'recurrence_controller.dart';
+import '../../transactions/domain/categories.dart';
 
 class RecurrenceDialog {
   static void show(
@@ -29,6 +30,7 @@ class RecurrenceDialog {
     String selectedFrequency = recurrence?.frequency ?? 'monthly';
     DateTime selectedDate = recurrence?.nextDueDate ?? DateTime.now();
     String? selectedTargetAccountId = recurrence?.targetAccountId;
+    String selectedCategoryId = recurrence?.categoryId ?? 'other';
 
     showDialog(
       context: context,
@@ -99,6 +101,27 @@ class RecurrenceDialog {
                   ],
                   onChanged: (v) =>
                       setDialogState(() => selectedFrequency = v!),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedCategoryId,
+                  decoration: const InputDecoration(labelText: 'Catégorie'),
+                  items: kTransactionCategories
+                      .map(
+                        (c) => DropdownMenuItem(
+                          value: c.id,
+                          child: Row(
+                            children: [
+                              Icon(c.icon, size: 18, color: c.color),
+                              const SizedBox(width: 8),
+                              Text(c.name),
+                            ],
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (v) =>
+                      setDialogState(() => selectedCategoryId = v!),
                 ),
                 if (selectedType == 'transfer') ...[
                   const SizedBox(height: 16),
@@ -186,6 +209,7 @@ class RecurrenceDialog {
                           targetAccountId: selectedType == 'transfer'
                               ? selectedTargetAccountId
                               : null,
+                          categoryId: selectedCategoryId,
                         );
                   } else {
                     await ref
@@ -205,6 +229,7 @@ class RecurrenceDialog {
                           targetAccountId: selectedType == 'transfer'
                               ? selectedTargetAccountId
                               : null,
+                          categoryId: selectedCategoryId,
                         );
                   }
                   if (context.mounted) Navigator.pop(context);
