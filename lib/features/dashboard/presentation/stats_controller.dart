@@ -144,7 +144,7 @@ class StatsController extends StateNotifier<StatsState> {
       memberNames.putIfAbsent('common', () => 'Commun');
 
       for (final t in transactions) {
-        if (t['bank_balance'] != null) continue;
+        if (t['is_automatic'] == true) continue;
         final label = t['label']?.toString().toLowerCase() ?? '';
         if (label.contains('solde') || label.contains('ajustement')) continue;
 

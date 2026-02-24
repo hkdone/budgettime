@@ -33,7 +33,6 @@ abstract class TransactionRepository {
     String? recurrenceId,
     String? status,
     String? memberId,
-    bool? isAutomatic,
   });
 
   /// Update an existing transaction
