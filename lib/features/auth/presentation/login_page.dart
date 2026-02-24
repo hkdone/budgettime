@@ -77,7 +77,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.email),
                     ),
-                    keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -145,7 +144,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   ),
                   const SizedBox(height: 24),
                   const Text(
-                    'v1.9.48',
+                    'v1.9.49',
                     style: TextStyle(color: Colors.grey, fontSize: 12),
                     textAlign: TextAlign.center,
                   ),
