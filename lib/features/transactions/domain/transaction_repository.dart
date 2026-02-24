@@ -1,8 +1,8 @@
 abstract class TransactionRepository {
   /// Fetch transactions for a specific period
   Future<List<Map<String, dynamic>>> getTransactions({
-    required DateTime start,
-    required DateTime end,
+    DateTime? start,
+    DateTime? end,
     String? accountId,
   });
 

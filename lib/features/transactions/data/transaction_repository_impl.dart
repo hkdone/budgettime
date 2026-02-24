@@ -9,21 +9,23 @@ class TransactionRepositoryImpl implements TransactionRepository {
 
   @override
   Future<List<Map<String, dynamic>>> getTransactions({
-    required DateTime start,
-    required DateTime end,
+    DateTime? start,
+    DateTime? end,
     String? accountId,
   }) async {
     final user = _dbService.pb.authStore.record;
     if (user == null) return [];
 
-    // Use full day range for filtering
-    final startStr =
-        '${start.year}-${start.month.toString().padLeft(2, '0')}-${start.day.toString().padLeft(2, '0')} 00:00:00';
-    final endStr =
-        '${end.year}-${end.month.toString().padLeft(2, '0')}-${end.day.toString().padLeft(2, '0')} 23:59:59';
+    String filter = 'user = "${user.id}"';
 
-    String filter =
-        'user = "${user.id}" && date >= "$startStr" && date <= "$endStr"';
+    if (start != null && end != null) {
+      // Use full day range for filtering
+      final startStr =
+          '${start.year}-${start.month.toString().padLeft(2, '0')}-${start.day.toString().padLeft(2, '0')} 00:00:00';
+      final endStr =
+          '${end.year}-${end.month.toString().padLeft(2, '0')}-${end.day.toString().padLeft(2, '0')} 23:59:59';
+      filter += ' && date >= "$startStr" && date <= "$endStr"';
+    }
 
     if (accountId != null) {
       filter += ' && (account = "$accountId" || target_account = "$accountId")';

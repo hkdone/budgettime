@@ -115,6 +115,7 @@ class DashboardPage extends ConsumerWidget {
           child: Image.asset('assets/logo.png'),
         ),
         title: PopupMenuButton<String>(
+          tooltip: 'Sélectionner un compte',
           initialValue: state.selectedAccount?.id ?? 'all',
           onSelected: (String accountId) {
             if (accountId == 'all') {
@@ -154,10 +155,42 @@ class DashboardPage extends ConsumerWidget {
                 ),
               ),
               const Icon(Icons.arrow_drop_down, color: Colors.black),
+              if (state.selectedAccount != null) ...[
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.home_outlined),
+                  onPressed: () {
+                    ref
+                        .read(dashboardControllerProvider.notifier)
+                        .selectAccount(null);
+                  },
+                  tooltip: 'Tous les comptes',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
             ],
           ),
         ),
         actions: [
+          if (state.selectedAccount != null)
+            IconButton(
+              icon: Icon(
+                state.showAllTransactions
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+                color: state.showAllTransactions ? Colors.orange : Colors.blue,
+              ),
+              tooltip: state.showAllTransactions
+                  ? 'Voir mois en cours'
+                  : 'Voir tout l\'historique',
+              onPressed: () {
+                ref
+                    .read(dashboardControllerProvider.notifier)
+                    .toggleShowAllTransactions();
+              },
+            ),
           Consumer(
             builder: (context, ref, child) {
               final inboxState = ref.watch(inboxControllerProvider);
@@ -280,7 +313,7 @@ class DashboardPage extends ConsumerWidget {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: const Text(
-                                  'v1.9.36',
+                                  'v1.9.37',
                                   style: TextStyle(
                                     fontSize: 10,
                                     color: Colors.blueGrey,

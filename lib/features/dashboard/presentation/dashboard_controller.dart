@@ -15,6 +15,7 @@ class DashboardState {
   final DateTime end;
   final double effectiveBalance;
   final double projectedBalance;
+  final bool showAllTransactions;
   final bool isLoading;
   final String? error;
 
@@ -26,6 +27,7 @@ class DashboardState {
     required this.end,
     this.effectiveBalance = 0.0,
     this.projectedBalance = 0.0,
+    this.showAllTransactions = false,
     this.isLoading = false,
     this.error,
   });
@@ -38,6 +40,7 @@ class DashboardState {
     DateTime? end,
     double? effectiveBalance,
     double? projectedBalance,
+    bool? showAllTransactions,
     bool? isLoading,
     String? error,
   }) {
@@ -49,12 +52,12 @@ class DashboardState {
       end: end ?? this.end,
       effectiveBalance: effectiveBalance ?? this.effectiveBalance,
       projectedBalance: projectedBalance ?? this.projectedBalance,
+      showAllTransactions: showAllTransactions ?? this.showAllTransactions,
       isLoading: isLoading ?? this.isLoading,
       error: error ?? this.error,
     );
   }
 
-  // Method to explicitly clear selected account
   DashboardState copyWithClearAccount({
     List<dynamic>? transactions,
     List<Account>? accounts,
@@ -62,6 +65,7 @@ class DashboardState {
     DateTime? end,
     double? effectiveBalance,
     double? projectedBalance,
+    bool? showAllTransactions,
     bool? isLoading,
     String? error,
   }) {
@@ -73,6 +77,7 @@ class DashboardState {
       end: end ?? this.end,
       effectiveBalance: effectiveBalance ?? this.effectiveBalance,
       projectedBalance: projectedBalance ?? this.projectedBalance,
+      showAllTransactions: showAllTransactions ?? this.showAllTransactions,
       isLoading: isLoading ?? this.isLoading,
       error: error ?? this.error,
     );
@@ -134,10 +139,10 @@ class DashboardController extends StateNotifier<DashboardState> {
       start = DateTime(start.year, start.month, start.day, 0, 0, 0);
       end = DateTime(end.year, end.month, end.day, 23, 59, 59);
 
-      // 3. Fetch Transactions (for the list view, current month)
+      // 3. Fetch Transactions (for the list view, current month or ALL)
       final transactions = await _transactionRepo.getTransactions(
-        start: start,
-        end: end,
+        start: state.showAllTransactions ? null : start,
+        end: state.showAllTransactions ? null : end,
         accountId: state.selectedAccount?.id,
       );
 
@@ -216,10 +221,18 @@ class DashboardController extends StateNotifier<DashboardState> {
 
   void selectAccount(Account? account) {
     if (account == null) {
-      state = state.copyWithClearAccount(isLoading: true);
+      state = state.copyWithClearAccount(
+        isLoading: true,
+        showAllTransactions: false,
+      );
     } else {
       state = state.copyWith(selectedAccount: account, isLoading: true);
     }
+    _loadData(refreshAccounts: false);
+  }
+
+  void toggleShowAllTransactions() {
+    state = state.copyWith(showAllTransactions: !state.showAllTransactions);
     _loadData(refreshAccounts: false);
   }
 
