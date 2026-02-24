@@ -42,6 +42,7 @@ class RecurrenceController extends StateNotifier<AsyncValue<List<Recurrence>>> {
     int? dayOfMonth,
     String? targetAccountId,
     String? categoryId,
+    String? memberId,
   }) async {
     state = const AsyncValue.loading();
     Recurrence? createdRecurrence;
@@ -57,6 +58,7 @@ class RecurrenceController extends StateNotifier<AsyncValue<List<Recurrence>>> {
         'active': true,
         'target_account': targetAccountId,
         'category': categoryId,
+        'member': memberId,
       });
 
       if (createdRecurrence != null) {
@@ -90,6 +92,7 @@ class RecurrenceController extends StateNotifier<AsyncValue<List<Recurrence>>> {
     int? dayOfMonth,
     String? targetAccountId,
     String? categoryId,
+    String? memberId,
   }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
@@ -107,6 +110,7 @@ class RecurrenceController extends StateNotifier<AsyncValue<List<Recurrence>>> {
         'day_of_month': dayOfMonth,
         'target_account': targetAccountId,
         'category': categoryId,
+        'member': memberId,
       });
 
       final updatedRecurrences = await _repository.getRecurrences();

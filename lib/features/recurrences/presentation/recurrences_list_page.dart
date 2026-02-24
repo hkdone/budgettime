@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../recurrences/presentation/recurrence_controller.dart';
 import '../../recurrences/domain/recurrence.dart'; // Import Recurrence model
+import '../../members/presentation/member_controller.dart';
 import 'package:budgettime/core/utils/formatters.dart';
 import 'recurrence_dialog.dart';
 import '../../accounts/presentation/account_controller.dart';
@@ -17,6 +18,7 @@ class RecurrencesListPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final recurrencesAsync = ref.watch(recurrenceControllerProvider);
     final accountsAsync = ref.watch(accountControllerProvider);
+    final membersAsync = ref.watch(memberControllerProvider);
 
     final accountName =
         accountsAsync.value
@@ -101,12 +103,15 @@ class RecurrencesListPage extends ConsumerWidget {
                                       ),
                                       onPressed: () {
                                         accountsAsync.whenData((accounts) {
-                                          RecurrenceDialog.show(
-                                            context,
-                                            ref,
-                                            accounts,
-                                            recurrence: recurrence,
-                                          );
+                                          membersAsync.whenData((members) {
+                                            RecurrenceDialog.show(
+                                              context,
+                                              ref,
+                                              accounts,
+                                              members,
+                                              recurrence: recurrence,
+                                            );
+                                          });
                                         });
                                       },
                                     ),

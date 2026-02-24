@@ -2,17 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../accounts/domain/account.dart';
+import '../../members/domain/member.dart';
 import '../domain/recurrence.dart';
 import 'recurrence_controller.dart';
 import '../../transactions/domain/categories.dart';
 
 class RecurrenceDialog {
-  static void show(
+  static Future<void> show(
     BuildContext context,
     WidgetRef ref,
-    List<Account> accounts, {
+    List<Account> accounts,
+    List<Member> members, {
     Recurrence? recurrence,
-  }) {
+  }) async {
     if (accounts.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Veuillez d\'abord créer un compte.')),
@@ -31,8 +33,9 @@ class RecurrenceDialog {
     DateTime selectedDate = recurrence?.nextDueDate ?? DateTime.now();
     String? selectedTargetAccountId = recurrence?.targetAccountId;
     String selectedCategoryId = recurrence?.categoryId ?? 'other';
+    String? selectedMemberId = recurrence?.memberId;
 
-    showDialog(
+    await showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
@@ -101,6 +104,24 @@ class RecurrenceDialog {
                   ],
                   onChanged: (v) =>
                       setDialogState(() => selectedFrequency = v!),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String?>(
+                  initialValue: selectedMemberId,
+                  decoration: const InputDecoration(labelText: 'Membre'),
+                  items: [
+                    const DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text('Commun'),
+                    ),
+                    ...members.map(
+                      (m) => DropdownMenuItem<String?>(
+                        value: m.id,
+                        child: Text(m.name),
+                      ),
+                    ),
+                  ],
+                  onChanged: (v) => setDialogState(() => selectedMemberId = v),
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
@@ -210,6 +231,7 @@ class RecurrenceDialog {
                               ? selectedTargetAccountId
                               : null,
                           categoryId: selectedCategoryId,
+                          memberId: selectedMemberId,
                         );
                   } else {
                     await ref
@@ -230,6 +252,7 @@ class RecurrenceDialog {
                               ? selectedTargetAccountId
                               : null,
                           categoryId: selectedCategoryId,
+                          memberId: selectedMemberId,
                         );
                   }
                   if (context.mounted) Navigator.pop(context);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../accounts/presentation/account_controller.dart';
+import '../../members/presentation/member_controller.dart';
 import 'recurrence_controller.dart';
 import 'recurrence_dialog.dart';
 import 'package:budgettime/core/utils/formatters.dart';
@@ -19,6 +20,7 @@ class _ManageRecurrencesPageState extends ConsumerState<ManageRecurrencesPage> {
   Widget build(BuildContext context) {
     final recurrencesAsync = ref.watch(recurrenceControllerProvider);
     final accountsAsync = ref.watch(accountControllerProvider);
+    final membersAsync = ref.watch(memberControllerProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Récurrences')),
@@ -27,10 +29,16 @@ class _ManageRecurrencesPageState extends ConsumerState<ManageRecurrencesPage> {
           if (recurrences.isEmpty) {
             return const Center(child: Text('Aucune récurrence configurée.'));
           }
+          final accounts = accountsAsync.value ?? [];
+
           return ListView.builder(
             itemCount: recurrences.length,
             itemBuilder: (context, index) {
               final r = recurrences[index];
+              final account = accounts.any((a) => a.id == r.accountId)
+                  ? accounts.firstWhere((a) => a.id == r.accountId)
+                  : null;
+
               return ListTile(
                 leading: Icon(
                   r.type == 'income'
@@ -40,7 +48,7 @@ class _ManageRecurrencesPageState extends ConsumerState<ManageRecurrencesPage> {
                 ),
                 title: Text(r.label),
                 subtitle: Text(
-                  '${r.frequency} - Prochaine: ${DateFormat('dd/MM/yyyy').format(r.nextDueDate)}',
+                  '${account?.name ?? "Inconnu"} - ${r.frequency} - Prochaine: ${DateFormat('dd/MM/yyyy').format(r.nextDueDate)}',
                 ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -53,12 +61,15 @@ class _ManageRecurrencesPageState extends ConsumerState<ManageRecurrencesPage> {
                       icon: const Icon(Icons.edit, color: Colors.blue),
                       onPressed: () {
                         accountsAsync.whenData((accounts) {
-                          RecurrenceDialog.show(
-                            context,
-                            ref,
-                            accounts,
-                            recurrence: r,
-                          );
+                          membersAsync.whenData((members) {
+                            RecurrenceDialog.show(
+                              context,
+                              ref,
+                              accounts,
+                              members,
+                              recurrence: r,
+                            );
+                          });
                         });
                       },
                     ),
@@ -102,7 +113,11 @@ class _ManageRecurrencesPageState extends ConsumerState<ManageRecurrencesPage> {
       ),
       floatingActionButton: accountsAsync.when(
         data: (accounts) => FloatingActionButton(
-          onPressed: () => RecurrenceDialog.show(context, ref, accounts),
+          onPressed: () {
+            membersAsync.whenData((members) {
+              RecurrenceDialog.show(context, ref, accounts, members);
+            });
+          },
           child: const Icon(Icons.add),
         ),
         loading: () => null,
