@@ -112,7 +112,7 @@ class StatisticsController extends StateNotifier<AsyncValue<StatisticsData>> {
       double totalIncome = 0;
 
       for (final t in transactions) {
-        if (t['is_automatic'] == true) continue;
+        if (t['bank_balance'] != null) continue;
         final label = t['label']?.toString().toLowerCase() ?? '';
         if (label.contains('solde') || label.contains('ajustement')) continue;
 
@@ -235,7 +235,7 @@ class StatisticsController extends StateNotifier<AsyncValue<StatisticsData>> {
         double mIncome = 0;
         double mExpense = 0;
         for (final t in monthTrans) {
-          if (t['is_automatic'] == true) continue;
+          if (t['bank_balance'] != null) continue;
           final label = t['label']?.toString().toLowerCase() ?? '';
           if (label.contains('solde') || label.contains('ajustement')) continue;
 
@@ -329,7 +329,7 @@ final accountStatsProvider = FutureProvider.family<StatisticsData, String?>((
   double totalIncome = 0;
 
   for (final t in transactions) {
-    if (t['is_automatic'] == true) continue;
+    if (t['bank_balance'] != null) continue;
     final label = t['label']?.toString().toLowerCase() ?? '';
     if (label.contains('solde') || label.contains('ajustement')) continue;
 
@@ -427,7 +427,7 @@ final accountStatsProvider = FutureProvider.family<StatisticsData, String?>((
     double mIncome = 0;
     double mExpense = 0;
     for (final t in monthTrans) {
-      if (t['is_automatic'] == true) continue;
+      if (t['bank_balance'] != null) continue;
       final label = t['label']?.toString().toLowerCase() ?? '';
       if (label.contains('solde') || label.contains('ajustement')) continue;
 

@@ -37,6 +37,7 @@ class RecurrenceService {
           recurrenceId: recurrence.id,
           status: 'projected',
           memberId: recurrence.memberId,
+          isAutomatic: true,
         );
       } else {
         final transactionData = {

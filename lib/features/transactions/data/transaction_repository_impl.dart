@@ -286,6 +286,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     String? recurrenceId,
     String? status,
     String? memberId,
+    bool? isAutomatic,
   }) async {
     final user = _dbService.pb.authStore.record;
     if (user == null) return;
@@ -311,7 +312,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
               'category': category ?? 'transfer',
               'recurrence': recurrenceId,
               'member': memberId,
-              'is_automatic': false,
+              'is_automatic': isAutomatic ?? false,
             },
           );
     } catch (e) {
