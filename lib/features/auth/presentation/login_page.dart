@@ -100,9 +100,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         prefixIcon: Icon(Icons.lock),
                       ),
                       obscureText: true,
+                      keyboardType: TextInputType.visiblePassword,
                       autofillHints: const [AutofillHints.password],
                       textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) => _submit(),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Veuillez entrer votre mot de passe';
@@ -153,7 +153,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                     const SizedBox(height: 24),
                     const Text(
-                      'v1.9.40',
+                      'v1.9.41',
                       style: TextStyle(color: Colors.grey, fontSize: 12),
                       textAlign: TextAlign.center,
                     ),
