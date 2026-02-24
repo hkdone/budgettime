@@ -240,6 +240,8 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                   targetAccountId: _type == 'transfer'
                       ? _targetAccountId
                       : null,
+                  memberId: _selectedMemberId,
+                  categoryId: category,
                 );
           }
 
