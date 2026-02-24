@@ -280,7 +280,7 @@ class DashboardPage extends ConsumerWidget {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: const Text(
-                                  'v1.9.27',
+                                  'v1.9.28',
                                   style: TextStyle(
                                     fontSize: 10,
                                     color: Colors.blueGrey,
@@ -464,6 +464,7 @@ class DashboardPage extends ConsumerWidget {
                   else
                     // DETAIL VIEW: Show transaction list for the selected account
                     TransactionList(transactions: state.transactions),
+                  const SliverToBoxAdapter(child: SizedBox(height: 80)),
                 ],
               ),
             ),
