@@ -10,7 +10,7 @@ class CreditMutuelSmsParser implements InboxProcessingStrategy {
   );
 
   final RegExp _patternCMPay = RegExp(
-    r'Votre paiement de\s+([\d+.,]+)\s?€\s+pour\s+(.*?)\s+a bien été effectué',
+    r'Votre paiement de\s+([\d+.,]+)\s?.?\s+pour\s+(.*?)\s+(?:a bien été|effectué)',
     caseSensitive: false,
   );
 
@@ -58,8 +58,7 @@ class CreditMutuelSmsParser implements InboxProcessingStrategy {
         'type': 'expense',
         'date': DateTime.now().toIso8601String(),
         'category': 'Autre',
-        'status':
-            'planned', // CM Pay notifications are for future/pending debit
+        'status': 'projected', // Use 'projected' to match AddTransactionPage
         'is_automatic': true,
       };
     }
