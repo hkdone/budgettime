@@ -9,6 +9,11 @@ class CreditMutuelSmsParser implements InboxProcessingStrategy {
     caseSensitive: false,
   );
 
+  final RegExp _patternCMPay = RegExp(
+    r'Votre paiement de\s+([\d+.,]+)\s?€\s+pour\s+(.*?)\s+a bien été effectué',
+    caseSensitive: false,
+  );
+
   final RegExp _patternStatement = RegExp(
     r'(?:(\d{2}/\d{2})\s+)?.*?Cpt:\s*(\S+).*?Solde\s*=\s*([+-]?[\d\s,.]+)\s?EUR.*?Opération\s+(créditrice|débitrice)\s+(\d+[.,]\d{2})\s?EUR\s*\((.*)\)',
     caseSensitive: false,
@@ -17,14 +22,22 @@ class CreditMutuelSmsParser implements InboxProcessingStrategy {
   @override
   double canHandle(Map<String, dynamic> item) {
     final payload = item['raw_payload'] as String? ?? '';
+    final metadata = item['metadata'] as Map<String, dynamic>?;
+    final package = metadata?['package']?.toString() ?? '';
+
     final isCM =
         payload.contains('CM:') ||
         payload.contains('Crédit Mutuel') ||
+        payload.contains('Votre paiement de') ||
+        package.contains('payment.app.cm') ||
         (payload.contains('Cpt:') && payload.contains('Solde='));
+
     final hasKeywords =
         payload.contains('Achat') ||
         payload.contains('Opération') ||
-        payload.contains('EUR');
+        payload.contains('paiement') ||
+        payload.contains('EUR') ||
+        payload.contains('€');
 
     return (isCM && hasKeywords) ? 1.0 : 0.0;
   }
@@ -33,7 +46,25 @@ class CreditMutuelSmsParser implements InboxProcessingStrategy {
   Map<String, dynamic>? extractTransactionData(Map<String, dynamic> item) {
     final payload = item['raw_payload'] as String? ?? '';
 
-    // Try Statement pattern first (richer)
+    // 1. Try CMPay (Notification App)
+    final cmPayMatch = _patternCMPay.firstMatch(payload);
+    if (cmPayMatch != null) {
+      final amountStr = cmPayMatch.group(1)?.replaceAll(',', '.') ?? '0.0';
+      final label = cmPayMatch.group(2)?.trim() ?? 'CM Pay';
+
+      return {
+        'amount': -(double.tryParse(amountStr) ?? 0.0),
+        'label': label,
+        'type': 'expense',
+        'date': DateTime.now().toIso8601String(),
+        'category': 'Autre',
+        'status':
+            'planned', // CM Pay notifications are for future/pending debit
+        'is_automatic': true,
+      };
+    }
+
+    // 2. Try Statement pattern (SMS rich)
     final statementMatch = _patternStatement.firstMatch(payload);
     if (statementMatch != null) {
       final dateStr = statementMatch.group(1); // Optional: "23/02"
@@ -75,7 +106,7 @@ class CreditMutuelSmsParser implements InboxProcessingStrategy {
       };
     }
 
-    // Fallback to Achat pattern
+    // 3. Fallback to Achat pattern (Classic SMS)
     final achatMatch = _patternAchat.firstMatch(payload);
     if (achatMatch != null) {
       final amountStr = achatMatch.group(1)?.replaceAll(',', '.') ?? '0.0';
@@ -87,6 +118,7 @@ class CreditMutuelSmsParser implements InboxProcessingStrategy {
         'type': 'expense',
         'date': DateTime.now().toIso8601String(),
         'category': 'Autre',
+        'is_automatic': true,
       };
     }
 
