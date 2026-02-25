@@ -16,6 +16,7 @@ class DashboardState {
   final double effectiveBalance;
   final double projectedBalance;
   final bool showAllTransactions;
+  final String searchQuery;
   final bool isLoading;
   final String? error;
 
@@ -28,6 +29,7 @@ class DashboardState {
     this.effectiveBalance = 0.0,
     this.projectedBalance = 0.0,
     this.showAllTransactions = false,
+    this.searchQuery = '',
     this.isLoading = false,
     this.error,
   });
@@ -41,6 +43,7 @@ class DashboardState {
     double? effectiveBalance,
     double? projectedBalance,
     bool? showAllTransactions,
+    String? searchQuery,
     bool? isLoading,
     String? error,
   }) {
@@ -53,6 +56,7 @@ class DashboardState {
       effectiveBalance: effectiveBalance ?? this.effectiveBalance,
       projectedBalance: projectedBalance ?? this.projectedBalance,
       showAllTransactions: showAllTransactions ?? this.showAllTransactions,
+      searchQuery: searchQuery ?? this.searchQuery,
       isLoading: isLoading ?? this.isLoading,
       error: error ?? this.error,
     );
@@ -66,6 +70,7 @@ class DashboardState {
     double? effectiveBalance,
     double? projectedBalance,
     bool? showAllTransactions,
+    String? searchQuery,
     bool? isLoading,
     String? error,
   }) {
@@ -78,6 +83,7 @@ class DashboardState {
       effectiveBalance: effectiveBalance ?? this.effectiveBalance,
       projectedBalance: projectedBalance ?? this.projectedBalance,
       showAllTransactions: showAllTransactions ?? this.showAllTransactions,
+      searchQuery: searchQuery ?? this.searchQuery,
       isLoading: isLoading ?? this.isLoading,
       error: error ?? this.error,
     );
@@ -234,6 +240,10 @@ class DashboardController extends StateNotifier<DashboardState> {
   void toggleShowAllTransactions() {
     state = state.copyWith(showAllTransactions: !state.showAllTransactions);
     _loadData(refreshAccounts: false);
+  }
+
+  void setSearchQuery(String query) {
+    state = state.copyWith(searchQuery: query);
   }
 
   Future<void> processInbox() async {

@@ -26,7 +26,39 @@ class DashboardPage extends ConsumerWidget {
     double projectedIncome = 0;
     double projectedExpense = 0;
 
-    for (final t in state.transactions) {
+    // Apply Search Filter locally
+    final filteredTransactions = state.transactions.where((t) {
+      if (state.searchQuery.isEmpty) return true;
+
+      final query = state.searchQuery.toLowerCase();
+      final label = (t['label'] ?? '').toString().toLowerCase();
+      final category = (t['expand']?['category']?['name'] ?? '')
+          .toString()
+          .toLowerCase();
+      final member = (t['expand']?['member']?['name'] ?? '')
+          .toString()
+          .toLowerCase();
+      final amount = (t['amount'] as num).toDouble();
+
+      // Convert amount query (handle comma to dot)
+      final amountQueryRaw = query.replaceAll(',', '.');
+      final amountQuery = double.tryParse(amountQueryRaw);
+
+      if (label.contains(query)) return true;
+      if (category.contains(query)) return true;
+      if (member.contains(query)) return true;
+      if (amountQuery != null && amount.abs() == amountQuery.abs()) return true;
+
+      return false;
+    }).toList();
+
+    // Re-calculate totals based on FILTERED transactions for accurate sums in view
+    realIncome = 0;
+    realExpense = 0;
+    projectedIncome = 0;
+    projectedExpense = 0;
+
+    for (final t in filteredTransactions) {
       final amount = (t['amount'] as num).toDouble();
       final isProjected = t['status'] == 'projected';
       final isTransfer =
@@ -37,10 +69,8 @@ class DashboardPage extends ConsumerWidget {
 
       if (isTransfer) {
         if (state.selectedAccount == null) {
-          // Global view: transfers are neutral for sums
           continue;
         } else {
-          // Account specific view
           if (t['target_account'] == state.selectedAccount!.id) {
             isIncomeFlow = true;
           } else if (t['account'] == state.selectedAccount!.id) {
@@ -52,15 +82,12 @@ class DashboardPage extends ConsumerWidget {
       }
 
       if (isProjected) {
-        // Projected sums: include everything visible (including overdue)
         if (isIncomeFlow) {
           projectedIncome += amount;
         } else {
           projectedExpense += amount;
         }
       } else {
-        // Real sums: strictly for the current fiscal period in this list
-        // Note: state.transactions already filtered by controller, but we re-check for safety
         final date = DateTime.parse(t['date']);
         final isWithinPeriod =
             (date.isAfter(state.start) || date.isAtSameMomentAs(state.start)) &&
@@ -174,7 +201,36 @@ class DashboardPage extends ConsumerWidget {
           ),
         ),
         actions: [
-          if (state.selectedAccount != null)
+          if (state.selectedAccount != null) ...[
+            // Search Bar Component
+            SizedBox(
+              width: 180,
+              height: 40,
+              child: TextField(
+                onChanged: (value) => controller.setSearchQuery(value),
+                decoration: InputDecoration(
+                  hintText: 'Rechercher...',
+                  hintStyle: const TextStyle(fontSize: 14),
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  suffixIcon: state.searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 16),
+                          onPressed: () {
+                            controller.setSearchQuery('');
+                          },
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[200],
+                  contentPadding: EdgeInsets.zero,
+                ),
+                style: const TextStyle(fontSize: 14),
+              ),
+            ),
             IconButton(
               icon: Icon(
                 state.showAllTransactions
@@ -191,6 +247,8 @@ class DashboardPage extends ConsumerWidget {
                     .toggleShowAllTransactions();
               },
             ),
+          ],
+
           Consumer(
             builder: (context, ref, child) {
               final inboxState = ref.watch(inboxControllerProvider);
@@ -496,7 +554,7 @@ class DashboardPage extends ConsumerWidget {
                     )
                   else
                     // DETAIL VIEW: Show transaction list for the selected account
-                    TransactionList(transactions: state.transactions),
+                    TransactionList(transactions: filteredTransactions),
                   const SliverToBoxAdapter(child: SizedBox(height: 80)),
                 ],
               ),

@@ -79,7 +79,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     Image.asset('assets/logo.png', height: 100),
                     const SizedBox(height: 16),
                     Text(
-                      'Budget Time',
+                      'BudgetTime v1.9.59',
                       style: Theme.of(context).textTheme.headlineMedium,
                       textAlign: TextAlign.center,
                     ),
