@@ -209,7 +209,10 @@ class AccountGlobalCard extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Divider(height: 1),
+                      ),
                       if (isWide)
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,

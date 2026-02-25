@@ -114,7 +114,7 @@ class CategoryPieChart extends StatelessWidget {
                   Container(width: 8, height: 8, color: category.color),
                   const SizedBox(width: 4),
                   Text(
-                    '${category.name} (${catStat.amount.toStringAsFixed(0)}Ôé¼)',
+                    '${category.name} (${formatCurrency(catStat.amount)})',
                     style: const TextStyle(fontSize: 10),
                   ),
                 ],
