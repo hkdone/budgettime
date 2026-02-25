@@ -79,9 +79,7 @@ class CategoryPieChart extends StatelessWidget {
                 return PieChartSectionData(
                   color: category.color,
                   value: catStat.amount,
-                  title: stats.length <= 5
-                      ? '${catStat.percentage.round()}%'
-                      : '',
+                  title: '${catStat.percentage.round()}%',
                   radius: 40,
                   titleStyle: const TextStyle(
                     fontSize: 10,
@@ -98,7 +96,7 @@ class CategoryPieChart extends StatelessWidget {
           Wrap(
             spacing: 8,
             runSpacing: 4,
-            children: stats.take(5).map((catStat) {
+            children: stats.map((catStat) {
               final category = kTransactionCategories.firstWhere(
                 (c) => c.id == catStat.categoryId,
                 orElse: () => const Category(
@@ -179,7 +177,7 @@ class MemberPieChart extends StatelessWidget {
                 return PieChartSectionData(
                   color: memberColor,
                   value: stat.amount,
-                  title: stats.length <= 3 ? '${stat.percentage.round()}%' : '',
+                  title: '${stat.percentage.round()}%',
                   radius: 40,
                   titleStyle: const TextStyle(
                     fontSize: 10,
@@ -257,7 +255,7 @@ class HistoryBarChart extends StatelessWidget {
                     ? (e.income > e.expense ? e.income : e.expense)
                     : max,
               ) *
-              1.2,
+              1.3,
           barTouchData: const BarTouchData(enabled: true),
           titlesData: FlTitlesData(
             show: showTitles,

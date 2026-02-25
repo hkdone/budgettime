@@ -71,48 +71,64 @@ class StatsTrendPage extends ConsumerWidget {
         .reduce((a, b) => a > b ? a : b);
     final chartMax = maxBalance == 0 ? 100.0 : maxBalance * 1.2;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: trends.map((trend) {
-        final heightFactor = (trend.balance.abs() / chartMax).clamp(0.05, 1.0);
-        final isPositive = trend.balance >= 0;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final chartHeight = constraints.maxHeight > 0
+            ? constraints.maxHeight
+            : 250.0;
 
-        return Expanded(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Text(
-                '${(trend.balance / 1000).toStringAsFixed(1)}k',
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                height: 200 * heightFactor,
-                decoration: BoxDecoration(
-                  color: isPositive
-                      ? Colors.green.withValues(alpha: 0.7)
-                      : Colors.red.withValues(alpha: 0.7),
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(4),
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: trends.map((trend) {
+            final heightFactor = (trend.balance.abs() / chartMax).clamp(
+              0.05,
+              1.0,
+            );
+            final isPositive = trend.balance >= 0;
+
+            return Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4.0),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        '${(trend.balance / 1000).toStringAsFixed(1)}k',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    height: (chartHeight - 40) * heightFactor,
+                    decoration: BoxDecoration(
+                      color: isPositive
+                          ? Colors.green.withValues(alpha: 0.7)
+                          : Colors.red.withValues(alpha: 0.7),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(4),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    trend.year.toString(),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                trend.year.toString(),
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
+            );
+          }).toList(),
         );
-      }).toList(),
+      },
     );
   }
 
