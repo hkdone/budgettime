@@ -43,14 +43,11 @@ class StatsTrendPage extends ConsumerWidget {
                     child: ListView.builder(
                       itemCount: state.yearlyTrends.length,
                       itemBuilder: (context, index) {
-                        // Reverse order for list: newest first
-                        final actualIndex =
-                            state.yearlyTrends.length - 1 - index;
-                        final trend = state.yearlyTrends[actualIndex];
+                        final trend = state.yearlyTrends[index];
 
                         YearlyTrend? previousTrend;
-                        if (actualIndex > 0) {
-                          previousTrend = state.yearlyTrends[actualIndex - 1];
+                        if (index > 0) {
+                          previousTrend = state.yearlyTrends[index - 1];
                         }
 
                         return _buildYearlyCard(trend, previousTrend);

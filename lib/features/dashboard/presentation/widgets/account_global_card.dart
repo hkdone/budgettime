@@ -10,6 +10,8 @@ import 'package:budgettime/core/utils/formatters.dart';
 class _LocalStats {
   double totalIncome = 0;
   double totalExpense = 0;
+  double totalVirementIn = 0;
+  double totalVirementOut = 0;
   Map<String, double> incomeByCategory = {};
   Map<String, double> expenseByCategory = {};
   Map<String, double> incomeByMember = {};
@@ -98,17 +100,25 @@ class AccountGlobalCard extends ConsumerWidget {
       final memberId = t['member'] ?? 'common';
 
       if (role == 'income') {
-        stats.totalIncome += amount;
-        stats.incomeByCategory[categoryId] =
-            (stats.incomeByCategory[categoryId] ?? 0) + amount;
-        stats.incomeByMember[memberId] =
-            (stats.incomeByMember[memberId] ?? 0) + amount;
+        if (isTransfer) {
+          stats.totalVirementIn += amount;
+        } else {
+          stats.totalIncome += amount;
+          stats.incomeByCategory[categoryId] =
+              (stats.incomeByCategory[categoryId] ?? 0) + amount;
+          stats.incomeByMember[memberId] =
+              (stats.incomeByMember[memberId] ?? 0) + amount;
+        }
       } else {
-        stats.totalExpense += amount;
-        stats.expenseByCategory[categoryId] =
-            (stats.expenseByCategory[categoryId] ?? 0) + amount;
-        stats.expenseByMember[memberId] =
-            (stats.expenseByMember[memberId] ?? 0) + amount;
+        if (isTransfer) {
+          stats.totalVirementOut += amount;
+        } else {
+          stats.totalExpense += amount;
+          stats.expenseByCategory[categoryId] =
+              (stats.expenseByCategory[categoryId] ?? 0) + amount;
+          stats.expenseByMember[memberId] =
+              (stats.expenseByMember[memberId] ?? 0) + amount;
+        }
       }
     }
 
@@ -201,8 +211,12 @@ class AccountGlobalCard extends ConsumerWidget {
                           _buildStatItem(
                             context,
                             'Reste',
-                            stats.totalIncome - stats.totalExpense,
-                            (stats.totalIncome - stats.totalExpense) >= 0
+                            (stats.totalIncome + stats.totalVirementIn) -
+                                (stats.totalExpense + stats.totalVirementOut),
+                            ((stats.totalIncome + stats.totalVirementIn) -
+                                        (stats.totalExpense +
+                                            stats.totalVirementOut)) >=
+                                    0
                                 ? Colors.blue
                                 : Colors.orange,
                             Icons.account_balance_wallet,
