@@ -12,6 +12,7 @@ class _LocalStats {
   double totalExpense = 0;
   double totalVirementIn = 0;
   double totalVirementOut = 0;
+  double projectedDelta = 0;
   Map<String, double> incomeByCategory = {};
   Map<String, double> expenseByCategory = {};
   Map<String, double> incomeByMember = {};
@@ -109,6 +110,9 @@ class AccountGlobalCard extends ConsumerWidget {
           stats.incomeByMember[memberId] =
               (stats.incomeByMember[memberId] ?? 0) + amount;
         }
+        if (t['status'] == 'projected') {
+          stats.projectedDelta += amount;
+        }
       } else {
         if (isTransfer) {
           stats.totalVirementOut += amount;
@@ -118,6 +122,9 @@ class AccountGlobalCard extends ConsumerWidget {
               (stats.expenseByCategory[categoryId] ?? 0) + amount;
           stats.expenseByMember[memberId] =
               (stats.expenseByMember[memberId] ?? 0) + amount;
+        }
+        if (t['status'] == 'projected') {
+          stats.projectedDelta -= amount;
         }
       }
     }
@@ -211,11 +218,9 @@ class AccountGlobalCard extends ConsumerWidget {
                           _buildStatItem(
                             context,
                             'Reste',
-                            (stats.totalIncome + stats.totalVirementIn) -
-                                (stats.totalExpense + stats.totalVirementOut),
-                            ((stats.totalIncome + stats.totalVirementIn) -
-                                        (stats.totalExpense +
-                                            stats.totalVirementOut)) >=
+                            (balanceAsync.value ?? 0.0) + stats.projectedDelta,
+                            ((balanceAsync.value ?? 0.0) +
+                                        stats.projectedDelta) >=
                                     0
                                 ? Colors.blue
                                 : Colors.orange,
