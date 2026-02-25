@@ -79,7 +79,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     Image.asset('assets/logo.png', height: 100),
                     const SizedBox(height: 16),
                     Text(
-                      'BudgetTime v1.9.59',
+                      'BudgetTime v1.9.61',
                       style: Theme.of(context).textTheme.headlineMedium,
                       textAlign: TextAlign.center,
                     ),
@@ -163,7 +163,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                     const SizedBox(height: 24),
                     const Text(
-                      'v1.9.58',
+                      'v1.9.61',
                       style: TextStyle(color: Colors.grey, fontSize: 12),
                       textAlign: TextAlign.center,
                     ),

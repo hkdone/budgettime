@@ -192,6 +192,11 @@ class StatsController extends StateNotifier<StatsState> {
     }
   }
 
+  Future<void> refresh() async {
+    await loadStats();
+    await fetchYearlyTrends();
+  }
+
   void _processTransactionForAccount({
     required Map<String, dynamic> t,
     required String accountId,
@@ -299,16 +304,17 @@ class StatsController extends StateNotifier<StatsState> {
   void changeYear(int year) {
     state = state.copyWith(selectedYear: year);
     loadStats();
+    fetchYearlyTrends();
   }
 
   Future<void> fetchYearlyTrends() async {
-    final currentYear = DateTime.now().year;
+    final startYear = state.selectedYear;
     final List<YearlyTrend> trends = [];
 
     try {
-      // Fetch last 5 years
-      for (int i = 0; i < 5; i++) {
-        final year = currentYear - i;
+      // Fetch current year + 5 years ahead
+      for (int i = 0; i < 6; i++) {
+        final year = startYear + i;
         final start = DateTime(year, 1, 1);
         final end = DateTime(year, 12, 31, 23, 59, 59);
 
@@ -349,7 +355,7 @@ class StatsController extends StateNotifier<StatsState> {
         );
       }
 
-      state = state.copyWith(yearlyTrends: trends.reversed.toList());
+      state = state.copyWith(yearlyTrends: trends);
     } catch (e, stack) {
       debugPrint('Error in fetchYearlyTrends: $e\n$stack');
     }

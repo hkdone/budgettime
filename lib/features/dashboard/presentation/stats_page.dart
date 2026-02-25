@@ -57,7 +57,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
             ),
             body: RefreshIndicator(
               onRefresh: () async =>
-                  ref.read(statsControllerProvider.notifier).loadStats(),
+                  ref.read(statsControllerProvider.notifier).refresh(),
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(

@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../accounts/domain/account.dart';
-import '../../../statistics/presentation/statistics_controller.dart';
-import '../../../statistics/presentation/widgets/statistics_charts.dart';
-import '../../../members/presentation/member_controller.dart';
 import '../../../accounts/presentation/account_controller.dart';
 import '../dashboard_controller.dart';
 import 'package:budgettime/core/utils/formatters.dart';
@@ -15,9 +12,39 @@ class AccountGlobalCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final statsAsync = ref.watch(accountStatsProvider(account.id));
-    final membersAsync = ref.watch(memberControllerProvider);
     final balanceAsync = ref.watch(accountBalanceProvider(account));
+    final dashboardState = ref.watch(dashboardControllerProvider);
+
+    // Calculate month-to-date totals for THIS account from the global state
+    double accountIncome = 0;
+    double accountExpense = 0;
+
+    for (final t in dashboardState.transactions) {
+      final amount = (t['amount'] as num).toDouble();
+      final isTransfer =
+          t['target_account'] != null &&
+          t['target_account'].toString().isNotEmpty;
+
+      bool isIncomeFlow = t['type'] == 'income';
+
+      if (isTransfer) {
+        if (t['target_account'] == account.id) {
+          isIncomeFlow = true;
+        } else if (t['account'] == account.id) {
+          isIncomeFlow = false;
+        } else {
+          continue; // Not related to this account
+        }
+      } else if (t['account'] != account.id) {
+        continue; // Not related to this account
+      }
+
+      if (isIncomeFlow) {
+        accountIncome += amount;
+      } else {
+        accountExpense += amount;
+      }
+    }
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -81,109 +108,63 @@ class AccountGlobalCard extends ConsumerWidget {
               ),
               const Divider(height: 24),
 
-              // Statistics Content
-              statsAsync.when(
-                data: (stats) {
-                  return LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isWide = constraints.maxWidth > 500;
-
-                      return Column(
-                        children: [
-                          if (isWide)
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: CategoryPieChart(
-                                    stats: stats.expenseByCategory,
-                                    totalAmount: stats.totalExpense,
-                                    showLegend: true,
-                                  ),
-                                ),
-                                Expanded(
-                                  child: membersAsync.maybeWhen(
-                                    data: (members) => MemberPieChart(
-                                      stats: stats.expenseByMember,
-                                      members: members,
-                                      totalAmount: stats.totalExpense,
-                                      title: 'Dépenses membres',
-                                      showLegend: true,
-                                    ),
-                                    orElse: () => const SizedBox.shrink(),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: membersAsync.maybeWhen(
-                                    data: (members) => MemberPieChart(
-                                      stats: stats.incomeByMember,
-                                      members: members,
-                                      totalAmount: stats.totalIncome,
-                                      title: 'Recettes membres',
-                                      showLegend: true,
-                                    ),
-                                    orElse: () => const SizedBox.shrink(),
-                                  ),
-                                ),
-                              ],
-                            )
-                          else
-                            Column(
-                              children: [
-                                CategoryPieChart(
-                                  stats: stats.expenseByCategory,
-                                  totalAmount: stats.totalExpense,
-                                  showLegend: true,
-                                ),
-                                const SizedBox(height: 16),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: membersAsync.maybeWhen(
-                                        data: (members) => MemberPieChart(
-                                          stats: stats.expenseByMember,
-                                          members: members,
-                                          totalAmount: stats.totalExpense,
-                                          title: 'Dépenses membres',
-                                          showLegend: true,
-                                        ),
-                                        orElse: () => const SizedBox.shrink(),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: membersAsync.maybeWhen(
-                                        data: (members) => MemberPieChart(
-                                          stats: stats.incomeByMember,
-                                          members: members,
-                                          totalAmount: stats.totalIncome,
-                                          title: 'Recettes membres',
-                                          showLegend: true,
-                                        ),
-                                        orElse: () => const SizedBox.shrink(),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                        ],
-                      );
-                    },
-                  );
-                },
-                loading: () => const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: CircularProgressIndicator(),
+              // Simple Month Summary
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildStatItem(
+                    context,
+                    'Revenus',
+                    accountIncome,
+                    Colors.green,
+                    Icons.trending_up,
                   ),
-                ),
-                error: (e, s) => Center(child: Text('Erreur: $e')),
+                  _buildStatItem(
+                    context,
+                    'Dépenses',
+                    accountExpense,
+                    Colors.red,
+                    Icons.trending_down,
+                  ),
+                  _buildStatItem(
+                    context,
+                    'Reste',
+                    accountIncome - accountExpense,
+                    (accountIncome - accountExpense) >= 0
+                        ? Colors.blue
+                        : Colors.orange,
+                    Icons.account_balance_wallet,
+                  ),
+                ],
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildStatItem(
+    BuildContext context,
+    String label,
+    double value,
+    Color color,
+    IconData icon,
+  ) {
+    return Column(
+      children: [
+        Icon(icon, color: color.withValues(alpha: 0.6), size: 20),
+        const SizedBox(height: 4),
+        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        Text(
+          formatCurrency(value),
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
     );
   }
 }

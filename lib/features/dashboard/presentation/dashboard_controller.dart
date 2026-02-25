@@ -6,6 +6,7 @@ import '../../accounts/data/account_repository_impl.dart';
 import '../../settings/presentation/settings_controller.dart';
 import '../../transactions/domain/transaction_repository.dart';
 import '../../recurrences/presentation/recurrence_controller.dart';
+import '../../inbox/presentation/inbox_controller.dart';
 
 class DashboardState {
   final List<dynamic> transactions;
@@ -223,6 +224,8 @@ class DashboardController extends StateNotifier<DashboardState> {
 
   Future<void> refresh() async {
     await _loadData(refreshAccounts: true);
+    // Also refresh inbox to update the notification badge
+    _ref.read(inboxControllerProvider.notifier).refresh();
   }
 
   void selectAccount(Account? account) {
