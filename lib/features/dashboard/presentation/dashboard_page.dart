@@ -182,21 +182,6 @@ class DashboardPage extends ConsumerWidget {
                 ),
               ),
               const Icon(Icons.arrow_drop_down, color: Colors.black),
-              if (state.selectedAccount != null) ...[
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.home_outlined),
-                  onPressed: () {
-                    ref
-                        .read(dashboardControllerProvider.notifier)
-                        .selectAccount(null);
-                  },
-                  tooltip: 'Tous les comptes',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  visualDensity: VisualDensity.compact,
-                ),
-              ],
             ],
           ),
         ),
@@ -230,6 +215,15 @@ class DashboardPage extends ConsumerWidget {
                 ),
                 style: const TextStyle(fontSize: 14),
               ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.home_outlined, color: Colors.blue),
+              tooltip: 'Tous les comptes',
+              onPressed: () {
+                ref
+                    .read(dashboardControllerProvider.notifier)
+                    .selectAccount(null);
+              },
             ),
             IconButton(
               icon: Icon(
@@ -276,13 +270,17 @@ class DashboardPage extends ConsumerWidget {
               );
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.bar_chart_rounded, color: Colors.blueAccent),
-            tooltip: 'Statistiques Annuelles',
-            onPressed: () {
-              context.push('/stats');
-            },
-          ),
+          if (state.selectedAccount == null)
+            IconButton(
+              icon: const Icon(
+                Icons.bar_chart_rounded,
+                color: Colors.blueAccent,
+              ),
+              tooltip: 'Statistiques Annuelles',
+              onPressed: () {
+                context.push('/stats');
+              },
+            ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.black),
             onSelected: (value) {
@@ -371,7 +369,7 @@ class DashboardPage extends ConsumerWidget {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: const Text(
-                                  'v1.9.64',
+                                  'v1.9.65',
                                   style: TextStyle(
                                     fontSize: 10,
                                     color: Colors.blueGrey,
