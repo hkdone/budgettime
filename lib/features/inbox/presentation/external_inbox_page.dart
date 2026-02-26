@@ -200,6 +200,7 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
       },
       // Ensure we don't have an ID that would trigger an "Edit"
       'id': null,
+      'fromInbox': true,
     };
 
     // 3. Navigate

@@ -117,6 +117,49 @@ class TransactionRepositoryImpl implements TransactionRepository {
   }
 
   @override
+  Future<List<Map<String, dynamic>>> getMatchingProjectedTransactions({
+    required double amount,
+    required String type,
+    required DateTime maxDate,
+  }) async {
+    final user = _dbService.pb.authStore.record;
+    if (user == null) return [];
+
+    final dateStr =
+        '${maxDate.year}-${maxDate.month.toString().padLeft(2, '0')}-${maxDate.day.toString().padLeft(2, '0')} 23:59:59';
+
+    final filter =
+        'user = "${user.id}" && status = "projected" && amount = $amount && type = "$type" && date <= "$dateStr"';
+
+    final records = await _dbService.pb
+        .collection('transactions')
+        .getFullList(
+          filter: filter,
+          sort: 'date',
+          expand: 'account,recurrence,member,category',
+        );
+
+    return records.map((e) {
+      final json = e.toJson();
+      final Map<String, dynamic> expandMap = {};
+      const expandKeys = ['account', 'recurrence', 'member', 'category'];
+
+      for (final key in expandKeys) {
+        try {
+          final expanded = e.get<List<dynamic>>('expand.$key');
+          if (expanded.isNotEmpty) {
+            expandMap[key] = expanded[0].toJson();
+          }
+        } catch (_) {}
+      }
+
+      if (expandMap.isNotEmpty) {
+        json['expand'] = expandMap;
+      }
+      return json;
+    }).toList();
+  }
+
   @override
   Future<double> getBalance({
     String? accountId,

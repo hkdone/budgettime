@@ -12,6 +12,13 @@ abstract class TransactionRepository {
     String? accountId,
   });
 
+  /// Fetch matching projected transactions for reconciliation
+  Future<List<Map<String, dynamic>>> getMatchingProjectedTransactions({
+    required double amount,
+    required String type,
+    required DateTime maxDate,
+  });
+
   Future<double> getBalance({
     String? accountId,
     String? status,

@@ -36,6 +36,10 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
   String _recurrenceFrequency = 'monthly';
   String _status = 'projected';
 
+  List<Map<String, dynamic>> _matchingProjections = [];
+  String? _selectedProjectionIdToReconcile;
+  bool _isLoadingProjections = false;
+
   @override
   void initState() {
     super.initState();
@@ -101,6 +105,57 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
       }
       if (t['status'] != null) {
         _status = t['status'];
+      }
+
+      if (t['fromInbox'] == true) {
+        _loadMatchingProjections();
+      }
+    }
+  }
+
+  Future<void> _loadMatchingProjections() async {
+    if (widget.transactionToEdit == null ||
+        widget.transactionToEdit!['fromInbox'] != true) {
+      return;
+    }
+
+    setState(() {
+      _isLoadingProjections = true;
+    });
+
+    try {
+      final amount = widget.transactionToEdit!['amount'] != null
+          ? (widget.transactionToEdit!['amount'] as num).abs().toDouble()
+          : 0.0;
+      if (amount <= 0) return;
+
+      final maxDate = _date.add(const Duration(days: 5));
+      final projections = await ref
+          .read(transactionRepositoryProvider)
+          .getMatchingProjectedTransactions(
+            amount: amount,
+            type: _type,
+            maxDate: maxDate,
+          );
+
+      // Only show top 5 matches
+      final limitedProjections = projections.take(5).toList();
+
+      if (mounted) {
+        setState(() {
+          _matchingProjections = limitedProjections;
+          if (limitedProjections.isNotEmpty) {
+            _selectedProjectionIdToReconcile =
+                limitedProjections.first['id'] as String;
+          }
+        });
+      }
+    } catch (_) {
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingProjections = false;
+        });
       }
     }
   }
@@ -264,6 +319,11 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                   memberId: _selectedMemberId,
                 );
           } else {
+            if (_selectedProjectionIdToReconcile != null) {
+              await ref
+                  .read(transactionRepositoryProvider)
+                  .deleteTransaction(_selectedProjectionIdToReconcile!);
+            }
             await ref.read(transactionRepositoryProvider).addTransaction(data);
           }
 
@@ -454,6 +514,92 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                         onChanged: (val) =>
                             setState(() => _createAdjustment = val ?? false),
                         dense: true,
+                        controlAffinity: ListTileControlAffinity.leading,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              if (_isLoadingProjections)
+                const Padding(
+                  padding: EdgeInsets.only(top: 16.0),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              if (!_isLoadingProjections &&
+                  _matchingProjections.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.orange.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.link, color: Colors.orange),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Rapprochement bancaire possible',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Des transactions prévisionnelles correspondent à ce montant. Sélectionnez-en une pour la remplacer par cette opération réelle.',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      const SizedBox(height: 8),
+                      ..._matchingProjections.map((proj) {
+                        final String projId = proj['id'] as String;
+                        return CheckboxListTile(
+                          title: Text(
+                            '${proj['label']} (${formatCurrency((proj['amount'] as num).toDouble())})',
+                          ),
+                          subtitle: Text(
+                            DateFormat(
+                              'dd/MM/yyyy',
+                            ).format(DateTime.parse(proj['date'])),
+                          ),
+                          value: _selectedProjectionIdToReconcile == projId,
+                          onChanged: (bool? checked) {
+                            setState(() {
+                              if (checked == true) {
+                                _selectedProjectionIdToReconcile = projId;
+                              } else {
+                                _selectedProjectionIdToReconcile = null;
+                              }
+                            });
+                          },
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          activeColor: Colors.orange,
+                          controlAffinity: ListTileControlAffinity.leading,
+                        );
+                      }),
+                      CheckboxListTile(
+                        title: const Text(
+                          'Ne pas rapprocher (Créer une nouvelle)',
+                        ),
+                        value: _selectedProjectionIdToReconcile == null,
+                        onChanged: (bool? checked) {
+                          setState(() {
+                            if (checked == true) {
+                              _selectedProjectionIdToReconcile = null;
+                            }
+                          });
+                        },
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        activeColor: Colors.orange,
                         controlAffinity: ListTileControlAffinity.leading,
                       ),
                     ],
