@@ -85,8 +85,15 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
       if (t['label'] != null) {
         _labelController.text = t['label'];
       }
-      if (t['category'] != null) {
+      if (t['category'] != null && t['category'].toString().isNotEmpty) {
         _categoryController.text = t['category'];
+      } else if (t['expand'] != null && t['expand']['category'] != null) {
+        final cat = t['expand']['category'];
+        if (cat is List && cat.isNotEmpty) {
+          _categoryController.text = cat[0]['id'];
+        } else if (cat is Map) {
+          _categoryController.text = cat['id'];
+        }
       }
       if (t['type'] != null) {
         _type = t['type'];
@@ -260,6 +267,35 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                     DateTime.parse(widget.transactionToEdit!['date']),
                     data,
                   );
+
+              final String recId = widget.transactionToEdit!['recurrence']
+                  .toString();
+              if (recId.isNotEmpty) {
+                try {
+                  // Import the repository directly or via controller? Controller might not have a direct edit fields method.
+                  // We'll use PocketBase directly if repository is not available, but wait, DB service is better.
+                  // Actually, let's keep it clean since it's just a simple db update.
+                  await ref
+                      .read(databaseServiceProvider)
+                      .pb
+                      .collection('recurrences')
+                      .update(
+                        recId,
+                        body: {
+                          'amount': data['amount'],
+                          'label': data['label'],
+                          'type': data['type'],
+                          'category': data['category'],
+                          'account': data['account'],
+                          'member': data['member'],
+                        },
+                      );
+                  // Refresh recurrences in background
+                  ref
+                      .read(recurrenceControllerProvider.notifier)
+                      .getRecurrences();
+                } catch (_) {}
+              }
             }
           }
         } else {

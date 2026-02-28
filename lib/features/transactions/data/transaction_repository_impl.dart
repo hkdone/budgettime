@@ -409,16 +409,6 @@ class TransactionRepositoryImpl implements TransactionRepository {
     } catch (e) {
       // print('Error deleting future transactions: $e');
     }
-
-    // 2. CRITICAL: Stop the recurrence (Set active = false)
-    // This must happen regardless of whether transactions were found/deleted.
-    try {
-      await _dbService.pb
-          .collection('recurrences')
-          .update(recurrenceId, body: {'active': false});
-    } catch (e) {
-      // print('Error stopping recurrence: $e');
-    }
   }
 
   @override

@@ -109,22 +109,6 @@ class RecurrenceController extends StateNotifier<AsyncValue<RecurrenceState>> {
 
       if (createdRecurrence != null) {
         // Generate projections for the next year
-        // Generate projections until end of next year
-        final now = DateTime.now();
-        final periodEnd = DateTime(now.year + 1, 12, 31);
-
-        await _recurrenceService.generateProjectedTransactions(
-          recurrence: createdRecurrence!,
-          periodEnd: periodEnd,
-        );
-
-        // Notify dashboard
-        _ref.read(dashboardControllerProvider.notifier).refresh();
-      }
-
-      if (createdRecurrence != null) {
-        // Generate projections for the next year
-        // Generate projections until end of next year
         final now = DateTime.now();
         final periodEnd = DateTime(now.year + 1, 12, 31);
 
@@ -177,6 +161,7 @@ class RecurrenceController extends StateNotifier<AsyncValue<RecurrenceState>> {
         'target_account': targetAccountId,
         'category': categoryId,
         'member': memberId,
+        'active': true,
       });
 
       final updatedRecurrences = await _repository.getRecurrences();

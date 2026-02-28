@@ -40,7 +40,13 @@ class Recurrence {
       active: record.data['active'] ?? true,
       targetAccountId: record.data['target_account'],
       memberId: record.data['member'],
-      categoryId: record.data['category'],
+      categoryId: record.data['category']?.toString().isNotEmpty == true
+          ? record.data['category']
+          : (record.expand['category'] != null
+                ? (record.expand['category'] is List
+                      ? (record.expand['category'] as List).firstOrNull?.id
+                      : record.expand['category']?.id)
+                : null),
     );
   }
 
@@ -57,7 +63,9 @@ class Recurrence {
       active: json['active'] ?? true,
       targetAccountId: json['target_account'],
       memberId: json['member'],
-      categoryId: json['category'],
+      categoryId: json['category']?.toString().isNotEmpty == true
+          ? json['category']
+          : json['expand']?['category']?['id'],
     );
   }
 }
