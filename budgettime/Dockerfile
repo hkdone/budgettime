@@ -1,33 +1,38 @@
+# ÉTAPE 1 : Constructeur Go (Builder)
+# Permet de compiler le PocketBase + API RSA (Enable Banking)
+FROM golang:1.24-alpine AS builder
+
+WORKDIR /app
+# On copie les dépendances Go locales
+COPY go.mod go.sum ./
+RUN go mod download
+
+# On copie le code natif Go (Bridge JWT) et le dossier des scripts js
+COPY main.go ./
+COPY pb_hooks/ ./pb_hooks/
+
+# Compilation statique du serveur PocketBase Custom (Compatible toute architecture)
+RUN CGO_ENABLED=0 go build -o pocketbase main.go
+
+# -------------------------
+
+# ÉTAPE 2 : Image Runtime (Légère et Rapide) 
 FROM alpine:latest
 
-# Arguments de build (Valeurs par défaut pour Synology Intel/AMD)
-ARG PB_VERSION=0.22.3
-ARG PB_ARCH=linux_amd64
+# Installation des outils systèmes utiles pour CasaOS / Home Assistant
+RUN apk add --no-cache ca-certificates dos2unix tzdata
 
-# Installation des outils
-RUN apk add --no-cache unzip ca-certificates curl dos2unix libc6-compat
+# Définir le répertoire de travail
+WORKDIR /pb
 
-# Téléchargement PocketBase (Gestion d'architecture robuste + Cache Bust)
-ARG BUILD_ARCH
-# On force une reconstruction complète à chaque changement de version ou de script
-RUN echo "Build date: $(date)" > /build_info && \
-    REAL_ARCH=${BUILD_ARCH:-$(uname -m)} && \
-    echo "Host architecture: $(uname -m)" && \
-    echo "Target architecture (HA variable): ${BUILD_ARCH}" && \
-    case "${REAL_ARCH}" in \
-    "x86_64"|"amd64"|"amd64") PB_BINARY_ARCH="linux_amd64" ;; \
-    "aarch64"|"arm64"|"armv8"*) PB_BINARY_ARCH="linux_arm64" ;; \
-    "armv7"*|"armhf") PB_BINARY_ARCH="linux_armv7" ;; \
-    *) echo "Architecture ${REAL_ARCH} non reconnue, utilisation par défaut: linux_arm64" && PB_BINARY_ARCH="linux_arm64" ;; \
-    esac && \
-    echo "Selected PocketBase Binary: ${PB_BINARY_ARCH}" && \
-    curl -L -f "https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_${PB_BINARY_ARCH}.zip" -o /tmp/pb.zip && \
-    unzip -o /tmp/pb.zip -d /pb/ && \
-    chmod +x /pb/pocketbase && \
-    # Vérification du type de binaire
-    echo "Binary Info: $(file /pb/pocketbase 2>/dev/null || echo 'Binaire ELF détecté')" && \
-    head -c 4 /pb/pocketbase | grep -q $'\x7fELF' && echo "Verification success: ELF Magic Found" || (echo "FATAL: Invalid binary format" && exit 1) && \
-    rm /tmp/pb.zip
+# === NOUVELLE MÉTHODE (Go Natif) ===
+# Au lieu de télécharger l'exécutable générique sur internet avec 'curl' et 'unzip',
+# nous "aspirons" directement notre propre exécutable depuis l'ÉTAPE 1 (Builder).
+COPY --from=builder /app/pocketbase /pb/pocketbase
+RUN chmod +x /pb/pocketbase
+
+# On s'assure de récupérer aussi nos scripts Javascript JSVM (pour l'authentification jwt)
+COPY --from=builder /app/pb_hooks /pb/pb_hooks
 
 # Définir le répertoire de travail pour PocketBase
 WORKDIR /pb
