@@ -6,6 +6,8 @@ services:
     # Port Externe (8097) : Port Interne (8090)
     ports:
       - "8097:8090"
+    environment:
+      - ENABLE_BANKING_APP_ID=c2bd280b-383f-4272-9b42-df5410c504cf
     volumes:
       - ./pb_data:/pb/pb_data # Données persistantes
       - ./pb_migrations:/pb/pb_migrations # Migrations de schéma (CRUCIAL)
