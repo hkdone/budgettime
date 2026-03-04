@@ -10,12 +10,9 @@ class OpenBankingService {
   /// 1. Récupère la liste des Banques (Institutions) via notre serveur PocketBase
   Future<List<dynamic>> getInstitutions({String country = 'FR'}) async {
     try {
-      // Construction de l'URL vers notre route Go native
-      String baseUrl = pb.baseURL;
-      if (baseUrl == '/') baseUrl = '';
       final url = Uri.parse(
-        '$baseUrl/api/banking/institutions?country=$country',
-      );
+        pb.baseURL,
+      ).resolve('api/banking/institutions?country=$country');
       // On passe le token de la session utilisateur pour sécuriser l'accès (Même si public pour l'instant)
       final response = await http.get(
         url,
@@ -38,9 +35,7 @@ class OpenBankingService {
   /// 2. Récupère l'URL d'autorisation (Redirect Bank URL) pour la banque choisie
   Future<String> getAuthUrl(String bankId, String redirectUrl) async {
     try {
-      String baseUrl = pb.baseURL;
-      if (baseUrl == '/') baseUrl = '';
-      final url = Uri.parse('$baseUrl/api/banking/auth');
+      final url = Uri.parse(pb.baseURL).resolve('api/banking/auth');
       final response = await http.post(
         url,
         headers: {
@@ -70,9 +65,9 @@ class OpenBankingService {
   /// 3. L'utilisateur a fini sur la banque, on valide le 'code' côté serveur
   Future<String> confirmCallback(String code) async {
     try {
-      String baseUrl = pb.baseURL;
-      if (baseUrl == '/') baseUrl = '';
-      final url = Uri.parse('$baseUrl/api/banking/callback?code=$code');
+      final url = Uri.parse(
+        pb.baseURL,
+      ).resolve('api/banking/callback?code=$code');
       final response = await http.get(
         url,
         headers: {'Authorization': pb.authStore.token},
@@ -111,9 +106,10 @@ class OpenBankingService {
     String? dateEnd,
   }) async {
     try {
-      String baseUrl = pb.baseURL;
-      if (baseUrl == '/') baseUrl = '';
-      var urlStr = '$baseUrl/api/banking/sync?account_id=$accountId';
+      final baseUri = Uri.parse(pb.baseURL);
+      var urlStr = baseUri
+          .resolve('api/banking/sync?account_id=$accountId')
+          .toString();
       if (dateStart != null) urlStr += '&date_start=$dateStart';
       if (dateEnd != null) urlStr += '&date_end=$dateEnd';
 

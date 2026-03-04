@@ -115,8 +115,8 @@ func main() {
 				return e.JSON(500, map[string]any{"error": "JWT Generation Failed", "details": err.Error()})
 			}
 
-			// 2. Préparer l'appel à Enable Banking API (v1 standard)
-			apiURL := "https://api.enablebanking.com/institutions?country=" + country
+			// 2. Préparer l'appel à Enable Banking API (v1 /aspsps)
+			apiURL := "https://api.enablebanking.com/aspsps?country=" + country
 			req, err := http.NewRequest("GET", apiURL, nil)
 			if err != nil {
 				return e.JSON(500, map[string]any{"error": "API Request Creation Failed"})
