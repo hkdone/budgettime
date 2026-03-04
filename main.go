@@ -9,6 +9,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/plugins/jsvm"
 )
@@ -85,6 +86,11 @@ func main() {
 				"token": token,
 			})
 		})
+
+		// Indispensable pour les Frameworks Custom (Go natif) : Servir le Frontend Web
+		publicDir := filepath.Join(filepath.Dir(app.DataDir()), "pb_public")
+		e.Router.GET("/{path...}", apis.Static(os.DirFS(publicDir), false))
+
 		return e.Next()
 	})
 
