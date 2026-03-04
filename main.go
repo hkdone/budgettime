@@ -17,7 +17,7 @@ import (
 )
 
 // generateEnableBankingJWT lit la clé privée et génère un JWT valide pour 1h
-func generateEnableBankingJWT() (string, error) {
+func generateEnableBankingJWT(app *pocketbase.PocketBase) (string, error) {
 	// 1. Récupérer l'Application ID
 	appId := os.Getenv("ENABLE_BANKING_APP_ID")
 	if appId == "" {
@@ -30,8 +30,17 @@ func generateEnableBankingJWT() (string, error) {
 		privateKeyBytes = []byte(envKey)
 	} else {
 		// Chercher dans le dossier ./secrets/ à la racine le fichier nommé comme l'App ID
+		// On s'assure de cibler le même répertoire parent que 'pb_data' ou 'pb_public'
 		fileName := fmt.Sprintf("%s.pem", appId)
-		keyPath := filepath.Join("secrets", fileName)
+
+		var baseDir string
+		if app != nil {
+			baseDir = filepath.Dir(app.DataDir())
+		} else {
+			baseDir = "."
+		}
+
+		keyPath := filepath.Join(baseDir, "secrets", fileName)
 		bytes, err := os.ReadFile(keyPath)
 		if err != nil {
 			return "", fmt.Errorf("échec de la lecture de la clé privée depuis %s : %w", keyPath, err)
@@ -81,7 +90,7 @@ func main() {
 		e.Router.GET("/api/banking/jwt", func(e *core.RequestEvent) error {
 			// Autoriser uniquement les appels serveurs locaux ou admin pour la sécurité
 			// On génère la clé RSA JWT
-			token, err := generateEnableBankingJWT()
+			token, err := generateEnableBankingJWT(app)
 			if err != nil {
 				return e.Error(500, "JWT Generation Failed", err)
 			}
@@ -92,7 +101,7 @@ func main() {
 
 		// Route de test directe en Go Natif (Bypass JSVM pour éviter les 404 Docker)
 		e.Router.GET("/api/test-banking", func(e *core.RequestEvent) error {
-			token, err := generateEnableBankingJWT()
+			token, err := generateEnableBankingJWT(app)
 			if err != nil {
 				return e.JSON(500, map[string]any{"error": "JWT Gen Failed", "details": err.Error()})
 			}
