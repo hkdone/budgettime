@@ -1,10 +1,4 @@
 migrate((app) => {
-    // 1. Suppression préventive
-    try {
-        const existing = app.findCollectionByNameOrId("v2logs000000001");
-        if (existing) app.dao().deleteCollection(existing);
-    } catch (_) { }
-
     const collection = new Collection({
         "id": "v2logs000000001",
         "name": "bank_sync_logs",
@@ -41,19 +35,16 @@ migrate((app) => {
             },
             { "id": "v2logs_error", "name": "error_message", "type": "text", "required": false }
         ],
+        "listRule": null,
+        "viewRule": null,
+        "createRule": null,
+        "updateRule": null,
+        "deleteRule": null,
         "options": {}
     });
 
-    // 2. Sauvegarde Schéma
-    app.dao().saveCollection(collection);
-
-    // 3. Rafraîchissement et ajout des règles
-    const fresh = app.findCollectionByNameOrId("v2logs000000001");
-    fresh.listRule = "connection_id.user = @request.auth.id";
-    fresh.viewRule = "connection_id.user = @request.auth.id";
-
-    return app.dao().saveCollection(fresh);
+    return app.save(collection);
 }, (app) => {
     const collection = app.findCollectionByNameOrId("v2logs000000001");
-    if (collection) app.dao().deleteCollection(collection);
+    if (collection) app.delete(collection);
 })
