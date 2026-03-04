@@ -72,6 +72,13 @@ $env:CGO_ENABLED = ""
 $env:GOOS = ""
 $env:GOARCH = ""
 
+# Copie des secrets RSA pour Open Banking
+if (Test-Path secrets) {
+    Write-Host "Copie des clés RSA (secrets/)..."
+    if (Test-Path budgettime/secrets) { Remove-Item -Recurse -Force budgettime/secrets }
+    Copy-Item -Recurse secrets budgettime/secrets
+}
+
 # 5. Git Operations
 Write-Host "5. Git Operations..."
 
