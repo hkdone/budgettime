@@ -24,16 +24,17 @@ func generateEnableBankingJWT() (string, error) {
 		return "", fmt.Errorf("ENABLE_BANKING_APP_ID environment variable is missing")
 	}
 
-	// 2. Trouver la clé privée (soit env var, soit fichier local dans ./secrets)
+	// 2. Trouver la clé privée (soit env var, soit fichier local dans ./secrets/<appId>.pem)
 	var privateKeyBytes []byte
 	if envKey := os.Getenv("ENABLE_BANKING_PRIVATE_KEY"); envKey != "" {
 		privateKeyBytes = []byte(envKey)
 	} else {
-		// Chercher dans le dossier ./secrets/ à la racine
-		keyPath := filepath.Join("secrets", "enablebanking_private.pem")
+		// Chercher dans le dossier ./secrets/ à la racine le fichier nommé comme l'App ID
+		fileName := fmt.Sprintf("%s.pem", appId)
+		keyPath := filepath.Join("secrets", fileName)
 		bytes, err := os.ReadFile(keyPath)
 		if err != nil {
-			return "", fmt.Errorf("failed to read private key from %s: %w", keyPath, err)
+			return "", fmt.Errorf("échec de la lecture de la clé privée depuis %s : %w", keyPath, err)
 		}
 		privateKeyBytes = bytes
 	}
