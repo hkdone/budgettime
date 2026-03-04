@@ -1,8 +1,6 @@
 migrate((app) => {
     const collection = new Collection({
         "id": "bank_sync_logs",
-        "createdAt": "",
-        "updatedAt": "",
         "name": "bank_sync_logs",
         "type": "base",
         "system": false,
@@ -70,13 +68,18 @@ migrate((app) => {
             }
         ],
         "indexes": [],
-        "listRule": "@request.auth.id != '' && connection_id.user_id = @request.auth.id",
-        "viewRule": "@request.auth.id != '' && connection_id.user_id = @request.auth.id",
+        "listRule": null,
+        "viewRule": null,
         "createRule": null,
         "updateRule": null,
         "deleteRule": null,
         "options": {}
     });
+
+    app.save(collection);
+
+    collection.listRule = "connection_id.user_id = @request.auth.id";
+    collection.viewRule = "connection_id.user_id = @request.auth.id";
 
     return app.save(collection);
 }, (app) => {

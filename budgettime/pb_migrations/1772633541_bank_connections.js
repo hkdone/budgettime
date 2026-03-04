@@ -1,8 +1,6 @@
 migrate((app) => {
     const collection = new Collection({
         "id": "bank_connections",
-        "createdAt": "",
-        "updatedAt": "",
         "name": "bank_connections",
         "type": "base",
         "system": false,
@@ -79,16 +77,28 @@ migrate((app) => {
                 }
             }
         ],
-        "indexes": [
-            "CREATE UNIQUE INDEX `bank_connections_req_idx` ON `bank_connections` (`requisition_id`)"
-        ],
-        "listRule": "@request.auth.id != '' && user_id = @request.auth.id",
-        "viewRule": "@request.auth.id != '' && user_id = @request.auth.id",
+        "indexes": [],
+        "listRule": null,
+        "viewRule": null,
         "createRule": null,
         "updateRule": null,
-        "deleteRule": "@request.auth.id != '' && user_id = @request.auth.id",
+        "deleteRule": null,
         "options": {}
     });
+
+    // 1. Sauvegarde du schéma seul
+    app.save(collection);
+
+    // 2. Ajout de l'index une fois la colonne créée
+    collection.indexes = [
+        "CREATE UNIQUE INDEX `bank_connections_req_idx` ON `bank_connections` (`requisition_id`)"
+    ];
+    app.save(collection);
+
+    // 3. Ajout des règles
+    collection.listRule = "user_id = @request.auth.id";
+    collection.viewRule = "user_id = @request.auth.id";
+    collection.deleteRule = "user_id = @request.auth.id";
 
     return app.save(collection);
 }, (app) => {

@@ -1,8 +1,6 @@
 migrate((app) => {
     const collection = new Collection({
         "id": "bank_accounts",
-        "createdAt": "",
-        "updatedAt": "",
         "name": "bank_accounts",
         "type": "base",
         "system": false,
@@ -56,7 +54,7 @@ migrate((app) => {
                 "id": "local_account_id_ref",
                 "name": "local_account_id",
                 "type": "relation",
-                "required": false, // L'utilisateur liera manuellement cet IBAN plus tard via l'UI
+                "required": false,
                 "presentable": false,
                 "unique": false,
                 "options": {
@@ -68,16 +66,28 @@ migrate((app) => {
                 }
             }
         ],
-        "indexes": [
-            "CREATE UNIQUE INDEX `bank_accounts_remote_idx` ON `bank_accounts` (`remote_account_id`)"
-        ],
-        "listRule": "@request.auth.id != '' && connection_id.user_id = @request.auth.id",
-        "viewRule": "@request.auth.id != '' && connection_id.user_id = @request.auth.id",
+        "indexes": [],
+        "listRule": null,
+        "viewRule": null,
         "createRule": null,
         "updateRule": null,
-        "deleteRule": "@request.auth.id != '' && connection_id.user_id = @request.auth.id",
+        "deleteRule": null,
         "options": {}
     });
+
+    // 1. Schéma
+    app.save(collection);
+
+    // 2. Index
+    collection.indexes = [
+        "CREATE UNIQUE INDEX `bank_accounts_remote_idx` ON `bank_accounts` (`remote_account_id`)"
+    ];
+    app.save(collection);
+
+    // 3. Règles
+    collection.listRule = "connection_id.user_id = @request.auth.id";
+    collection.viewRule = "connection_id.user_id = @request.auth.id";
+    collection.deleteRule = "connection_id.user_id = @request.auth.id";
 
     return app.save(collection);
 }, (app) => {
