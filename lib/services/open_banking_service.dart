@@ -21,7 +21,7 @@ class OpenBankingService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return data['institutions'] ?? [];
+        return data['aspsps'] ?? [];
       } else {
         throw Exception(
           'Erreur API Institutions: ${response.statusCode} - ${response.body}',

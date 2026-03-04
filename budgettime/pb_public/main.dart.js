@@ -55858,7 +55858,7 @@ return A.q(A.bag(m,A.a4(["Authorization",i.b],h,h)),$async$B_)
 case 7:l=c
 if(l.b===200){i=l
 k=B.am.fa(0,A.aXt(A.aWj(i.e)).fa(0,i.w))
-i=J.a3(k,"institutions")
+i=J.a3(k,"aspsps")
 if(i==null)i=[]
 q=i
 s=1
@@ -126861,7 +126861,7 @@ B.apZ=new A.ak("Interface Admin (PocketBase)",null,null,null,null,null,null,null
 B.SY=new A.ak("Cr\xe9er un compte",null,null,null,null,null,null,null,null,null)
 B.aq0=new A.ak("Voulez-vous vraiment supprimer cette transaction ?",null,null,null,null,null,null,null,null,null)
 B.ST=new A.t(!0,B.b9,null,null,null,null,12,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.aq3=new A.ak("v2.0.5",null,B.ST,B.f1,null,null,null,null,null,null)
+B.aq3=new A.ak("v2.0.6",null,B.ST,B.f1,null,null,null,null,null,null)
 B.aq4=new A.ak("D\xe9tails par ann\xe9e",null,B.wz,null,null,null,null,null,null,null)
 B.wB=new A.ak("Supprimer ?",null,null,null,null,null,null,null,null,null)
 B.SS=new A.t(!0,B.e8,null,null,null,null,12,B.al,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
@@ -126919,7 +126919,7 @@ B.ar6=new A.ak("RECHARGER",null,null,null,null,null,null,null,null,null)
 B.ar7=new A.ak("Tendances Annuelles",null,null,null,null,null,null,null,null,null)
 B.T5=new A.ak("G\xe9rer les membres",null,null,null,null,null,null,null,null,null)
 B.anH=new A.t(!0,B.e8,null,null,null,null,10,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.ar8=new A.ak("v2.0.5",null,B.anH,null,null,null,null,null,null,null)
+B.ar8=new A.ak("v2.0.6",null,B.anH,null,null,null,null,null,null,null)
 B.ar9=new A.ak("Synchronisation Bancaire",null,null,null,null,null,null,null,null,null)
 B.ara=new A.ak("Enregistrer et Nouveau",null,null,null,null,null,null,null,null,null)
 B.arb=new A.ak("R\xe9p\xe9ter",null,null,null,null,null,null,null,null,null)
