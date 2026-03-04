@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"time"
@@ -84,6 +86,37 @@ func main() {
 			}
 			return e.JSON(200, map[string]string{
 				"token": token,
+			})
+		})
+
+		// Route de test directe en Go Natif (Bypass JSVM pour éviter les 404 Docker)
+		e.Router.GET("/api/test-banking", func(e *core.RequestEvent) error {
+			token, err := generateEnableBankingJWT()
+			if err != nil {
+				return e.JSON(500, map[string]any{"error": "JWT Gen Failed", "details": err.Error()})
+			}
+
+			req, err := http.NewRequest("GET", "https://api.enablebanking.com/application", nil)
+			if err != nil {
+				return e.JSON(500, map[string]any{"error": "Request creation failed"})
+			}
+			req.Header.Set("Authorization", "Bearer "+token)
+			req.Header.Set("Content-Type", "application/json")
+
+			client := &http.Client{Timeout: 10 * time.Second}
+			resp, err := client.Do(req)
+			if err != nil {
+				return e.JSON(500, map[string]any{"error": "API Call Failed", "details": err.Error()})
+			}
+			defer resp.Body.Close()
+
+			body, _ := io.ReadAll(resp.Body)
+
+			return e.JSON(200, map[string]any{
+				"status":            "Test réussi en Go Natif !",
+				"jwt_generated":     token[:15] + "...",
+				"api_response_code": resp.StatusCode,
+				"api_response_body": string(body),
 			})
 		})
 
