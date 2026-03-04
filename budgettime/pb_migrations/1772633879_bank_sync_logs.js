@@ -1,34 +1,28 @@
-migrate((app) => {
+migrate((db) => {
+    const dao = new Dao(db);
+
     const collection = new Collection({
-        "id": "bank_log000000",
+        "id": "v2_log_00000001",
         "name": "bank_sync_logs",
         "type": "base",
         "system": false,
         "schema": [
             {
-                "system": false,
                 "id": "connection_id_ref",
                 "name": "connection_id",
                 "type": "relation",
                 "required": true,
-                "presentable": false,
-                "unique": false,
                 "options": {
-                    "collectionId": "bank_conn00000",
+                    "collectionId": "v2_conn_0000001",
                     "cascadeDelete": true,
-                    "minSelect": null,
-                    "maxSelect": 1,
-                    "displayFields": null
+                    "maxSelect": 1
                 }
             },
             {
-                "system": false,
                 "id": "sync_status_str",
                 "name": "status",
                 "type": "select",
                 "required": true,
-                "presentable": true,
-                "unique": false,
                 "options": {
                     "maxSelect": 1,
                     "values": [
@@ -39,50 +33,30 @@ migrate((app) => {
                 }
             },
             {
-                "system": false,
                 "id": "transactions_count_num",
                 "name": "transactions_count",
                 "type": "number",
                 "required": true,
-                "presentable": false,
-                "unique": false,
                 "options": {
                     "min": 0,
-                    "max": null,
                     "noDecimal": true
                 }
             },
             {
-                "system": false,
                 "id": "error_message_str",
                 "name": "error_message",
                 "type": "text",
-                "required": false,
-                "presentable": false,
-                "unique": false,
-                "options": {
-                    "min": null,
-                    "max": null,
-                    "pattern": ""
-                }
+                "required": false
             }
         ],
-        "indexes": [],
-        "listRule": null,
-        "viewRule": null,
-        "createRule": null,
-        "updateRule": null,
-        "deleteRule": null,
+        "listRule": "connection_id.user_id = @request.auth.id",
+        "viewRule": "connection_id.user_id = @request.auth.id",
         "options": {}
     });
 
-    app.save(collection);
-
-    collection.listRule = "connection_id.user_id = @request.auth.id";
-    collection.viewRule = "connection_id.user_id = @request.auth.id";
-
-    return app.save(collection);
-}, (app) => {
-    const collection = app.findCollectionByNameOrId("bank_sync_logs");
-    return app.delete(collection);
+    return dao.saveCollection(collection);
+}, (db) => {
+    const dao = new Dao(db);
+    const collection = dao.findCollectionByNameOrId("bank_sync_logs");
+    return dao.deleteCollection(collection);
 })
