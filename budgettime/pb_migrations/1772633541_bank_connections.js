@@ -7,7 +7,7 @@ migrate((app) => {
         "schema": [
             {
                 "id": "v2conn_user",
-                "name": "user_id",
+                "name": "user",
                 "type": "relation",
                 "required": true,
                 "options": {
@@ -16,45 +16,24 @@ migrate((app) => {
                     "maxSelect": 1
                 }
             },
-            {
-                "id": "v2conn_bank",
-                "name": "bank_name",
-                "type": "text",
-                "required": true
-            },
-            {
-                "id": "v2conn_reqid",
-                "name": "requisition_id",
-                "type": "text",
-                "required": true,
-                "unique": true
-            },
-            {
-                "id": "v2conn_valid",
-                "name": "valid_until",
-                "type": "date",
-                "required": true
-            },
-            {
-                "id": "v2conn_logo",
-                "name": "bank_logo",
-                "type": "text",
-                "required": false
-            }
+            { "id": "v2conn_bank", "name": "bank_name", "type": "text", "required": true },
+            { "id": "v2conn_reqid", "name": "requisition_id", "type": "text", "required": true, "unique": true },
+            { "id": "v2conn_valid", "name": "valid_until", "type": "date", "required": true },
+            { "id": "v2conn_logo", "name": "bank_logo", "type": "text", "required": false }
         ],
         "options": {}
     });
 
-    // 1. Sauvegarde initiale pour enregistrer les champs dans la DB
+    // 1. Sauvegarde initiale (Schéma)
     app.save(collection);
 
-    // 2. Application des règles (le validateur reconnaîtra désormais 'user_id')
-    collection.listRule = "user_id = @request.auth.id";
-    collection.viewRule = "user_id = @request.auth.id";
-    collection.deleteRule = "user_id = @request.auth.id";
+    // 2. Application des règles sur le champ 'user'
+    collection.listRule = "user = @request.auth.id";
+    collection.viewRule = "user = @request.auth.id";
+    collection.deleteRule = "user = @request.auth.id";
 
     return app.save(collection);
 }, (app) => {
     const collection = app.findCollectionByNameOrId("v2conn000000001");
-    return app.delete(collection);
+    if (collection) app.delete(collection);
 })

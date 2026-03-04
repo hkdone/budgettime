@@ -44,16 +44,16 @@ migrate((app) => {
         "options": {}
     });
 
-    // 1. Sauvegarde initiale pour enregistrer les champs
+    // 1. Sauvegarde initiale (Schéma)
     app.save(collection);
 
-    // 2. Application des règles (le validateur reconnaîtra désormais 'connection_id')
-    collection.listRule = "connection_id.user_id = @request.auth.id";
-    collection.viewRule = "connection_id.user_id = @request.auth.id";
-    collection.deleteRule = "connection_id.user_id = @request.auth.id";
+    // 2. Application des règles (Référence connection_id.user)
+    collection.listRule = "connection_id.user = @request.auth.id";
+    collection.viewRule = "connection_id.user = @request.auth.id";
+    collection.deleteRule = "connection_id.user = @request.auth.id";
 
     return app.save(collection);
 }, (app) => {
     const collection = app.findCollectionByNameOrId("v2acc0000000001");
-    return app.delete(collection);
+    if (collection) app.delete(collection);
 })

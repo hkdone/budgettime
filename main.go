@@ -294,7 +294,7 @@ func main() {
 				return e.JSON(500, map[string]any{"error": "Table bank_connections manquante"})
 			}
 			recordConn := core.NewRecord(collectionConn)
-			recordConn.Set("user_id", authRecord.Id)
+			recordConn.Set("user", authRecord.Id)
 			recordConn.Set("bank_name", "Banque Connectée") // Ou extraire du state plus tard
 			recordConn.Set("requisition_id", sessionResult.SessionId)
 			recordConn.Set("valid_until", time.Now().AddDate(0, 0, 90).Format("2006-01-02 15:04:05.000Z")) // DSP2 = 90 Jours
@@ -355,9 +355,9 @@ func main() {
 			var bankConnection struct {
 				Id            string `db:"id"`
 				RequisitionId string `db:"requisition_id"`
-				UserId        string `db:"user_id"`
+				UserId        string `db:"user"`
 			}
-			err = app.DB().Select("id", "requisition_id", "user_id").
+			err = app.DB().Select("id", "requisition_id", "user").
 				From("bank_connections").
 				Where(dbx.HashExp{"id": bankAccount.ConnectionId}).
 				Limit(1).
