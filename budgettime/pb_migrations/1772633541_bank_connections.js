@@ -1,4 +1,10 @@
 migrate((app) => {
+    // 1. Suppression préventive si une ancienne version cassée existe
+    try {
+        const existing = app.findCollectionByNameOrId("v2conn000000001");
+        if (existing) app.dao().deleteCollection(existing);
+    } catch (_) { }
+
     const collection = new Collection({
         "id": "v2conn000000001",
         "name": "bank_connections",
@@ -24,16 +30,18 @@ migrate((app) => {
         "options": {}
     });
 
-    // 1. Sauvegarde initiale (Schéma)
-    app.save(collection);
+    // 2. Sauvegarde initiale du Schéma via le DAO (Direct)
+    // Cela évite la validation des règles gourmande en cache de app.save()
+    app.dao().saveCollection(collection);
 
-    // 2. Application des règles sur le champ 'user'
-    collection.listRule = "user = @request.auth.id";
-    collection.viewRule = "user = @request.auth.id";
-    collection.deleteRule = "user = @request.auth.id";
+    // 3. Récupération forcée pour rafraîchir le cache interne du validateur
+    const fresh = app.findCollectionByNameOrId("v2conn000000001");
+    fresh.listRule = "user = @request.auth.id";
+    fresh.viewRule = "user = @request.auth.id";
+    fresh.deleteRule = "user = @request.auth.id";
 
-    return app.save(collection);
+    return app.dao().saveCollection(fresh);
 }, (app) => {
     const collection = app.findCollectionByNameOrId("v2conn000000001");
-    if (collection) app.delete(collection);
+    if (collection) app.dao().deleteCollection(collection);
 })

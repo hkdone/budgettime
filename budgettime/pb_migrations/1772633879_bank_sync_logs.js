@@ -1,4 +1,10 @@
 migrate((app) => {
+    // 1. Suppression préventive
+    try {
+        const existing = app.findCollectionByNameOrId("v2logs000000001");
+        if (existing) app.dao().deleteCollection(existing);
+    } catch (_) { }
+
     const collection = new Collection({
         "id": "v2logs000000001",
         "name": "bank_sync_logs",
@@ -23,11 +29,7 @@ migrate((app) => {
                 "required": true,
                 "options": {
                     "maxSelect": 1,
-                    "values": [
-                        "success",
-                        "error",
-                        "pending"
-                    ]
+                    "values": ["success", "error", "pending"]
                 }
             },
             {
@@ -35,30 +37,23 @@ migrate((app) => {
                 "name": "transactions_count",
                 "type": "number",
                 "required": true,
-                "options": {
-                    "min": 0,
-                    "noDecimal": true
-                }
+                "options": { "min": 0, "noDecimal": true }
             },
-            {
-                "id": "v2logs_error",
-                "name": "error_message",
-                "type": "text",
-                "required": false
-            }
+            { "id": "v2logs_error", "name": "error_message", "type": "text", "required": false }
         ],
         "options": {}
     });
 
-    // 1. Sauvegarde initiale (Schéma)
-    app.save(collection);
+    // 2. Sauvegarde Schéma
+    app.dao().saveCollection(collection);
 
-    // 2. Application des règles (Référence connection_id.user)
-    collection.listRule = "connection_id.user = @request.auth.id";
-    collection.viewRule = "connection_id.user = @request.auth.id";
+    // 3. Rafraîchissement et ajout des règles
+    const fresh = app.findCollectionByNameOrId("v2logs000000001");
+    fresh.listRule = "connection_id.user = @request.auth.id";
+    fresh.viewRule = "connection_id.user = @request.auth.id";
 
-    return app.save(collection);
+    return app.dao().saveCollection(fresh);
 }, (app) => {
     const collection = app.findCollectionByNameOrId("v2logs000000001");
-    if (collection) app.delete(collection);
+    if (collection) app.dao().deleteCollection(collection);
 })
