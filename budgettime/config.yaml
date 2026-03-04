@@ -1,5 +1,5 @@
 name: "BudgetTime"
-version: "1.9.79"
+version: "1.9.80"
 slug: "budgettime"
 description: "Gestion de budget Offline-First basée sur PocketBase"
 url: "https://github.com/hkdone/budgettime"
