@@ -211,15 +211,65 @@ migrate((db) => {
         "options": {}
     });
 
+    // 8. Bank Connections
+    ensureCollection({
+        "id": "v2conn000000001",
+        "name": "bank_connections",
+        "type": "base",
+        "system": false,
+        "schema": [
+            { "id": "v2conn_user", "name": "user", "type": "relation", "required": true, "options": { "collectionId": "_pb_users_auth_", "cascadeDelete": true, "maxSelect": 1 } },
+            { "id": "v2conn_bank", "name": "bank_name", "type": "text", "required": true },
+            { "id": "v2conn_reqid", "name": "requisition_id", "type": "text", "required": true, "unique": true },
+            { "id": "v2conn_valid", "name": "valid_until", "type": "date", "required": true },
+            { "id": "v2conn_logo", "name": "bank_logo", "type": "text", "required": false }
+        ],
+        "listRule": "user = @request.auth.id",
+        "viewRule": "user = @request.auth.id",
+        "deleteRule": "user = @request.auth.id",
+        "options": {}
+    });
+
+    // 9. Bank Accounts
+    ensureCollection({
+        "id": "v2acc0000000001",
+        "name": "bank_accounts",
+        "type": "base",
+        "system": false,
+        "schema": [
+            { "id": "v2acc_conn", "name": "connection_id", "type": "relation", "required": true, "options": { "collectionId": "v2conn000000001", "cascadeDelete": true, "maxSelect": 1 } },
+            { "id": "v2acc_remote", "name": "remote_account_id", "type": "text", "required": true, "unique": true },
+            { "id": "v2acc_iban", "name": "iban", "type": "text", "required": true },
+            { "id": "v2acc_localacc", "name": "local_account_id", "type": "relation", "required": false, "options": { "collectionId": "accounts000000", "cascadeDelete": false, "maxSelect": 1 } }
+        ],
+        "listRule": "connection_id.user = @request.auth.id",
+        "viewRule": "connection_id.user = @request.auth.id",
+        "deleteRule": "connection_id.user = @request.auth.id",
+        "options": {}
+    });
+
+    // 10. Bank Sync Logs
+    ensureCollection({
+        "id": "v2logs000000001",
+        "name": "bank_sync_logs",
+        "type": "base",
+        "system": false,
+        "schema": [
+            { "id": "v2logs_conn", "name": "connection_id", "type": "relation", "required": true, "options": { "collectionId": "v2conn000000001", "cascadeDelete": true, "maxSelect": 1 } },
+            { "id": "v2logs_status", "name": "status", "type": "select", "required": true, "options": { "maxSelect": 1, "values": ["success", "error", "pending"] } },
+            { "id": "v2logs_count", "name": "transactions_count", "type": "number", "required": true, "options": { "min": 0, "noDecimal": true } },
+            { "id": "v2logs_error", "name": "error_message", "type": "text", "required": false }
+        ],
+        "listRule": "connection_id.user = @request.auth.id",
+        "viewRule": "connection_id.user = @request.auth.id",
+        "options": {}
+    });
+
 }, (db) => {
-    // Migration revert is dangerous if we are doing upserts. 
-    // We typically don't want to delete tables on revert in this context, 
-    // or we only delete if we know we created them. 
-    // For safety in this "Idempotent/Repair" mode, we might leave revert empty or comment it out.
-    // If the user manually reverts, they might expect deletion. 
-    // But since this is a "Full Schema" snapshot, reverting it implies going to empty?
-    // Let's keep the deletes but only if they exist.
     const dao = new Dao(db);
+    try { dao.deleteCollection(dao.findCollectionByNameOrId("bank_sync_logs")); } catch (_) { }
+    try { dao.deleteCollection(dao.findCollectionByNameOrId("bank_accounts")); } catch (_) { }
+    try { dao.deleteCollection(dao.findCollectionByNameOrId("bank_connections")); } catch (_) { }
     try { dao.deleteCollection(dao.findCollectionByNameOrId("settings")); } catch (_) { }
     try { dao.deleteCollection(dao.findCollectionByNameOrId("raw_inbox")); } catch (_) { }
     try { dao.deleteCollection(dao.findCollectionByNameOrId("transactions")); } catch (_) { }
