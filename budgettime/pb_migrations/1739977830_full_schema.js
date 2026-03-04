@@ -1,7 +1,7 @@
 migrate((app) => {
     const collectionConfigs = [
         {
-            "id": "accounts_0000000",
+            "id": "accounts000000",
             "name": "accounts",
             "type": "base",
             "fields": [
@@ -19,7 +19,7 @@ migrate((app) => {
             "deleteRule": "user = @request.auth.id"
         },
         {
-            "id": "members00000000",
+            "id": "members000000",
             "name": "members",
             "type": "base",
             "fields": [
@@ -34,7 +34,7 @@ migrate((app) => {
             "deleteRule": "user = @request.auth.id"
         },
         {
-            "id": "categories_0000",
+            "id": "categories000000",
             "name": "categories",
             "type": "base",
             "fields": [
@@ -51,7 +51,7 @@ migrate((app) => {
             "deleteRule": "user = @request.auth.id"
         },
         {
-            "id": "recurrences_000",
+            "id": "recurrences000",
             "name": "recurrences",
             "type": "base",
             "fields": [
@@ -62,8 +62,8 @@ migrate((app) => {
                 { "id": "recurrences_day", "name": "day_of_month", "type": "number", "required": false, "min": 1, "max": 31, "noDecimal": true },
                 { "id": "recurrences_next", "name": "next_due_date", "type": "date", "required": true },
                 { "id": "recurrences_active", "name": "active", "type": "bool", "required": false },
-                { "id": "recurrences_acct", "name": "account", "type": "relation", "required": true, "collectionId": "accounts_0000000", "cascadeDelete": true, "maxSelect": 1 },
-                { "id": "recurrences_target", "name": "target_account", "type": "relation", "required": false, "collectionId": "accounts_0000000", "cascadeDelete": false, "maxSelect": 1 },
+                { "id": "recurrences_acct", "name": "account", "type": "relation", "required": true, "collectionId": "accounts000000", "cascadeDelete": true, "maxSelect": 1 },
+                { "id": "recurrences_target", "name": "target_account", "type": "relation", "required": false, "collectionId": "accounts000000", "cascadeDelete": false, "maxSelect": 1 },
                 { "id": "recurrences_user", "name": "user", "type": "relation", "required": true, "collectionId": "_pb_users_auth_", "cascadeDelete": true, "maxSelect": 1 }
             ],
             "listRule": "user = @request.auth.id",
@@ -73,7 +73,7 @@ migrate((app) => {
             "deleteRule": "user = @request.auth.id"
         },
         {
-            "id": "transactions_00",
+            "id": "transactions00",
             "name": "transactions",
             "type": "base",
             "fields": [
@@ -83,12 +83,12 @@ migrate((app) => {
                 { "id": "transactions_date", "name": "date", "type": "date", "required": true },
                 { "id": "transactions_status", "name": "status", "type": "select", "required": true, "maxSelect": 1, "values": ["projected", "effective"] },
                 { "id": "transactions_is_auto", "name": "is_automatic", "type": "bool", "required": false },
-                { "id": "transactions_acct", "name": "account", "type": "relation", "required": true, "collectionId": "accounts_0000000", "cascadeDelete": true, "maxSelect": 1 },
+                { "id": "transactions_acct", "name": "account", "type": "relation", "required": true, "collectionId": "accounts000000", "cascadeDelete": true, "maxSelect": 1 },
                 { "id": "transactions_cat", "name": "category", "type": "text", "required": false },
-                { "id": "transactions_recur", "name": "recurrence", "type": "relation", "required": false, "collectionId": "recurrences_000", "cascadeDelete": false, "maxSelect": 1 },
-                { "id": "transactions_member", "name": "member", "type": "relation", "required": false, "collectionId": "members00000000", "cascadeDelete": false, "maxSelect": 1 },
+                { "id": "transactions_recur", "name": "recurrence", "type": "relation", "required": false, "collectionId": "recurrences000", "cascadeDelete": false, "maxSelect": 1 },
+                { "id": "transactions_member", "name": "member", "type": "relation", "required": false, "collectionId": "members000000", "cascadeDelete": false, "maxSelect": 1 },
                 { "id": "transactions_bank", "name": "bank_balance", "type": "number", "required": false },
-                { "id": "transactions_target", "name": "target_account", "type": "relation", "required": false, "collectionId": "accounts_0000000", "cascadeDelete": false, "maxSelect": 1 },
+                { "id": "transactions_target", "name": "target_account", "type": "relation", "required": false, "collectionId": "accounts000000", "cascadeDelete": false, "maxSelect": 1 },
                 { "id": "transactions_user", "name": "user", "type": "relation", "required": true, "collectionId": "_pb_users_auth_", "cascadeDelete": true, "maxSelect": 1 }
             ],
             "listRule": "user = @request.auth.id",
@@ -98,7 +98,7 @@ migrate((app) => {
             "deleteRule": "user = @request.auth.id"
         },
         {
-            "id": "raw_inbox_00000",
+            "id": "rawinbox000000",
             "name": "raw_inbox",
             "type": "base",
             "fields": [
@@ -117,7 +117,7 @@ migrate((app) => {
             "deleteRule": "user = @request.auth.id"
         },
         {
-            "id": "settings_000000",
+            "id": "settings000000",
             "name": "settings",
             "type": "base",
             "fields": [
@@ -157,7 +157,7 @@ migrate((app) => {
                 { "id": "v2acc_conn", "name": "connection_id", "type": "relation", "required": true, "collectionId": "bank_conn_00001", "cascadeDelete": true, "maxSelect": 1 },
                 { "id": "v2acc_remote", "name": "remote_account_id", "type": "text", "required": true },
                 { "id": "v2acc_iban", "name": "iban", "type": "text", "required": true },
-                { "id": "v2acc_localacc", "name": "local_account_id", "type": "relation", "required": false, "collectionId": "accounts_0000000", "cascadeDelete": false, "maxSelect": 1 }
+                { "id": "v2acc_localacc", "name": "local_account_id", "type": "relation", "required": false, "collectionId": "accounts000000", "cascadeDelete": false, "maxSelect": 1 }
             ],
             "indexes": [
                 "CREATE UNIQUE INDEX idx_remote_account_id ON bank_accounts (remote_account_id)"
@@ -181,19 +181,29 @@ migrate((app) => {
         }
     ];
 
-    // Étape 1 : Créer les collections SANS les règles
+    // Étape 1 : Créer ou Mettre à jour la structure (Upsert intelligent)
     collectionConfigs.forEach(config => {
-        const c = new Collection({
-            "id": config.id,
-            "name": config.name,
-            "type": config.type,
-            "fields": config.fields,
-            "indexes": config.indexes || []
-        });
-        app.save(c);
+        let collection;
+        try {
+            collection = app.findCollectionByNameOrId(config.name);
+        } catch (_) {
+            collection = new Collection({
+                "id": config.id,
+                "name": config.name,
+                "type": config.type
+            });
+        }
+
+        collection.fields = config.fields;
+
+        if (config.indexes) {
+            collection.indexes = config.indexes;
+        }
+
+        app.save(collection);
     });
 
-    // Étape 2 : Appliquer les règles
+    // Étape 2 : Appliquer les règles après la persistance
     collectionConfigs.forEach(config => {
         const c = app.findCollectionByNameOrId(config.name);
         c.listRule = config.listRule || null;
@@ -204,7 +214,7 @@ migrate((app) => {
         app.save(c);
     });
 }, (app) => {
-    const names = ["bank_sync_logs", "bank_accounts", "bank_connections", "settings", "raw_inbox", "transactions", "recurrences", "categories", "members", "accounts"];
+    const names = ["bank_sync_logs", "bank_accounts", "bank_connections"];
     names.forEach(name => {
         try { app.delete(app.findCollectionByNameOrId(name)); } catch (_) { }
     });
