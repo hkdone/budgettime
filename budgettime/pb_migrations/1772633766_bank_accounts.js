@@ -1,6 +1,6 @@
 migrate((app) => {
     const collection = new Collection({
-        "id": "bank_accounts",
+        "id": "bank_acc000000",
         "name": "bank_accounts",
         "type": "base",
         "system": false,
@@ -14,7 +14,7 @@ migrate((app) => {
                 "presentable": false,
                 "unique": false,
                 "options": {
-                    "collectionId": "bank_connections",
+                    "collectionId": "bank_conn00000",
                     "cascadeDelete": true,
                     "minSelect": null,
                     "maxSelect": 1,

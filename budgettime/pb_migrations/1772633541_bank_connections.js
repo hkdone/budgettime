@@ -1,6 +1,6 @@
 migrate((app) => {
     const collection = new Collection({
-        "id": "bank_connections",
+        "id": "bank_conn00000",
         "name": "bank_connections",
         "type": "base",
         "system": false,
