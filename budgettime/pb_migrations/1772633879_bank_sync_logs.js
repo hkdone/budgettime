@@ -47,10 +47,15 @@ migrate((app) => {
                 "required": false
             }
         ],
-        "listRule": "connection_id.user_id = @request.auth.id",
-        "viewRule": "connection_id.user_id = @request.auth.id",
         "options": {}
     });
+
+    // 1. Sauvegarde initiale pour enregistrer les champs
+    app.save(collection);
+
+    // 2. Application des règles (le validateur reconnaîtra désormais 'connection_id')
+    collection.listRule = "connection_id.user_id = @request.auth.id";
+    collection.viewRule = "connection_id.user_id = @request.auth.id";
 
     return app.save(collection);
 }, (app) => {

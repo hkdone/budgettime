@@ -42,11 +42,16 @@ migrate((app) => {
                 "required": false
             }
         ],
-        "listRule": "user_id = @request.auth.id",
-        "viewRule": "user_id = @request.auth.id",
-        "deleteRule": "user_id = @request.auth.id",
         "options": {}
     });
+
+    // 1. Sauvegarde initiale pour enregistrer les champs dans la DB
+    app.save(collection);
+
+    // 2. Application des règles (le validateur reconnaîtra désormais 'user_id')
+    collection.listRule = "user_id = @request.auth.id";
+    collection.viewRule = "user_id = @request.auth.id";
+    collection.deleteRule = "user_id = @request.auth.id";
 
     return app.save(collection);
 }, (app) => {
