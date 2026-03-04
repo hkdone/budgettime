@@ -1,6 +1,4 @@
 migrate((app) => {
-    const dao = app.dao();
-
     const getFieldByName = (collection, name) => {
         try {
             return collection.schema.getFieldByName(name);
@@ -12,7 +10,7 @@ migrate((app) => {
     const ensureCollection = (config) => {
         let collection;
         try {
-            collection = dao.findCollectionByNameOrId(config.name);
+            collection = app.findCollectionByNameOrId(config.name);
         } catch (_) {
             // Not found, create new
             collection = new Collection({
@@ -49,7 +47,7 @@ migrate((app) => {
             }
         });
 
-        dao.saveCollection(collection);
+        app.save(collection);
     };
 
     // 1. Accounts
@@ -266,15 +264,14 @@ migrate((app) => {
     });
 
 }, (app) => {
-    const dao = app.dao();
-    try { dao.deleteCollection(dao.findCollectionByNameOrId("bank_sync_logs")); } catch (_) { }
-    try { dao.deleteCollection(dao.findCollectionByNameOrId("bank_accounts")); } catch (_) { }
-    try { dao.deleteCollection(dao.findCollectionByNameOrId("bank_connections")); } catch (_) { }
-    try { dao.deleteCollection(dao.findCollectionByNameOrId("settings")); } catch (_) { }
-    try { dao.deleteCollection(dao.findCollectionByNameOrId("raw_inbox")); } catch (_) { }
-    try { dao.deleteCollection(dao.findCollectionByNameOrId("transactions")); } catch (_) { }
-    try { dao.deleteCollection(dao.findCollectionByNameOrId("recurrences")); } catch (_) { }
-    try { dao.deleteCollection(dao.findCollectionByNameOrId("categories")); } catch (_) { }
-    try { dao.deleteCollection(dao.findCollectionByNameOrId("members")); } catch (_) { }
-    try { dao.deleteCollection(dao.findCollectionByNameOrId("accounts")); } catch (_) { }
+    try { app.delete(app.findCollectionByNameOrId("bank_sync_logs")); } catch (_) { }
+    try { app.delete(app.findCollectionByNameOrId("bank_accounts")); } catch (_) { }
+    try { app.delete(app.findCollectionByNameOrId("bank_connections")); } catch (_) { }
+    try { app.delete(app.findCollectionByNameOrId("settings")); } catch (_) { }
+    try { app.delete(app.findCollectionByNameOrId("raw_inbox")); } catch (_) { }
+    try { app.delete(app.findCollectionByNameOrId("transactions")); } catch (_) { }
+    try { app.delete(app.findCollectionByNameOrId("recurrences")); } catch (_) { }
+    try { app.delete(app.findCollectionByNameOrId("categories")); } catch (_) { }
+    try { app.delete(app.findCollectionByNameOrId("members")); } catch (_) { }
+    try { app.delete(app.findCollectionByNameOrId("accounts")); } catch (_) { }
 })
