@@ -46,10 +46,12 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
     );
 
     try {
-      // 1. Définir l'URL de redirection (l'endroit où la banque renverra l'utilisateur)
-      // En production, ce sera une Universal Link ou une URL pointant vers le serveur Pocketbase
-      const String redirectUrl =
-          'http://192.168.1.22:8097/api/banking/callback';
+      // 1. Définir l'URL de redirection dynamiquement (v0.23+ compatible)
+      String finalBaseUrl = _bankingService.pb.baseURL;
+      if (finalBaseUrl == '/') {
+        finalBaseUrl = Uri.base.origin;
+      }
+      final String redirectUrl = '$finalBaseUrl/api/banking/callback';
 
       // 2. Obtenir l'Auth URL depuis Enable Banking (via notre serveur)
       final authUrlStr = await _bankingService.getAuthUrl(bankId, redirectUrl);
