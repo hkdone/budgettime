@@ -1,14 +1,12 @@
-migrate((db) => {
-    const dao = new Dao(db);
-
+migrate((app) => {
     const collection = new Collection({
-        "id": "v2_conn_0000001",
+        "id": "v2conn000000001",
         "name": "bank_connections",
         "type": "base",
         "system": false,
         "schema": [
             {
-                "id": "user_id_ref",
+                "id": "v2conn_user",
                 "name": "user_id",
                 "type": "relation",
                 "required": true,
@@ -19,26 +17,26 @@ migrate((db) => {
                 }
             },
             {
-                "id": "bank_name_str",
+                "id": "v2conn_bank",
                 "name": "bank_name",
                 "type": "text",
                 "required": true
             },
             {
-                "id": "requisition_id_str",
+                "id": "v2conn_reqid",
                 "name": "requisition_id",
                 "type": "text",
                 "required": true,
                 "unique": true
             },
             {
-                "id": "valid_until_date",
+                "id": "v2conn_valid",
                 "name": "valid_until",
                 "type": "date",
                 "required": true
             },
             {
-                "id": "bank_logo_str",
+                "id": "v2conn_logo",
                 "name": "bank_logo",
                 "type": "text",
                 "required": false
@@ -50,9 +48,8 @@ migrate((db) => {
         "options": {}
     });
 
-    return dao.saveCollection(collection);
-}, (db) => {
-    const dao = new Dao(db);
-    const collection = dao.findCollectionByNameOrId("bank_connections");
-    return dao.deleteCollection(collection);
+    return app.save(collection);
+}, (app) => {
+    const collection = app.findCollectionByNameOrId("v2conn000000001");
+    return app.delete(collection);
 })

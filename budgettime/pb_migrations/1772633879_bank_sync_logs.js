@@ -1,25 +1,23 @@
-migrate((db) => {
-    const dao = new Dao(db);
-
+migrate((app) => {
     const collection = new Collection({
-        "id": "v2_log_00000001",
+        "id": "v2logs000000001",
         "name": "bank_sync_logs",
         "type": "base",
         "system": false,
         "schema": [
             {
-                "id": "connection_id_ref",
+                "id": "v2logs_conn",
                 "name": "connection_id",
                 "type": "relation",
                 "required": true,
                 "options": {
-                    "collectionId": "v2_conn_0000001",
+                    "collectionId": "v2conn000000001",
                     "cascadeDelete": true,
                     "maxSelect": 1
                 }
             },
             {
-                "id": "sync_status_str",
+                "id": "v2logs_status",
                 "name": "status",
                 "type": "select",
                 "required": true,
@@ -33,7 +31,7 @@ migrate((db) => {
                 }
             },
             {
-                "id": "transactions_count_num",
+                "id": "v2logs_count",
                 "name": "transactions_count",
                 "type": "number",
                 "required": true,
@@ -43,7 +41,7 @@ migrate((db) => {
                 }
             },
             {
-                "id": "error_message_str",
+                "id": "v2logs_error",
                 "name": "error_message",
                 "type": "text",
                 "required": false
@@ -54,9 +52,8 @@ migrate((db) => {
         "options": {}
     });
 
-    return dao.saveCollection(collection);
-}, (db) => {
-    const dao = new Dao(db);
-    const collection = dao.findCollectionByNameOrId("bank_sync_logs");
-    return dao.deleteCollection(collection);
+    return app.save(collection);
+}, (app) => {
+    const collection = app.findCollectionByNameOrId("v2logs000000001");
+    return app.delete(collection);
 })
