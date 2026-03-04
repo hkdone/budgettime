@@ -13,9 +13,6 @@ WORKDIR /pb
 COPY pocketbase /pb/pocketbase
 RUN chmod +x /pb/pocketbase
 
-# On s'assure de récupérer aussi nos scripts Javascript JSVM
-COPY pb_hooks /pb/pb_hooks
-
 # Définir le répertoire de travail pour PocketBase
 WORKDIR /pb
 

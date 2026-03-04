@@ -64,17 +64,13 @@ if (Test-Path docker-compose.yml) {
 
 # Custom PocketBase Native Build (Go -> Linux amd64 for Synology NAS)
 Write-Host "Building Custom PocketBase Server for Synology NAS (Linux AMD64)..."
-$env:CGO_ENABLED="0"
-$env:GOOS="linux"
-$env:GOARCH="amd64"
+$env:CGO_ENABLED = "0"
+$env:GOOS = "linux"
+$env:GOARCH = "amd64"
 go build -o budgettime/pocketbase main.go
-$env:CGO_ENABLED=""
-$env:GOOS=""
-$env:GOARCH=""
-
-# Copie des scripts JS
-if (Test-Path budgettime/pb_hooks) { Remove-Item -Recurse -Force budgettime/pb_hooks }
-if (Test-Path pb_hooks) { Copy-Item -Recurse pb_hooks budgettime/pb_hooks }
+$env:CGO_ENABLED = ""
+$env:GOOS = ""
+$env:GOARCH = ""
 
 # 5. Git Operations
 Write-Host "5. Git Operations..."
