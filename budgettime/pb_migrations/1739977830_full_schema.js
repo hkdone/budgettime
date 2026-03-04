@@ -1,12 +1,10 @@
 migrate((app) => {
-    const collections = [
-        // 1. Accounts
-        new Collection({
+    const collectionConfigs = [
+        {
             "id": "accounts000000",
             "name": "accounts",
             "type": "base",
-            "system": false,
-            "schema": [
+            "fields": [
                 { "id": "accounts_name", "name": "name", "type": "text", "required": true, "presentable": true },
                 { "id": "accounts_curr", "name": "currency", "type": "text", "required": true },
                 { "id": "accounts_extid", "name": "external_id", "type": "text", "required": false },
@@ -19,14 +17,12 @@ migrate((app) => {
             "createRule": "user = @request.auth.id",
             "updateRule": "user = @request.auth.id",
             "deleteRule": "user = @request.auth.id"
-        }),
-        // 2. Members
-        new Collection({
+        },
+        {
             "id": "members000000",
             "name": "members",
             "type": "base",
-            "system": false,
-            "schema": [
+            "fields": [
                 { "id": "members_name", "name": "name", "type": "text", "required": true, "presentable": true },
                 { "id": "members_icon", "name": "icon", "type": "text", "required": false },
                 { "id": "members_user", "name": "user", "type": "relation", "required": true, "options": { "collectionId": "_pb_users_auth_", "cascadeDelete": true, "maxSelect": 1 } }
@@ -36,14 +32,12 @@ migrate((app) => {
             "createRule": "user = @request.auth.id",
             "updateRule": "user = @request.auth.id",
             "deleteRule": "user = @request.auth.id"
-        }),
-        // 3. Categories
-        new Collection({
+        },
+        {
             "id": "categories000000",
             "name": "categories",
             "type": "base",
-            "system": false,
-            "schema": [
+            "fields": [
                 { "id": "categories_name", "name": "name", "type": "text", "required": true, "presentable": true },
                 { "id": "categories_icon", "name": "icon_code_point", "type": "number", "required": true, "options": { "noDecimal": true } },
                 { "id": "categories_color", "name": "color_hex", "type": "text", "required": true },
@@ -55,14 +49,12 @@ migrate((app) => {
             "createRule": "user = @request.auth.id",
             "updateRule": "user = @request.auth.id",
             "deleteRule": "user = @request.auth.id"
-        }),
-        // 4. Recurrences
-        new Collection({
+        },
+        {
             "id": "recurrences000",
             "name": "recurrences",
             "type": "base",
-            "system": false,
-            "schema": [
+            "fields": [
                 { "id": "recurrences_amount", "name": "amount", "type": "number", "required": true },
                 { "id": "recurrences_label", "name": "label", "type": "text", "required": true, "presentable": true },
                 { "id": "recurrences_type", "name": "type", "type": "select", "required": true, "options": { "maxSelect": 1, "values": ["income", "expense", "transfer"] } },
@@ -79,14 +71,12 @@ migrate((app) => {
             "createRule": "user = @request.auth.id",
             "updateRule": "user = @request.auth.id",
             "deleteRule": "user = @request.auth.id"
-        }),
-        // 5. Transactions
-        new Collection({
+        },
+        {
             "id": "transactions00",
             "name": "transactions",
             "type": "base",
-            "system": false,
-            "schema": [
+            "fields": [
                 { "id": "transactions_amount", "name": "amount", "type": "number", "required": false },
                 { "id": "transactions_label", "name": "label", "type": "text", "required": true, "presentable": true },
                 { "id": "transactions_type", "name": "type", "type": "select", "required": true, "options": { "maxSelect": 1, "values": ["income", "expense", "transfer"] } },
@@ -106,14 +96,12 @@ migrate((app) => {
             "createRule": "user = @request.auth.id",
             "updateRule": "user = @request.auth.id",
             "deleteRule": "user = @request.auth.id"
-        }),
-        // 6. Raw Inbox
-        new Collection({
+        },
+        {
             "id": "rawinbox000000",
             "name": "raw_inbox",
             "type": "base",
-            "system": false,
-            "schema": [
+            "fields": [
                 { "id": "rawinbox_date", "name": "date", "type": "date", "required": true },
                 { "id": "rawinbox_label", "name": "label", "type": "text", "required": true, "presentable": true },
                 { "id": "rawinbox_amount", "name": "amount", "type": "number", "required": false },
@@ -127,14 +115,12 @@ migrate((app) => {
             "createRule": "",
             "updateRule": "user = @request.auth.id",
             "deleteRule": "user = @request.auth.id"
-        }),
-        // 7. Settings
-        new Collection({
+        },
+        {
             "id": "settings000000",
             "name": "settings",
             "type": "base",
-            "system": false,
-            "schema": [
+            "fields": [
                 { "id": "settings_fiscal", "name": "fiscal_day_start", "type": "number", "required": true, "options": { "min": 1, "max": 31, "noDecimal": true } },
                 { "id": "settings_user", "name": "user", "type": "relation", "required": true, "options": { "collectionId": "_pb_users_auth_", "cascadeDelete": true, "maxSelect": 1 } },
                 { "id": "set_parsers", "name": "active_parsers", "type": "json", "required": false }
@@ -144,14 +130,12 @@ migrate((app) => {
             "createRule": "user = @request.auth.id",
             "updateRule": "user = @request.auth.id",
             "deleteRule": "user = @request.auth.id"
-        }),
-        // 8. Bank Connections
-        new Collection({
+        },
+        {
             "id": "v2conn000000001",
             "name": "bank_connections",
             "type": "base",
-            "system": false,
-            "schema": [
+            "fields": [
                 { "id": "v2conn_user", "name": "user", "type": "relation", "required": true, "options": { "collectionId": "_pb_users_auth_", "cascadeDelete": true, "maxSelect": 1 } },
                 { "id": "v2conn_bank", "name": "bank_name", "type": "text", "required": true },
                 { "id": "v2conn_reqid", "name": "requisition_id", "type": "text", "required": true, "unique": true },
@@ -161,14 +145,12 @@ migrate((app) => {
             "listRule": "user = @request.auth.id",
             "viewRule": "user = @request.auth.id",
             "deleteRule": "user = @request.auth.id"
-        }),
-        // 9. Bank Accounts
-        new Collection({
+        },
+        {
             "id": "v2acc0000000001",
             "name": "bank_accounts",
             "type": "base",
-            "system": false,
-            "schema": [
+            "fields": [
                 { "id": "v2acc_conn", "name": "connection_id", "type": "relation", "required": true, "options": { "collectionId": "v2conn000000001", "cascadeDelete": true, "maxSelect": 1 } },
                 { "id": "v2acc_remote", "name": "remote_account_id", "type": "text", "required": true, "unique": true },
                 { "id": "v2acc_iban", "name": "iban", "type": "text", "required": true },
@@ -177,14 +159,12 @@ migrate((app) => {
             "listRule": "connection_id.user = @request.auth.id",
             "viewRule": "connection_id.user = @request.auth.id",
             "deleteRule": "connection_id.user = @request.auth.id"
-        }),
-        // 10. Bank Sync Logs
-        new Collection({
+        },
+        {
             "id": "v2logs000000001",
             "name": "bank_sync_logs",
             "type": "base",
-            "system": false,
-            "schema": [
+            "fields": [
                 { "id": "v2logs_conn", "name": "connection_id", "type": "relation", "required": true, "options": { "collectionId": "v2conn000000001", "cascadeDelete": true, "maxSelect": 1 } },
                 { "id": "v2logs_status", "name": "status", "type": "select", "required": true, "options": { "maxSelect": 1, "values": ["success", "error", "pending"] } },
                 { "id": "v2logs_count", "name": "transactions_count", "type": "number", "required": true, "options": { "min": 0, "noDecimal": true } },
@@ -192,10 +172,30 @@ migrate((app) => {
             ],
             "listRule": "connection_id.user = @request.auth.id",
             "viewRule": "connection_id.user = @request.auth.id"
-        })
+        }
     ];
 
-    collections.forEach(c => app.save(c));
+    // Étape 1 : Créer les collections SANS les règles (pour éviter les erreurs de validation sur champs inconnus)
+    collectionConfigs.forEach(config => {
+        const c = new Collection({
+            "id": config.id,
+            "name": config.name,
+            "type": config.type,
+            "fields": config.fields
+        });
+        app.save(c);
+    });
+
+    // Étape 2 : Appliquer les règles maintenant que les champs sont persistés
+    collectionConfigs.forEach(config => {
+        const c = app.findCollectionByNameOrId(config.name);
+        c.listRule = config.listRule || null;
+        c.viewRule = config.viewRule || null;
+        c.createRule = config.createRule || null;
+        c.updateRule = config.updateRule || null;
+        c.deleteRule = config.deleteRule || null;
+        app.save(c);
+    });
 }, (app) => {
     const ids = ["bank_sync_logs", "bank_accounts", "bank_connections", "settings", "raw_inbox", "transactions", "recurrences", "categories", "members", "accounts"];
     ids.forEach(id => {
