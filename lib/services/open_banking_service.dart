@@ -7,12 +7,12 @@ import '../core/services/database_service.dart';
 class OpenBankingService {
   final PocketBase pb = DatabaseService().pb;
 
-  /// 1. Récupère la liste des Banques (Institutions) via notre serveur PocketBase
-  Future<List<dynamic>> getInstitutions({String country = 'FR'}) async {
+  /// 1. Récupère la liste des Banques (ASPSPs) via notre serveur PocketBase
+  Future<List<dynamic>> getAspsps({String country = 'FR'}) async {
     try {
       final url = Uri.parse(
         pb.baseURL,
-      ).resolve('api/banking/institutions?country=$country');
+      ).resolve('api/banking/aspsps?country=$country');
       // On passe le token de la session utilisateur pour sécuriser l'accès (Même si public pour l'instant)
       final response = await http.get(
         url,
@@ -24,7 +24,7 @@ class OpenBankingService {
         return data['aspsps'] ?? [];
       } else {
         throw Exception(
-          'Erreur API Institutions: ${response.statusCode} - ${response.body}',
+          'Erreur API ASPSPs: ${response.statusCode} - ${response.body}',
         );
       }
     } catch (e) {

@@ -12,21 +12,21 @@ class OpenBankingAccountsPage extends StatefulWidget {
 
 class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
   final OpenBankingService _bankingService = OpenBankingService();
-  List<dynamic> _institutions = [];
+  List<dynamic> _aspsps = [];
   bool _isLoading = true;
   String _errorMessage = '';
 
   @override
   void initState() {
     super.initState();
-    _fetchInstitutions();
+    _fetchAspsps();
   }
 
-  Future<void> _fetchInstitutions() async {
+  Future<void> _fetchAspsps() async {
     try {
-      final banks = await _bankingService.getInstitutions(country: 'FR');
+      final banks = await _bankingService.getAspsps(country: 'FR');
       setState(() {
-        _institutions = banks;
+        _aspsps = banks;
         _isLoading = false;
       });
     } catch (e) {
@@ -47,11 +47,24 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
 
     try {
       // 1. Définir l'URL de redirection dynamiquement (v0.23+ compatible)
+      // On privilégie l'URL du navigateur si on est sur le web, sinon le baseURL de PocketBase
       String finalBaseUrl = _bankingService.pb.baseURL;
-      if (finalBaseUrl == '/') {
+      if (finalBaseUrl == '/' || finalBaseUrl.isEmpty) {
         finalBaseUrl = Uri.base.origin;
+      } else if (!finalBaseUrl.startsWith('http')) {
+        // En cas de baseURL relative
+        finalBaseUrl = Uri.parse(
+          Uri.base.origin,
+        ).resolve(finalBaseUrl).toString();
       }
+
+      // Nettoyage des slashs finaux pour éviter les doubles slashs
+      if (finalBaseUrl.endsWith('/')) {
+        finalBaseUrl = finalBaseUrl.substring(0, finalBaseUrl.length - 1);
+      }
+
       final String redirectUrl = '$finalBaseUrl/api/banking/callback';
+      debugPrint('[OpenBanking] Using Redirect URL: $redirectUrl');
 
       // 2. Obtenir l'Auth URL depuis Enable Banking (via notre serveur)
       final authUrlStr = await _bankingService.getAuthUrl(bankId, redirectUrl);
@@ -92,11 +105,14 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
               ),
             )
           : ListView.builder(
-              itemCount: _institutions.length,
+              itemCount: _aspsps.length,
               itemBuilder: (context, index) {
-                final bank = _institutions[index];
+                final bank = _aspsps[index];
+                final displayName =
+                    bank['full_name'] ?? bank['name'] ?? 'Banque Inconnue';
+                final technicalId = bank['name'] ?? 'unknown';
+
                 return ListTile(
-                  // Enable Banking renvoie 'name' et l'URL du logo transparent
                   leading: bank['logo'] != null
                       ? Image.network(
                           bank['logo'],
@@ -106,12 +122,10 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
                               const Icon(Icons.account_balance),
                         )
                       : const Icon(Icons.account_balance),
-                  title: Text(bank['name']),
-                  subtitle: Text(bank['id']),
+                  title: Text(displayName),
+                  subtitle: Text(technicalId),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _connectToBank(
-                    bank['name'],
-                  ), // L'API requiert le nom ou l'id
+                  onTap: () => _connectToBank(technicalId),
                 );
               },
             ),

@@ -102,8 +102,8 @@ func main() {
 			})
 		})
 
-		// 1. Endpoint : Récupérer la liste des banques (Institutions)
-		e.Router.GET("/api/banking/institutions", func(e *core.RequestEvent) error {
+		// 1. Endpoint : Récupérer la liste des banques (ASPSPs)
+		e.Router.GET("/api/banking/aspsps", func(e *core.RequestEvent) error {
 			country := e.Request.URL.Query().Get("country")
 			if country == "" {
 				country = "FR" // Par défaut, la France
@@ -196,6 +196,9 @@ func main() {
 			if err != nil {
 				return e.JSON(500, map[string]any{"error": "Failed to encode auth payload"})
 			}
+
+			// LOG : Pour aider l'utilisateur à voir l'URL de redirection et le nom de la banque envoyés
+			fmt.Printf("[EnableBanking] Auth Request Payload: %s\n", string(jsonData))
 
 			// 4. Appeler l'API Enable Banking
 			apiURL := "https://api.enablebanking.com/auth"
