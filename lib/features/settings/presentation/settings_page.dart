@@ -4,6 +4,7 @@ import '../../../core/services/database_service.dart';
 import 'settings_controller.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../members/presentation/manage_members_page.dart';
+import '../../../pages/open_banking_accounts_page.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -110,6 +111,17 @@ class SettingsPage extends ConsumerWidget {
                 ).then((_) {
                   // Refresh if needed, though members are usually static
                 }),
+          ),
+          ListTile(
+            leading: const Icon(Icons.account_balance),
+            title: const Text('Liaison Bancaire (Enable Banking)'),
+            subtitle: const Text('Connecter un nouveau compte bancaire'),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const OpenBankingAccountsPage(),
+              ),
+            ),
           ),
           ListTile(
             leading: const Icon(Icons.admin_panel_settings),

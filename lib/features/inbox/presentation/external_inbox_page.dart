@@ -5,6 +5,7 @@ import '../domain/inbox_item.dart';
 import 'inbox_controller.dart';
 import '../../transactions/presentation/add_transaction_page.dart';
 import 'package:budgettime/core/utils/formatters.dart';
+import '../../../services/open_banking_service.dart';
 
 class ExternalInboxPage extends ConsumerStatefulWidget {
   const ExternalInboxPage({super.key});
@@ -31,6 +32,11 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
             ),
             tooltip: 'Mode Debug',
             onPressed: () => setState(() => _showDebug = !_showDebug),
+          ),
+          IconButton(
+            icon: const Icon(Icons.sync_alt),
+            tooltip: 'Synchroniser la banque',
+            onPressed: () => _showSyncDialog(),
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -237,6 +243,164 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
             child: const Text('Supprimer', style: TextStyle(color: Colors.red)),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _showSyncDialog() async {
+    final OpenBankingService bankingService = OpenBankingService();
+    List<dynamic> accounts = [];
+    bool isLoadingAccounts = true;
+
+    String? selectedAccountId;
+    DateTimeRange? selectedDateRange;
+
+    // 1. Fetch accounts
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final currentRange = selectedDateRange;
+          final currentAccountId = selectedAccountId;
+          if (isLoadingAccounts) {
+            bankingService
+                .getConnectedAccounts()
+                .then((value) {
+                  setDialogState(() {
+                    accounts = value;
+                    isLoadingAccounts = false;
+                  });
+                })
+                .catchError((e) {
+                  if (!context.mounted) return;
+                  setDialogState(() {
+                    isLoadingAccounts = false;
+                  });
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                });
+          }
+
+          return AlertDialog(
+            title: const Text('Synchronisation Bancaire'),
+            content: isLoadingAccounts
+                ? const SizedBox(
+                    height: 100,
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (accounts.isEmpty)
+                        const Text('Aucun compte bancaire lié trouvé.')
+                      else
+                        DropdownButtonFormField<String>(
+                          decoration: const InputDecoration(
+                            labelText: 'Compte',
+                          ),
+                          items: accounts.map((acc) {
+                            return DropdownMenuItem<String>(
+                              value: acc['remote_account_id'],
+                              child: Text(
+                                acc['iban'] ?? acc['remote_account_id'],
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (value) => selectedAccountId = value,
+                        ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          final range = await showDateRangePicker(
+                            context: context,
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime.now(),
+                          );
+                          if (range != null) {
+                            setDialogState(() => selectedDateRange = range);
+                          }
+                        },
+                        icon: const Icon(Icons.date_range),
+                        label: Text(
+                          currentRange == null
+                              ? 'Choisir les dates'
+                              : 'Du ${DateFormat('dd/MM').format(currentRange.start)} au ${DateFormat('dd/MM').format(currentRange.end)}',
+                        ),
+                      ),
+                    ],
+                  ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Annuler'),
+              ),
+              if (!isLoadingAccounts && accounts.isNotEmpty)
+                ElevatedButton(
+                  onPressed: () async {
+                    if (currentAccountId == null) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Veuillez choisir un compte'),
+                        ),
+                      );
+                      return;
+                    }
+
+                    Navigator.pop(context); // Close dialog
+
+                    if (!context.mounted) return;
+                    // Show global loading
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) =>
+                          const Center(child: CircularProgressIndicator()),
+                    );
+
+                    try {
+                      final result = await bankingService.syncTransactions(
+                        currentAccountId,
+                        dateStart: currentRange != null
+                            ? DateFormat(
+                                'yyyy-MM-dd',
+                              ).format(currentRange.start)
+                            : null,
+                        dateEnd: currentRange != null
+                            ? DateFormat('yyyy-MM-dd').format(currentRange.end)
+                            : null,
+                      );
+
+                      if (context.mounted) {
+                        Navigator.pop(context); // Remove loader
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Sync terminée: ${result['inserted']} transactions ajoutées.',
+                            ),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                        ref.read(inboxControllerProvider.notifier).refresh();
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        Navigator.pop(context); // Remove loader
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(e.toString()),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Synchroniser'),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
