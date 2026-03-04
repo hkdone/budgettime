@@ -1,5 +1,5 @@
-migrate((db) => {
-    const dao = new Dao(db);
+migrate((app) => {
+    const dao = app.dao();
 
     const getFieldByName = (collection, name) => {
         try {
@@ -265,8 +265,8 @@ migrate((db) => {
         "options": {}
     });
 
-}, (db) => {
-    const dao = new Dao(db);
+}, (app) => {
+    const dao = app.dao();
     try { dao.deleteCollection(dao.findCollectionByNameOrId("bank_sync_logs")); } catch (_) { }
     try { dao.deleteCollection(dao.findCollectionByNameOrId("bank_accounts")); } catch (_) { }
     try { dao.deleteCollection(dao.findCollectionByNameOrId("bank_connections")); } catch (_) { }
