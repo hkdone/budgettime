@@ -11,8 +11,10 @@ class OpenBankingService {
   Future<List<dynamic>> getInstitutions({String country = 'FR'}) async {
     try {
       // Construction de l'URL vers notre route Go native
+      String baseUrl = pb.baseURL;
+      if (baseUrl == '/') baseUrl = '';
       final url = Uri.parse(
-        '${pb.baseURL}/api/banking/institutions?country=$country',
+        '$baseUrl/api/banking/institutions?country=$country',
       );
       // On passe le token de la session utilisateur pour sécuriser l'accès (Même si public pour l'instant)
       final response = await http.get(
@@ -36,7 +38,9 @@ class OpenBankingService {
   /// 2. Récupère l'URL d'autorisation (Redirect Bank URL) pour la banque choisie
   Future<String> getAuthUrl(String bankId, String redirectUrl) async {
     try {
-      final url = Uri.parse('${pb.baseURL}/api/banking/auth');
+      String baseUrl = pb.baseURL;
+      if (baseUrl == '/') baseUrl = '';
+      final url = Uri.parse('$baseUrl/api/banking/auth');
       final response = await http.post(
         url,
         headers: {
@@ -66,7 +70,9 @@ class OpenBankingService {
   /// 3. L'utilisateur a fini sur la banque, on valide le 'code' côté serveur
   Future<String> confirmCallback(String code) async {
     try {
-      final url = Uri.parse('${pb.baseURL}/api/banking/callback?code=$code');
+      String baseUrl = pb.baseURL;
+      if (baseUrl == '/') baseUrl = '';
+      final url = Uri.parse('$baseUrl/api/banking/callback?code=$code');
       final response = await http.get(
         url,
         headers: {'Authorization': pb.authStore.token},
@@ -105,7 +111,9 @@ class OpenBankingService {
     String? dateEnd,
   }) async {
     try {
-      var urlStr = '${pb.baseURL}/api/banking/sync?account_id=$accountId';
+      String baseUrl = pb.baseURL;
+      if (baseUrl == '/') baseUrl = '';
+      var urlStr = '$baseUrl/api/banking/sync?account_id=$accountId';
       if (dateStart != null) urlStr += '&date_start=$dateStart';
       if (dateEnd != null) urlStr += '&date_end=$dateEnd';
 

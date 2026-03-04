@@ -55845,32 +55845,34 @@ $0(){return this.a.tH(J.a3(this.b,"name"))},
 $S:0}
 A.YP.prototype={
 B_(a){return this.a7T(a)},
-a7T(a){var s=0,r=A.C(t.j),q,p=2,o=[],n=this,m,l,k,j,i,h,g,f
+a7T(a){var s=0,r=A.C(t.j),q,p=2,o=[],n=this,m,l,k,j,i,h,g,f,e
 var $async$B_=A.D(function(b,c){if(b===1){o.push(c)
 s=p}for(;;)switch(s){case 0:p=4
-i=n.a
-m=A.cY(i.a+"/api/banking/institutions?country="+a,0,null)
-i=i.c
-i===$&&A.a()
-h=t.N
+h=n.a
+m=h.a
+if(J.d(m,"/"))m=""
+l=A.cY(A.m(m)+"/api/banking/institutions?country="+a,0,null)
+h=h.c
+h===$&&A.a()
+g=t.N
 s=7
-return A.q(A.bag(m,A.a4(["Authorization",i.b],h,h)),$async$B_)
-case 7:l=c
-if(l.b===200){i=l
-k=B.am.fa(0,A.aXt(A.aWj(i.e)).fa(0,i.w))
-i=J.a3(k,"institutions")
-if(i==null)i=[]
-q=i
+return A.q(A.bag(l,A.a4(["Authorization",h.b],g,g)),$async$B_)
+case 7:k=c
+if(k.b===200){h=k
+j=B.am.fa(0,A.aXt(A.aWj(h.e)).fa(0,h.w))
+h=J.a3(j,"institutions")
+if(h==null)h=[]
+q=h
 s=1
-break}else{i=A.dg("Erreur API Institutions: "+l.b+" - "+J.b33(l))
-throw A.e(i)}p=2
+break}else{h=A.dg("Erreur API Institutions: "+k.b+" - "+J.b33(k))
+throw A.e(h)}p=2
 s=6
 break
 case 4:p=3
-f=o.pop()
-j=A.a9(f)
-i=A.dg("Impossible de charger les banques : "+A.m(j))
-throw A.e(i)
+e=o.pop()
+i=A.a9(e)
+h=A.dg("Impossible de charger les banques : "+A.m(i))
+throw A.e(h)
 s=6
 break
 case 3:s=2
@@ -55879,32 +55881,34 @@ case 6:case 1:return A.A(q,r)
 case 2:return A.z(o.at(-1),r)}})
 return A.B($async$B_,r)},
 AR(a,b){return this.a7G(a,b)},
-a7G(a,b){var s=0,r=A.C(t.N),q,p=2,o=[],n=this,m,l,k,j,i,h,g,f
+a7G(a,b){var s=0,r=A.C(t.N),q,p=2,o=[],n=this,m,l,k,j,i,h,g,f,e
 var $async$AR=A.D(function(c,d){if(c===1){o.push(d)
 s=p}for(;;)switch(s){case 0:p=4
-i=n.a
-m=A.cY(i.a+"/api/banking/auth",0,null)
-i=i.c
-i===$&&A.a()
-h=t.N
-i=A.a4(["Content-Type","application/json","Authorization",i.b],h,h)
+h=n.a
+m=h.a
+if(J.d(m,"/"))m=""
+l=A.cY(A.m(m)+"/api/banking/auth",0,null)
+h=h.c
+h===$&&A.a()
+g=t.N
+h=A.a4(["Content-Type","application/json","Authorization",h.b],g,g)
 s=7
-return A.q(A.bs7(m,B.am.mM(A.a4(["bank_id",a,"country","FR","redirect_url",b],h,h)),i),$async$AR)
-case 7:l=d
-if(l.b===200){i=l
-k=B.am.fa(0,A.aXt(A.aWj(i.e)).fa(0,i.w))
-i=J.a3(k,"url")
-q=i
+return A.q(A.bs7(l,B.am.mM(A.a4(["bank_id",a,"country","FR","redirect_url",b],g,g)),h),$async$AR)
+case 7:k=d
+if(k.b===200){h=k
+j=B.am.fa(0,A.aXt(A.aWj(h.e)).fa(0,h.w))
+h=J.a3(j,"url")
+q=h
 s=1
-break}else{i=A.dg("Erreur API Auth: "+l.b+" - "+J.b33(l))
-throw A.e(i)}p=2
+break}else{h=A.dg("Erreur API Auth: "+k.b+" - "+J.b33(k))
+throw A.e(h)}p=2
 s=6
 break
 case 4:p=3
-f=o.pop()
-j=A.a9(f)
-i=A.dg("Impossible d'initier la connexion bancaire : "+A.m(j))
-throw A.e(i)
+e=o.pop()
+i=A.a9(e)
+h=A.dg("Impossible d'initier la connexion bancaire : "+A.m(i))
+throw A.e(h)
 s=6
 break
 case 3:s=2
@@ -55939,34 +55943,36 @@ case 6:case 1:return A.A(q,r)
 case 2:return A.z(o.at(-1),r)}})
 return A.B($async$AU,r)},
 BU(a,b,c){return this.aeA(a,b,c)},
-aeA(a,b,c){var s=0,r=A.C(t.P),q,p=2,o=[],n=this,m,l,k,j,i,h,g,f,e
-var $async$BU=A.D(function(d,a0){if(d===1){o.push(a0)
+aeA(a,b,c){var s=0,r=A.C(t.P),q,p=2,o=[],n=this,m,l,k,j,i,h,g,f,e,d
+var $async$BU=A.D(function(a0,a1){if(a0===1){o.push(a1)
 s=p}for(;;)switch(s){case 0:p=4
-h=n.a
-m=h.a+"/api/banking/sync?account_id="+a
-if(c!=null)m=J.aZ2(m,"&date_start="+c)
-if(b!=null)m=J.aZ2(m,"&date_end="+b)
-l=A.cY(m,0,null)
-h=h.c
-h===$&&A.a()
-g=t.N
+g=n.a
+m=g.a
+if(J.d(m,"/"))m=""
+l=A.m(m)+"/api/banking/sync?account_id="+a
+if(c!=null)l=J.aZ2(l,"&date_start="+c)
+if(b!=null)l=J.aZ2(l,"&date_end="+b)
+k=A.cY(l,0,null)
+g=g.c
+g===$&&A.a()
+f=t.N
 s=7
-return A.q(A.bag(l,A.a4(["Authorization",h.b],g,g)),$async$BU)
-case 7:k=a0
-g=k
-j=B.am.fa(0,A.aXt(A.aWj(g.e)).fa(0,g.w))
-if(k.b===200){q=j
+return A.q(A.bag(k,A.a4(["Authorization",g.b],f,f)),$async$BU)
+case 7:j=a1
+f=j
+i=B.am.fa(0,A.aXt(A.aWj(f.e)).fa(0,f.w))
+if(j.b===200){q=i
 s=1
-break}else{h=J.a3(j,"error")
-h=A.dg(h==null?"Erreur API: "+k.b:h)
-throw A.e(h)}p=2
+break}else{g=J.a3(i,"error")
+g=A.dg(g==null?"Erreur API: "+j.b:g)
+throw A.e(g)}p=2
 s=6
 break
 case 4:p=3
-e=o.pop()
-i=A.a9(e)
-h=A.dg("\xc9chec de la synchronisation: "+A.m(i))
-throw A.e(h)
+d=o.pop()
+h=A.a9(d)
+g=A.dg("\xc9chec de la synchronisation: "+A.m(h))
+throw A.e(g)
 s=6
 break
 case 3:s=2
@@ -126860,7 +126866,7 @@ B.apZ=new A.ak("Interface Admin (PocketBase)",null,null,null,null,null,null,null
 B.SY=new A.ak("Cr\xe9er un compte",null,null,null,null,null,null,null,null,null)
 B.aq0=new A.ak("Voulez-vous vraiment supprimer cette transaction ?",null,null,null,null,null,null,null,null,null)
 B.ST=new A.t(!0,B.b9,null,null,null,null,12,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.aq3=new A.ak("v2.0.2",null,B.ST,B.f1,null,null,null,null,null,null)
+B.aq3=new A.ak("v2.0.3",null,B.ST,B.f1,null,null,null,null,null,null)
 B.aq4=new A.ak("D\xe9tails par ann\xe9e",null,B.wz,null,null,null,null,null,null,null)
 B.wB=new A.ak("Supprimer ?",null,null,null,null,null,null,null,null,null)
 B.SS=new A.t(!0,B.e8,null,null,null,null,12,B.al,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
@@ -126918,7 +126924,7 @@ B.ar6=new A.ak("RECHARGER",null,null,null,null,null,null,null,null,null)
 B.ar7=new A.ak("Tendances Annuelles",null,null,null,null,null,null,null,null,null)
 B.T5=new A.ak("G\xe9rer les membres",null,null,null,null,null,null,null,null,null)
 B.anH=new A.t(!0,B.e8,null,null,null,null,10,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.ar8=new A.ak("v2.0.2",null,B.anH,null,null,null,null,null,null,null)
+B.ar8=new A.ak("v2.0.3",null,B.anH,null,null,null,null,null,null,null)
 B.ar9=new A.ak("Synchronisation Bancaire",null,null,null,null,null,null,null,null,null)
 B.ara=new A.ak("Enregistrer et Nouveau",null,null,null,null,null,null,null,null,null)
 B.arb=new A.ak("R\xe9p\xe9ter",null,null,null,null,null,null,null,null,null)
