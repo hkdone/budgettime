@@ -15,6 +15,7 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
   List<dynamic> _aspsps = [];
   bool _isLoading = true;
   String _errorMessage = '';
+  bool _showManualList = false; // Par défaut, cache la liste manuelle
 
   @override
   void initState() {
@@ -28,6 +29,7 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
       setState(() {
         _aspsps = banks;
         _isLoading = false;
+        _errorMessage = '';
       });
     } catch (e) {
       setState(() {
@@ -38,7 +40,10 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
   }
 
   Future<void> _discoverConnections() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
     try {
       final result = await _bankingService.discoverConnections();
       final added = result['added'] ?? 0;
@@ -54,16 +59,11 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
           backgroundColor: Colors.green,
         ),
       );
-      // On rafraîchit la page ou on ferme ?
-      // Si on a ajouté des comptes, l'utilisateur peut maintenant revenir au dashboard
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur lors de la découverte : $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      setState(() {
+        _errorMessage = 'Erreur lors de la découverte : $e';
+      });
     } finally {
       setState(() => _isLoading = false);
     }
@@ -78,39 +78,29 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
     );
 
     try {
-      // 1. Définir l'URL de redirection dynamiquement (v0.23+ compatible)
-      // On privilégie l'URL du navigateur si on est sur le web, sinon le baseURL de PocketBase
       String finalBaseUrl = _bankingService.pb.baseURL;
       if (finalBaseUrl == '/' || finalBaseUrl.isEmpty) {
         finalBaseUrl = Uri.base.origin;
       } else if (!finalBaseUrl.startsWith('http')) {
-        // En cas de baseURL relative
         finalBaseUrl = Uri.parse(
           Uri.base.origin,
         ).resolve(finalBaseUrl).toString();
       }
 
-      // Nettoyage des slashs finaux pour éviter les doubles slashs
       if (finalBaseUrl.endsWith('/')) {
         finalBaseUrl = finalBaseUrl.substring(0, finalBaseUrl.length - 1);
       }
 
       final String redirectUrl = '$finalBaseUrl/api/banking/callback';
-      debugPrint('[OpenBanking] Using Redirect URL: $redirectUrl');
 
-      // 2. Obtenir l'Auth URL depuis Enable Banking (via notre serveur)
       final authUrlStr = await _bankingService.getAuthUrl(bankId, redirectUrl);
 
       if (!mounted) return;
       Navigator.of(context).pop(); // Ferme le loader
 
-      // 3. Ouvrir le navigateur sécurisé du téléphone
       final Uri authUri = Uri.parse(authUrlStr);
       if (await canLaunchUrl(authUri)) {
-        await launchUrl(
-          authUri,
-          mode: LaunchMode.externalApplication,
-        ); // Force le navigateur externe
+        await launchUrl(authUri, mode: LaunchMode.externalApplication);
       } else {
         throw Exception("Impossible d'ouvrir le navigateur.");
       }
@@ -126,75 +116,142 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Sélectionner une Banque')),
+      appBar: AppBar(title: const Text('Liaison Bancaire (Production)')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage.isNotEmpty
           ? Center(
-              child: Text(
-                _errorMessage,
-                style: const TextStyle(color: Colors.red),
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 60,
+                      color: Colors.red,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      _errorMessage,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: _discoverConnections,
+                      child: const Text('Réessayer la découverte'),
+                    ),
+                    TextButton(
+                      onPressed: () => setState(() => _showManualList = true),
+                      child: const Text('Afficher la liste manuelle'),
+                    ),
+                  ],
+                ),
               ),
             )
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: ElevatedButton.icon(
-                    onPressed: _isLoading ? null : _discoverConnections,
-                    icon: const Icon(Icons.sync_alt),
-                    label: const Text(
-                      'Vérifier mes banques liées (Mode Personnel)',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.shade700,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(double.infinity, 50),
+          : SingleChildScrollView(
+              child: Column(
+                children: [
+                  const SizedBox(height: 40),
+                  const Icon(
+                    Icons.account_balance,
+                    size: 80,
+                    color: Colors.blue,
+                  ),
+                  const SizedBox(height: 24),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 32.0),
+                    child: Text(
+                      'Connectez votre banque en un clic',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
-                const Divider(),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8.0),
-                  child: Text(
-                    'Ou sélectionnez une banque manuellement :',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey,
+                  const SizedBox(height: 8),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 32.0),
+                    child: Text(
+                      'BudgetTime va récupérer les comptes que vous avez déjà liés sur votre interface Enable Banking.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey),
                     ),
                   ),
-                ),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: _aspsps.length,
-                    itemBuilder: (context, index) {
-                      final bank = _aspsps[index];
-                      final displayName =
-                          bank['full_name'] ??
-                          bank['name'] ??
-                          'Banque Inconnue';
-                      final technicalId = bank['name'] ?? 'unknown';
+                  const SizedBox(height: 40),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                    child: ElevatedButton.icon(
+                      onPressed: _isLoading ? null : _discoverConnections,
+                      icon: const Icon(Icons.sync_alt),
+                      label: const Text(
+                        'Vérifier mes banques liées',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade700,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 60),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  if (!_showManualList)
+                    TextButton(
+                      onPressed: () => setState(() => _showManualList = true),
+                      child: const Text(
+                        "Ma banque n'apparaît pas ? Sélection manuelle",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  if (_showManualList) ...[
+                    const Divider(),
+                    const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Text(
+                        'Sélection manuelle :',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _aspsps.length,
+                      itemBuilder: (context, index) {
+                        final bank = _aspsps[index];
+                        final displayName =
+                            bank['full_name'] ??
+                            bank['name'] ??
+                            'Banque Inconnue';
+                        final technicalId = bank['name'] ?? 'unknown';
 
-                      return ListTile(
-                        leading: bank['logo'] != null
-                            ? Image.network(
-                                bank['logo'],
-                                width: 50,
-                                height: 50,
-                                errorBuilder: (c, e, s) =>
-                                    const Icon(Icons.account_balance),
-                              )
-                            : const Icon(Icons.account_balance),
-                        title: Text(displayName),
-                        subtitle: Text(technicalId),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => _connectToBank(technicalId),
-                      );
-                    },
-                  ),
-                ),
-              ],
+                        return ListTile(
+                          leading: bank['logo'] != null
+                              ? Image.network(
+                                  bank['logo'],
+                                  width: 40,
+                                  height: 40,
+                                  errorBuilder: (c, e, s) =>
+                                      const Icon(Icons.account_balance),
+                                )
+                              : const Icon(Icons.account_balance),
+                          title: Text(displayName),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => _connectToBank(technicalId),
+                        );
+                      },
+                    ),
+                  ],
+                ],
+              ),
             ),
     );
   }

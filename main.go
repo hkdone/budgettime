@@ -155,8 +155,8 @@ func main() {
 				return e.JSON(500, map[string]any{"error": "Failed to generate JWT"})
 			}
 
-			// Appeler l'API Enable Banking pour lister les "requisitions"
-			apiURL := "https://api.enablebanking.com/requisitions"
+			// Appeler l'API Enable Banking pour lister les "sessions" (requisitions)
+			apiURL := "https://api.enablebanking.com/sessions"
 			req, err := http.NewRequest("GET", apiURL, nil)
 			if err != nil {
 				return e.JSON(500, map[string]any{"error": "Failed to create request"})
