@@ -99,6 +99,27 @@ class OpenBankingService {
     }
   }
 
+  /// 4. Découvre les connexions existantes (Mode Personnel)
+  Future<Map<String, dynamic>> discoverConnections() async {
+    try {
+      final url = Uri.parse(pb.baseURL).resolve('api/banking/discover');
+      final response = await http.get(
+        url,
+        headers: {'Authorization': pb.authStore.token},
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception(
+          'Erreur Discovery: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Erreur réseau lors du Discovery : $e');
+    }
+  }
+
   /// 5. Lance la synchronisation API manuelle avec Enable Banking
   Future<Map<String, dynamic>> syncTransactions(
     String accountId, {

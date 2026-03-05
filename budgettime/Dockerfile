@@ -2,7 +2,7 @@
 FROM alpine:latest
 
 # Installation des outils systèmes utiles pour CasaOS / Home Assistant
-RUN apk add --no-cache ca-certificates dos2unix tzdata
+RUN apk add --no-cache ca-certificates dos2unix tzdata openssl
 
 # Définir le répertoire de travail
 WORKDIR /pb

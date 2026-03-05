@@ -59,3 +59,4 @@ docs/keys/
 pocketbase_custom.exe
 secrets/
 budgettime/secrets/
+budgettime/.env

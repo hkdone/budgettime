@@ -148,6 +148,83 @@ func main() {
 			return e.String(200, string(body))
 		})
 
+		// 1.5 Endpoint : Découvrir les liaisons existantes (Mode Personnel/Production)
+		e.Router.GET("/api/banking/discover", func(e *core.RequestEvent) error {
+			token, err := generateEnableBankingJWT(app)
+			if err != nil {
+				return e.JSON(500, map[string]any{"error": "Failed to generate JWT"})
+			}
+
+			// Appeler l'API Enable Banking pour lister les "requisitions"
+			apiURL := "https://api.enablebanking.com/requisitions"
+			req, err := http.NewRequest("GET", apiURL, nil)
+			if err != nil {
+				return e.JSON(500, map[string]any{"error": "Failed to create request"})
+			}
+			req.Header.Set("Authorization", "Bearer "+token)
+
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			if err != nil {
+				return e.JSON(500, map[string]any{"error": "Failed to call Enable Banking API"})
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != 200 {
+				body, _ := io.ReadAll(resp.Body)
+				return e.JSON(resp.StatusCode, map[string]any{
+					"error":   "Enable Banking API error",
+					"details": string(body),
+				})
+			}
+
+			var result struct {
+				Requisitions []map[string]any `json:"requisitions"`
+			}
+			if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+				return e.JSON(500, map[string]any{"error": "Failed to parse response"})
+			}
+
+			// Synchroniser avec PocketBase
+			collection, err := app.FindCollectionByNameOrId("bank_connections")
+			if err != nil {
+				return e.JSON(500, map[string]any{"error": "Collection bank_connections not found"})
+			}
+
+			userId := ""
+			if authRecord := e.Auth; authRecord != nil {
+				userId = authRecord.Id
+			}
+
+			addedCount := 0
+			for _, reqData := range result.Requisitions {
+				reqId, _ := reqData["id"].(string)
+				if reqId == "" {
+					continue
+				}
+
+				// Vérifier si elle existe déjà
+				existing, _ := app.FindFirstRecordByFilter("bank_connections", "requisition_id = {:id}", dbx.Params{"id": reqId})
+				if existing == nil {
+					// Créer une nouvelle liaison
+					record := core.NewRecord(collection)
+					record.Set("requisition_id", reqId)
+					record.Set("user", userId)
+					record.Set("bank_name", reqData["aspsp_id"])
+					record.Set("status", reqData["status"])
+					if err := app.Save(record); err == nil {
+						addedCount++
+					}
+				}
+			}
+
+			return e.JSON(200, map[string]any{
+				"message": "Discovery complete",
+				"found":   len(result.Requisitions),
+				"added":   addedCount,
+			})
+		})
+
 		// 2. Endpoint : Demander un lien d'autorisation pour une banque spécifique
 		e.Router.POST("/api/banking/auth", func(e *core.RequestEvent) error {
 			// 1. Lire le body envoyé par Flutter
