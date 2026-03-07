@@ -85,13 +85,15 @@ func main() {
 
 	jsvm.MustRegister(app, jsvm.Config{})
 
-	// Exposition du générateur JWT via une route API Serveur (Locally accessible via pb_hooks)
+	// Exposition des endpoints Enable Banking
 	app.OnServe().BindFunc(func(e *core.ServeEvent) error {
-		e.Router.GET("/api/banking/jwt", func(e *core.RequestEvent) error {
-			userId := ""
-			if auth := e.Auth; auth != nil {
-				userId = auth.Id
-			}
+		// Créer un groupe pour toutes les routes banking et exiger une authentification
+		// apis.RequireAuth() charge également le contexte d'authentification s'il est présent
+		banking := e.Router.Group("/api/banking").Bind(apis.RequireAuth())
+
+		// Endpoint : Générer un JWT pour Enable Banking
+		banking.GET("/jwt", func(e *core.RequestEvent) error {
+			userId := e.Auth.Id
 			appId, privateKey, _, _ := getBankSettings(app, userId)
 			token, err := generateEnableBankingJWT(appId, privateKey)
 			if err != nil {
@@ -102,26 +104,21 @@ func main() {
 			})
 		})
 
-		// Endpoint : Gérer les réglages Enable Banking (App ID, PEM, Session ID)
-		e.Router.GET("/api/banking/settings", func(e *core.RequestEvent) error {
-			userId := ""
-			if auth := e.Auth; auth != nil {
-				userId = auth.Id
-			}
+		// Endpoint : Récupérer les réglages Enable Banking
+		banking.GET("/settings", func(e *core.RequestEvent) error {
+			userId := e.Auth.Id
 			appId, privateKey, sessionId, _ := getBankSettings(app, userId)
 			return e.JSON(200, map[string]any{
 				"app_id":      appId,
 				"has_key":     privateKey != "",
 				"session_id":  sessionId,
-				"private_key": privateKey, // Optionnel: on peut masquer pour la secu, mais ici utile pour l'utilisateur
+				"private_key": privateKey,
 			})
 		})
 
-		e.Router.POST("/api/banking/settings", func(e *core.RequestEvent) error {
-			userId := ""
-			if auth := e.Auth; auth != nil {
-				userId = auth.Id
-			}
+		// Endpoint : Sauvegarder les réglages Enable Banking
+		banking.POST("/settings", func(e *core.RequestEvent) error {
+			userId := e.Auth.Id
 			var data struct {
 				AppId      string `json:"app_id"`
 				PrivateKey string `json:"private_key"`
@@ -131,7 +128,6 @@ func main() {
 				return e.Error(400, "Invalid body", err)
 			}
 
-			// Upsert dans bank_settings
 			collection, _ := app.FindCollectionByNameOrId("bank_settings")
 			record, _ := app.FindFirstRecordByFilter("bank_settings", "user = {:userId}", dbx.Params{"userId": userId})
 			if record == nil {
@@ -154,26 +150,19 @@ func main() {
 			return e.JSON(200, map[string]string{"message": "Settings saved"})
 		})
 
-		// 1. Endpoint : Récupérer la liste des banques (ASPSPs)
-		e.Router.GET("/api/banking/aspsps", func(e *core.RequestEvent) error {
+		// Endpoint : Récupérer la liste des banques (ASPSPs)
+		banking.GET("/aspsps", func(e *core.RequestEvent) error {
 			country := e.Request.URL.Query().Get("country")
 			if country == "" {
-				country = "FR" // Par défaut, la France
+				country = "FR"
 			}
-
-			userId := ""
-			if auth := e.Auth; auth != nil {
-				userId = auth.Id
-			}
+			userId := e.Auth.Id
 			appId, privateKey, _, _ := getBankSettings(app, userId)
-
-			// 1. Générer le JWT
 			token, err := generateEnableBankingJWT(appId, privateKey)
 			if err != nil {
 				return e.JSON(500, map[string]any{"error": "JWT Generation Failed", "details": err.Error()})
 			}
 
-			// 2. Préparer l'appel à Enable Banking API (v1 /aspsps)
 			apiURL := "https://api.enablebanking.com/aspsps?country=" + country
 			req, err := http.NewRequest("GET", apiURL, nil)
 			if err != nil {
@@ -181,7 +170,6 @@ func main() {
 			}
 			req.Header.Set("Authorization", "Bearer "+token)
 
-			// 3. Exécuter l'appel Http
 			client := &http.Client{Timeout: 10 * time.Second}
 			resp, err := client.Do(req)
 			if err != nil {
@@ -190,35 +178,24 @@ func main() {
 			defer resp.Body.Close()
 
 			body, _ := io.ReadAll(resp.Body)
-
-			// 4. Si ce n'est pas un 200, remonter l'erreur native
 			if resp.StatusCode != 200 {
 				return e.JSON(resp.StatusCode, map[string]any{
 					"error":   "EnableBanking returned an error",
 					"details": string(body),
 				})
 			}
-
-			// 5. Renvoyer le JSON brut des banques à l'application Flutter
-			// En Go PocketBase e.JSON demande une structure, on parse puis on renvoie pour être propre
-			// ou bien on utilise e.String avec le bon Content-Type. On va simplifier avec String + Blob.
 			e.Response.Header().Set("Content-Type", "application/json; charset=utf-8")
 			return e.String(200, string(body))
 		})
 
-		// 1.5 Endpoint : Découvrir les liaisons existantes (Mode Personnel/Production)
-		e.Router.GET("/api/banking/discover", func(e *core.RequestEvent) error {
-			userId := ""
-			if auth := e.Auth; auth != nil {
-				userId = auth.Id
-			}
+		// Endpoint : Découvrir les liaisons existantes
+		banking.GET("/discover", func(e *core.RequestEvent) error {
+			userId := e.Auth.Id
 			appId, privateKey, sessionID, _ := getBankSettings(app, userId)
-
 			token, err := generateEnableBankingJWT(appId, privateKey)
 			if err != nil {
 				return e.JSON(500, map[string]any{"error": "Failed to generate JWT", "details": err.Error()})
 			}
-
 			if sessionID == "" {
 				return e.JSON(404, map[string]any{
 					"error":      "No Session ID configured",
@@ -226,7 +203,6 @@ func main() {
 				})
 			}
 
-			// Importation directe via Session ID
 			apiURL := "https://api.enablebanking.com/sessions/" + sessionID
 			req, err := http.NewRequest("GET", apiURL, nil)
 			if err != nil {
@@ -254,7 +230,6 @@ func main() {
 				return e.JSON(500, map[string]any{"error": "Failed to parse session data"})
 			}
 
-			// Adapter au format de sync
 			requisitions := []map[string]any{sessionData}
 			addedCount := syncSessions(app, e, requisitions)
 
@@ -264,13 +239,12 @@ func main() {
 			})
 		})
 
-		// 2. Endpoint : Demander un lien d'autorisation pour une banque spécifique
-		e.Router.POST("/api/banking/auth", func(e *core.RequestEvent) error {
-			// 1. Lire le body envoyé par Flutter
+		// Endpoint : Demander un lien d'autorisation
+		banking.POST("/auth", func(e *core.RequestEvent) error {
 			var reqData struct {
 				BankID      string `json:"bank_id"`
 				Country     string `json:"country"`
-				RedirectURL string `json:"redirect_url"` // L'URL publique de BudgetTime (ex: http://mon.nas.local:8097/api/banking/callback)
+				RedirectURL string `json:"redirect_url"`
 			}
 			if err := e.BindBody(&reqData); err != nil {
 				return e.JSON(400, map[string]any{"error": "Invalid request body", "details": err.Error()})
@@ -280,28 +254,18 @@ func main() {
 			}
 			country := reqData.Country
 			if country == "" {
-				country = "FR" // Default fallback
+				country = "FR"
 			}
 
-			userId := ""
-			if auth := e.Auth; auth != nil {
-				userId = auth.Id
-			}
+			userId := e.Auth.Id
 			appId, privateKey, _, _ := getBankSettings(app, userId)
-
-			// 2. Générer le JWT
 			token, err := generateEnableBankingJWT(appId, privateKey)
 			if err != nil {
 				return e.JSON(500, map[string]any{"error": "JWT Generation Failed", "details": err.Error()})
 			}
 
-			// 3. Préparer le JSON pour Enable Banking
-			// On demande un accès valide pour 90 jours (le maximum autorisé standard DSP2)
 			validUntil := time.Now().Add(90 * 24 * time.Hour).Format(time.RFC3339)
-
-			// Le "state" est un identifiant arbitraire pour sécuriser le retour, on peut y injecter l'ID de l'utilisateur PocketBase par exemple
 			stateAuth := "budgettime_" + reqData.BankID
-
 			authPayload := map[string]any{
 				"access": map[string]any{
 					"valid_until": validUntil,
@@ -314,15 +278,9 @@ func main() {
 				"redirect_url": reqData.RedirectURL,
 			}
 
-			jsonData, err := json.Marshal(authPayload)
-			if err != nil {
-				return e.JSON(500, map[string]any{"error": "Failed to encode auth payload"})
-			}
-
-			// LOG : Pour aider l'utilisateur à voir l'URL de redirection et le nom de la banque envoyés
+			jsonData, _ := json.Marshal(authPayload)
 			fmt.Printf("[EnableBanking] Auth Request Payload: %s\n", string(jsonData))
 
-			// 4. Appeler l'API Enable Banking
 			apiURL := "https://api.enablebanking.com/auth"
 			req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonData))
 			if err != nil {
@@ -339,22 +297,18 @@ func main() {
 			defer resp.Body.Close()
 
 			body, _ := io.ReadAll(resp.Body)
-
 			if resp.StatusCode != 200 {
 				return e.JSON(resp.StatusCode, map[string]any{
 					"error":   "EnableBanking returned an error",
 					"details": string(body),
 				})
 			}
-
-			// 5. Renvoyer la réponse (qui contient l'URL d'autorisation "url")
 			e.Response.Header().Set("Content-Type", "application/json; charset=utf-8")
 			return e.String(200, string(body))
 		})
 
-		// 3. Endpoint : Gérer le retour de la banque (Callback / Session)
-		e.Router.GET("/api/banking/callback", func(e *core.RequestEvent) error {
-			// Le portail bancaire redirige l'utilisateur ici avec des paramètres d'URL
+		// Endpoint : Callback de la banque
+		banking.GET("/callback", func(e *core.RequestEvent) error {
 			code := e.Request.URL.Query().Get("code")
 			if code == "" {
 				errorBanque := e.Request.URL.Query().Get("error")
@@ -366,19 +320,13 @@ func main() {
 				userId = auth.Id
 			}
 			appId, privateKey, _, _ := getBankSettings(app, userId)
-
-			// 1. Générer le JWT
 			token, err := generateEnableBankingJWT(appId, privateKey)
 			if err != nil {
 				return e.JSON(500, map[string]any{"error": "JWT Generation Failed", "details": err.Error()})
 			}
 
-			// 2. Préparer l'appel à Enable Banking (Création de session)
-			sessionPayload := map[string]any{
-				"code": code,
-			}
+			sessionPayload := map[string]any{"code": code}
 			jsonData, _ := json.Marshal(sessionPayload)
-
 			req, err := http.NewRequest("POST", "https://api.enablebanking.com/sessions", bytes.NewBuffer(jsonData))
 			if err != nil {
 				return e.JSON(500, map[string]any{"error": "API Request Creation Failed"})
@@ -386,7 +334,6 @@ func main() {
 			req.Header.Set("Authorization", "Bearer "+token)
 			req.Header.Set("Content-Type", "application/json")
 
-			// 3. Appel à l'API Enable Banking
 			client := &http.Client{Timeout: 10 * time.Second}
 			resp, err := client.Do(req)
 			if err != nil {
@@ -395,7 +342,6 @@ func main() {
 			defer resp.Body.Close()
 
 			body, _ := io.ReadAll(resp.Body)
-
 			if resp.StatusCode != 200 {
 				return e.JSON(resp.StatusCode, map[string]any{
 					"error":   "EnableBanking failed to create session",
@@ -403,7 +349,6 @@ func main() {
 				})
 			}
 
-			// 4. Parser la réponse de session pour en extraire le session_id et les IBANs (accounts)
 			var sessionResult struct {
 				SessionId string   `json:"session_id"`
 				Status    string   `json:"status"`
@@ -413,7 +358,6 @@ func main() {
 				return e.JSON(500, map[string]any{"error": "Failed to parse EnableBanking response", "details": err.Error()})
 			}
 
-			// 4b. Sauvegarder le session_id dans bank_settings pour persistence par instance
 			if userId != "" {
 				collectionSettings, _ := app.FindCollectionByNameOrId("bank_settings")
 				recordSet, _ := app.FindFirstRecordByFilter("bank_settings", "user = {:userId}", dbx.Params{"userId": userId})
@@ -425,28 +369,20 @@ func main() {
 				app.Save(recordSet)
 			}
 
-			// 5. Enregistrer le consentement en BDD PocketBase
-			authRecord := e.Auth
-			if authRecord == nil {
-				return e.JSON(401, map[string]any{"error": "Unauthorized: le token PocketBase est manquant ou invalide"})
-			}
-
-			// A. Sauvegarde de la Connexion globale
 			collectionConn, err := app.FindCollectionByNameOrId("bank_connections")
 			if err != nil {
 				return e.JSON(500, map[string]any{"error": "Table bank_connections manquante"})
 			}
 			recordConn := core.NewRecord(collectionConn)
-			recordConn.Set("user", authRecord.Id)
-			recordConn.Set("bank_name", "Banque Connectée") // Ou extraire du state plus tard
+			recordConn.Set("user", userId)
+			recordConn.Set("bank_name", "Banque Connectée")
 			recordConn.Set("requisition_id", sessionResult.SessionId)
-			recordConn.Set("valid_until", time.Now().AddDate(0, 0, 90).Format("2006-01-02 15:04:05.000Z")) // DSP2 = 90 Jours
+			recordConn.Set("valid_until", time.Now().AddDate(0, 0, 90).Format("2006-01-02 15:04:05.000Z"))
 
 			if err := app.Save(recordConn); err != nil {
 				return e.JSON(500, map[string]any{"error": "Impossible de sauvegarder la connexion bancaire", "details": err.Error()})
 			}
 
-			// B. Sauvegarde Physique de chaque IBAN/Account autorisé
 			collectionAcc, err := app.FindCollectionByNameOrId("bank_accounts")
 			if err == nil {
 				for _, accIban := range sessionResult.Accounts {
@@ -458,13 +394,12 @@ func main() {
 				}
 			}
 
-			// 6. Renvoyer le JSON final à Flutter
 			e.Response.Header().Set("Content-Type", "application/json; charset=utf-8")
 			return e.String(200, string(body))
 		})
 
-		// 4. Endpoint : Synchroniser les transactions (Fetch & Inject)
-		e.Router.GET("/api/banking/sync", func(e *core.RequestEvent) error {
+		// Endpoint : Synchronisation des transactions
+		banking.GET("/sync", func(e *core.RequestEvent) error {
 			accountId := e.Request.URL.Query().Get("account_id")
 			dateStart := e.Request.URL.Query().Get("date_start")
 			dateEnd := e.Request.URL.Query().Get("date_end")
@@ -473,7 +408,6 @@ func main() {
 				return e.JSON(400, map[string]any{"error": "account_id is required"})
 			}
 
-			// 1. Trouver bank_accounts et bank_connections
 			var bankAccount struct {
 				RemoteAccountId string `db:"remote_account_id"`
 				ConnectionId    string `db:"connection_id"`
@@ -484,14 +418,13 @@ func main() {
 				Limit(1).
 				One(&bankAccount)
 			if err != nil {
-				// Fallback si on passe directement le remote_account_id
 				err = app.DB().Select("remote_account_id", "connection_id").
 					From("bank_accounts").
 					Where(dbx.HashExp{"remote_account_id": accountId}).
 					Limit(1).
 					One(&bankAccount)
 				if err != nil {
-					return e.JSON(404, map[string]any{"error": "Compte bancaire (IBAN) non trouvé localement", "details": err.Error()})
+					return e.JSON(404, map[string]any{"error": "Compte bancaire non trouvé localement"})
 				}
 			}
 
@@ -509,23 +442,17 @@ func main() {
 				return e.JSON(404, map[string]any{"error": "Connexion parente introuvable"})
 			}
 
-			// 2. Rate Limiting Sécurisé (Anti-ban EnableBanking)
 			var count int
-			app.DB().Select("count(id)").
-				From("bank_sync_logs").
+			app.DB().Select("count(id)").From("bank_sync_logs").
 				Where(dbx.HashExp{"connection_id": bankConnection.Id, "status": "success"}).
 				AndWhere(dbx.NewExp("created > datetime('now', '-1 hour')")).
 				Row(&count)
 
 			if count > 0 {
-				return e.JSON(429, map[string]any{"error": "L'API a déjà été interrogée il y a moins d'une heure. Rate Limit activé pour protéger vos accès."})
+				return e.JSON(429, map[string]any{"error": "Rate limit: une synchro par heure maximum"})
 			}
 
-			// 3. Appeler Enable Banking
-			userId := ""
-			if auth := e.Auth; auth != nil {
-				userId = auth.Id
-			}
+			userId := e.Auth.Id
 			appId, privateKey, _, _ := getBankSettings(app, userId)
 			token, err := generateEnableBankingJWT(appId, privateKey)
 			if err != nil {
@@ -538,13 +465,12 @@ func main() {
 			} else {
 				now := time.Now()
 				dateEnd = now.Format("2006-01-02")
-				dateStart = now.AddDate(0, 0, -10).Format("2006-01-02") // 10 jours par défaut
+				dateStart = now.AddDate(0, 0, -10).Format("2006-01-02")
 				apiURL += fmt.Sprintf("?date_from=%s&date_to=%s", dateStart, dateEnd)
 			}
 
 			req, err := http.NewRequest("GET", apiURL, nil)
 			req.Header.Set("Authorization", "Bearer "+token)
-
 			client := &http.Client{Timeout: 30 * time.Second}
 			resp, err := client.Do(req)
 			if err != nil || resp.StatusCode != 200 {
@@ -553,7 +479,6 @@ func main() {
 					recordLog := core.NewRecord(collectionLogs)
 					recordLog.Set("connection_id", bankConnection.Id)
 					recordLog.Set("status", "error")
-					recordLog.Set("transactions_count", 0)
 					app.Save(recordLog)
 				}
 				return e.JSON(500, map[string]any{"error": "API Call Failed"})
@@ -574,15 +499,9 @@ func main() {
 					RemittanceInfo string `json:"remittance_information_unstructured"`
 				} `json:"transactions"`
 			}
-			if err := json.Unmarshal(body, &result); err != nil {
-				return e.JSON(500, map[string]any{"error": "JSON parse error", "details": err.Error()})
-			}
+			json.Unmarshal(body, &result)
 
-			collectionInbox, err := app.FindCollectionByNameOrId("raw_inbox")
-			if err != nil {
-				return e.JSON(500, map[string]any{"error": "Table raw_inbox absente"})
-			}
-
+			collectionInbox, _ := app.FindCollectionByNameOrId("raw_inbox")
 			insertedCount := 0
 			for _, t := range result.Transactions {
 				label := t.CreditorName
@@ -601,20 +520,17 @@ func main() {
 					Where(dbx.HashExp{"raw_payload": t.TransactionId, "user": bankConnection.UserId}).
 					Row(&existing)
 
-				if existing > 0 {
-					continue // Déjà traitée
-				}
-
-				record := core.NewRecord(collectionInbox)
-				record.Set("date", t.BookingDate+" 12:00:00.000Z")
-				record.Set("label", label)
-				record.Set("amount", t.Amount.Value)
-				record.Set("user", bankConnection.UserId)
-				record.Set("is_processed", false)
-				record.Set("raw_payload", t.TransactionId)
-
-				if err := app.Save(record); err == nil {
-					insertedCount++
+				if existing == 0 {
+					record := core.NewRecord(collectionInbox)
+					record.Set("date", t.BookingDate+" 12:00:00.000Z")
+					record.Set("label", label)
+					record.Set("amount", t.Amount.Value)
+					record.Set("user", bankConnection.UserId)
+					record.Set("is_processed", false)
+					record.Set("raw_payload", t.TransactionId)
+					if err := app.Save(record); err == nil {
+						insertedCount++
+					}
 				}
 			}
 
@@ -628,13 +544,12 @@ func main() {
 			}
 
 			return e.JSON(200, map[string]any{
-				"message":       "Synchro terminée",
-				"inserted":      insertedCount,
-				"total_fetched": len(result.Transactions),
+				"inserted": insertedCount,
+				"message":  "Synchro effectuée",
 			})
 		})
 
-		// Indispensable pour les Frameworks Custom (Go natif) : Servir le Frontend Web
+		// Servir le Frontend Web
 		publicDir := filepath.Join(filepath.Dir(app.DataDir()), "pb_public")
 		e.Router.GET("/{path...}", apis.Static(os.DirFS(publicDir), false))
 
