@@ -15,12 +15,37 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
   List<dynamic> _aspsps = [];
   bool _isLoading = true;
   String _errorMessage = '';
-  bool _showManualList = false; // Par défaut, cache la liste manuelle
+  bool _showManualList = false;
+  String? _appId;
+  bool _hasKey = false;
+  String? _sessionId;
 
   @override
   void initState() {
     super.initState();
-    _fetchAspsps();
+    _loadSettingsAndBanks();
+  }
+
+  Future<void> _loadSettingsAndBanks() async {
+    await _fetchSettings();
+    if (_appId != null && _hasKey) {
+      _fetchAspsps();
+    } else {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _fetchSettings() async {
+    try {
+      final settings = await _bankingService.getSettings();
+      setState(() {
+        _appId = settings['app_id'];
+        _hasKey = settings['has_key'] ?? false;
+        _sessionId = settings['session_id'];
+      });
+    } catch (e) {
+      debugPrint('Erreur lors du chargement des réglages: $e');
+    }
   }
 
   Future<void> _fetchAspsps() async {
@@ -40,6 +65,7 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
   }
 
   Future<void> _discoverConnections() async {
+    final localContext = context;
     setState(() {
       _isLoading = true;
       _errorMessage = '';
@@ -49,30 +75,35 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
       final added = result['added'] ?? 0;
       final total = result['found'] ?? 0;
 
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Découverte terminée : $total liaisons trouvées, $added nouvelles ajoutées.',
-            style: const TextStyle(color: Colors.white),
+      if (localContext.mounted) {
+        ScaffoldMessenger.of(localContext).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Découverte terminée : $total liaisons trouvées, $added nouvelles ajoutées.',
+              style: const TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Colors.green,
           ),
-          backgroundColor: Colors.green,
-        ),
-      );
+        );
+      }
     } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = 'Erreur lors de la découverte : $e';
-      });
+      if (localContext.mounted) {
+        setState(() {
+          _errorMessage = 'Erreur lors de la découverte : $e';
+        });
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (localContext.mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   Future<void> _connectToBank(String bankId) async {
+    final localContext = context;
     // Affiche un loader pendant qu'on demande l'URL à notre serveur Go
     showDialog(
-      context: context,
+      context: localContext,
       barrierDismissible: false,
       builder: (context) => const Center(child: CircularProgressIndicator()),
     );
@@ -95,28 +126,127 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
 
       final authUrlStr = await _bankingService.getAuthUrl(bankId, redirectUrl);
 
-      if (!mounted) return;
-      Navigator.of(context).pop(); // Ferme le loader
+      if (localContext.mounted) {
+        Navigator.pop(localContext); // Ferme le loader
+      }
 
       final Uri authUri = Uri.parse(authUrlStr);
       if (await canLaunchUrl(authUri)) {
         await launchUrl(authUri, mode: LaunchMode.externalApplication);
       } else {
-        throw Exception("Impossible d'ouvrir le navigateur.");
+        throw Exception('Impossible d\'ouvrir le navigateur.');
       }
     } catch (e) {
-      if (!mounted) return;
-      Navigator.of(context).pop(); // Ferme le loader en cas d'erreur
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-      );
+      if (localContext.mounted) {
+        Navigator.pop(localContext); // Ferme le loader
+        ScaffoldMessenger.of(localContext).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        );
+      }
     }
+  }
+
+  Future<void> _showSettingsDialog() async {
+    final appIdController = TextEditingController(text: _appId);
+    final keyController =
+        TextEditingController(); // On ne préremplit pas la clé pour la sécu
+
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Configuration Enable Banking'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Chaque instance de BudgetTime doit avoir son propre compte Enable Banking (gratuit).',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: appIdController,
+                decoration: const InputDecoration(
+                  labelText: 'Application ID',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: keyController,
+                maxLines: 5,
+                decoration: const InputDecoration(
+                  labelText: 'RSA Private Key (PEM)',
+                  hintText: '-----BEGIN RSA PRIVATE KEY-----...',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              if (_sessionId != null) ...[
+                const SizedBox(height: 16),
+                SelectableText(
+                  'Session ID actuelle: $_sessionId',
+                  style: const TextStyle(fontSize: 10, color: Colors.blue),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final localContext = context;
+              try {
+                await _bankingService.saveSettings(
+                  appId: appIdController.text,
+                  privateKey: keyController.text,
+                );
+                if (localContext.mounted) {
+                  Navigator.pop(localContext);
+                  _loadSettingsAndBanks();
+                  ScaffoldMessenger.of(localContext).showSnackBar(
+                    const SnackBar(content: Text('Réglages sauvegardés')),
+                  );
+                }
+              } catch (e) {
+                if (localContext.mounted) {
+                  ScaffoldMessenger.of(localContext).showSnackBar(
+                    SnackBar(
+                      content: Text('Erreur: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Sauvegarder'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Liaison Bancaire (Production)')),
+      appBar: AppBar(
+        title: const Text('Liaison Bancaire (Production)'),
+        actions: [
+          IconButton(
+            icon: Icon(
+              _appId != null && _hasKey
+                  ? Icons.settings
+                  : Icons.settings_suggest,
+              color: _appId != null && _hasKey ? null : Colors.orange,
+            ),
+            onPressed: _showSettingsDialog,
+            tooltip: 'Configuration',
+          ),
+        ],
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage.isNotEmpty
@@ -126,26 +256,49 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
-                      Icons.error_outline,
+                    Icon(
+                      _appId == null || !_hasKey
+                          ? Icons.warning_amber
+                          : Icons.info_outline,
                       size: 60,
-                      color: Colors.red,
+                      color: _appId == null || !_hasKey
+                          ? Colors.red
+                          : Colors.orange,
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      _errorMessage,
+                      _appId == null || !_hasKey
+                          ? 'Configuration manquante'
+                          : 'Importation manuelle requise',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _appId == null || !_hasKey
+                          ? 'Veuillez configurer votre Application ID et votre Clé RSA dans les réglages.'
+                          : 'Si vous avez déjà lié vos banques sur Enable Banking, l\'API ne permet pas de les lister automatiquement sans Session ID.',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.red),
                     ),
                     const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: _discoverConnections,
-                      child: const Text('Réessayer la découverte'),
-                    ),
-                    TextButton(
-                      onPressed: () => setState(() => _showManualList = true),
-                      child: const Text('Afficher la liste manuelle'),
-                    ),
+                    if (_appId == null || !_hasKey)
+                      ElevatedButton.icon(
+                        onPressed: _showSettingsDialog,
+                        icon: const Icon(Icons.settings),
+                        label: const Text('Ouvrir les réglages'),
+                      )
+                    else ...[
+                      ElevatedButton(
+                        onPressed: _discoverConnections,
+                        child: const Text('Tenter une découverte automatique'),
+                      ),
+                      TextButton(
+                        onPressed: () => setState(() => _showManualList = true),
+                        child: const Text('Afficher la liste manuelle'),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -208,7 +361,7 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
                     TextButton(
                       onPressed: () => setState(() => _showManualList = true),
                       child: const Text(
-                        "Ma banque n'apparaît pas ? Sélection manuelle",
+                        'Ma banque n\'apparaît pas ? Sélection manuelle',
                         style: TextStyle(color: Colors.grey),
                       ),
                     ),

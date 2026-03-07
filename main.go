@@ -19,62 +19,59 @@ import (
 	"github.com/pocketbase/pocketbase/plugins/jsvm"
 )
 
-// generateEnableBankingJWT lit la clé privée et génère un JWT valide pour 1h
-func generateEnableBankingJWT(app *pocketbase.PocketBase) (string, error) {
-	// 1. Récupérer l'Application ID
-	appId := os.Getenv("ENABLE_BANKING_APP_ID")
-	if appId == "" {
-		return "", fmt.Errorf("ENABLE_BANKING_APP_ID environment variable is missing")
+// getBankSettings récupère les réglages Enable Banking pour un utilisateur donné
+func getBankSettings(app *pocketbase.PocketBase, userId string) (appId, privateKey, sessionId string, err error) {
+	record, err := app.FindFirstRecordByFilter("bank_settings", "user = {:userId}", dbx.Params{"userId": userId})
+	if err == nil && record != nil {
+		return record.GetString("app_id"), record.GetString("private_key"), record.GetString("session_id"), nil
 	}
 
-	// 2. Trouver la clé privée (soit env var, soit fichier local dans ./secrets/<appId>.pem)
-	var privateKeyBytes []byte
+	// Fallback sur les variables d'environnement si non trouvé en base (pour rétrocompatibilité)
+	appId = os.Getenv("ENABLE_BANKING_APP_ID")
+	sessionId = os.Getenv("ENABLE_BANKING_SESSION_ID")
+
 	if envKey := os.Getenv("ENABLE_BANKING_PRIVATE_KEY"); envKey != "" {
-		privateKeyBytes = []byte(envKey)
-	} else {
-		// Chercher dans le dossier ./secrets/ à la racine le fichier nommé comme l'App ID
-		// On s'assure de cibler le même répertoire parent que 'pb_data' ou 'pb_public'
-		fileName := fmt.Sprintf("%s.pem", appId)
-
-		var baseDir string
-		if app != nil {
-			baseDir = filepath.Dir(app.DataDir())
-		} else {
-			baseDir = "."
-		}
-
-		keyPath := filepath.Join(baseDir, "secrets", fileName)
+		privateKey = envKey
+	} else if appId != "" {
+		// Chercher le fichier .pem par défaut
+		baseDir := filepath.Dir(app.DataDir())
+		keyPath := filepath.Join(baseDir, "secrets", fmt.Sprintf("%s.pem", appId))
 		bytes, err := os.ReadFile(keyPath)
-		if err != nil {
-			return "", fmt.Errorf("échec de la lecture de la clé privée depuis %s : %w", keyPath, err)
+		if err == nil {
+			privateKey = string(bytes)
 		}
-		privateKeyBytes = bytes
 	}
 
-	// 3. Parser la clé RSA
-	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM(privateKeyBytes)
+	return appId, privateKey, sessionId, nil
+}
+
+// generateEnableBankingJWT génère un JWT à partir des identifiants fournis
+func generateEnableBankingJWT(appId, privateKeyPEM string) (string, error) {
+	if appId == "" || privateKeyPEM == "" {
+		return "", fmt.Errorf("Enable Banking App ID or Private Key is missing")
+	}
+
+	// 1. Parser la clé RSA
+	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(privateKeyPEM))
 	if err != nil {
 		return "", fmt.Errorf("failed to parse RSA private key: %w", err)
 	}
 
-	// 4. Créer le contenu du JWT (Claims)
+	// 2. Créer le contenu du JWT (Claims)
 	now := time.Now()
 	claims := jwt.MapClaims{
 		"iss": "enablebanking.com",
 		"aud": "api.enablebanking.com",
 		"iat": now.Unix(),
-		"exp": now.Add(1 * time.Hour).Unix(), // Expiration 1h (Max 24h par EnableBanking)
+		"exp": now.Add(1 * time.Hour).Unix(),
 	}
 
-	// 5. Créer et signer le Token
+	// 3. Créer et signer le Token
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-
-	// HEADER: RS256 et 'kid' = Application ID
 	token.Header["alg"] = "RS256"
 	token.Header["typ"] = "JWT"
 	token.Header["kid"] = appId
 
-	// 6. Signer avec la clé privée castée
 	signedToken, err := token.SignedString(privateKey)
 	if err != nil {
 		return "", fmt.Errorf("failed to sign JWT: %w", err)
@@ -91,15 +88,70 @@ func main() {
 	// Exposition du générateur JWT via une route API Serveur (Locally accessible via pb_hooks)
 	app.OnServe().BindFunc(func(e *core.ServeEvent) error {
 		e.Router.GET("/api/banking/jwt", func(e *core.RequestEvent) error {
-			// Autoriser uniquement les appels serveurs locaux ou admin pour la sécurité
-			// On génère la clé RSA JWT
-			token, err := generateEnableBankingJWT(app)
+			userId := ""
+			if auth := e.Auth; auth != nil {
+				userId = auth.Id
+			}
+			appId, privateKey, _, _ := getBankSettings(app, userId)
+			token, err := generateEnableBankingJWT(appId, privateKey)
 			if err != nil {
 				return e.Error(500, "JWT Generation Failed", err)
 			}
 			return e.JSON(200, map[string]string{
 				"token": token,
 			})
+		})
+
+		// Endpoint : Gérer les réglages Enable Banking (App ID, PEM, Session ID)
+		e.Router.GET("/api/banking/settings", func(e *core.RequestEvent) error {
+			userId := ""
+			if auth := e.Auth; auth != nil {
+				userId = auth.Id
+			}
+			appId, privateKey, sessionId, _ := getBankSettings(app, userId)
+			return e.JSON(200, map[string]any{
+				"app_id":      appId,
+				"has_key":     privateKey != "",
+				"session_id":  sessionId,
+				"private_key": privateKey, // Optionnel: on peut masquer pour la secu, mais ici utile pour l'utilisateur
+			})
+		})
+
+		e.Router.POST("/api/banking/settings", func(e *core.RequestEvent) error {
+			userId := ""
+			if auth := e.Auth; auth != nil {
+				userId = auth.Id
+			}
+			var data struct {
+				AppId      string `json:"app_id"`
+				PrivateKey string `json:"private_key"`
+				SessionId  string `json:"session_id"`
+			}
+			if err := e.BindBody(&data); err != nil {
+				return e.Error(400, "Invalid body", err)
+			}
+
+			// Upsert dans bank_settings
+			collection, _ := app.FindCollectionByNameOrId("bank_settings")
+			record, _ := app.FindFirstRecordByFilter("bank_settings", "user = {:userId}", dbx.Params{"userId": userId})
+			if record == nil {
+				record = core.NewRecord(collection)
+				record.Set("user", userId)
+			}
+			if data.AppId != "" {
+				record.Set("app_id", data.AppId)
+			}
+			if data.PrivateKey != "" {
+				record.Set("private_key", data.PrivateKey)
+			}
+			if data.SessionId != "" {
+				record.Set("session_id", data.SessionId)
+			}
+
+			if err := app.Save(record); err != nil {
+				return e.Error(500, "Failed to save settings", err)
+			}
+			return e.JSON(200, map[string]string{"message": "Settings saved"})
 		})
 
 		// 1. Endpoint : Récupérer la liste des banques (ASPSPs)
@@ -109,8 +161,14 @@ func main() {
 				country = "FR" // Par défaut, la France
 			}
 
+			userId := ""
+			if auth := e.Auth; auth != nil {
+				userId = auth.Id
+			}
+			appId, privateKey, _, _ := getBankSettings(app, userId)
+
 			// 1. Générer le JWT
-			token, err := generateEnableBankingJWT(app)
+			token, err := generateEnableBankingJWT(appId, privateKey)
 			if err != nil {
 				return e.JSON(500, map[string]any{"error": "JWT Generation Failed", "details": err.Error()})
 			}
@@ -150,13 +208,26 @@ func main() {
 
 		// 1.5 Endpoint : Découvrir les liaisons existantes (Mode Personnel/Production)
 		e.Router.GET("/api/banking/discover", func(e *core.RequestEvent) error {
-			token, err := generateEnableBankingJWT(app)
+			userId := ""
+			if auth := e.Auth; auth != nil {
+				userId = auth.Id
+			}
+			appId, privateKey, sessionID, _ := getBankSettings(app, userId)
+
+			token, err := generateEnableBankingJWT(appId, privateKey)
 			if err != nil {
-				return e.JSON(500, map[string]any{"error": "Failed to generate JWT"})
+				return e.JSON(500, map[string]any{"error": "Failed to generate JWT", "details": err.Error()})
 			}
 
-			// Appeler l'API Enable Banking pour lister les "sessions" (requisitions)
-			apiURL := "https://api.enablebanking.com/sessions"
+			if sessionID == "" {
+				return e.JSON(404, map[string]any{
+					"error":      "No Session ID configured",
+					"suggestion": "Merci de configurer votre Application ID et de lier votre banque via l'UI.",
+				})
+			}
+
+			// Importation directe via Session ID
+			apiURL := "https://api.enablebanking.com/sessions/" + sessionID
 			req, err := http.NewRequest("GET", apiURL, nil)
 			if err != nil {
 				return e.JSON(500, map[string]any{"error": "Failed to create request"})
@@ -173,54 +244,22 @@ func main() {
 			if resp.StatusCode != 200 {
 				body, _ := io.ReadAll(resp.Body)
 				return e.JSON(resp.StatusCode, map[string]any{
-					"error":   "Enable Banking API error",
+					"error":   "Enable Banking API error (Session not found)",
 					"details": string(body),
 				})
 			}
 
-			var result struct {
-				Requisitions []map[string]any `json:"requisitions"`
-			}
-			if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-				return e.JSON(500, map[string]any{"error": "Failed to parse response"})
+			var sessionData map[string]any
+			if err := json.NewDecoder(resp.Body).Decode(&sessionData); err != nil {
+				return e.JSON(500, map[string]any{"error": "Failed to parse session data"})
 			}
 
-			// Synchroniser avec PocketBase
-			collection, err := app.FindCollectionByNameOrId("bank_connections")
-			if err != nil {
-				return e.JSON(500, map[string]any{"error": "Collection bank_connections not found"})
-			}
-
-			userId := ""
-			if authRecord := e.Auth; authRecord != nil {
-				userId = authRecord.Id
-			}
-
-			addedCount := 0
-			for _, reqData := range result.Requisitions {
-				reqId, _ := reqData["id"].(string)
-				if reqId == "" {
-					continue
-				}
-
-				// Vérifier si elle existe déjà
-				existing, _ := app.FindFirstRecordByFilter("bank_connections", "requisition_id = {:id}", dbx.Params{"id": reqId})
-				if existing == nil {
-					// Créer une nouvelle liaison
-					record := core.NewRecord(collection)
-					record.Set("requisition_id", reqId)
-					record.Set("user", userId)
-					record.Set("bank_name", reqData["aspsp_id"])
-					record.Set("status", reqData["status"])
-					if err := app.Save(record); err == nil {
-						addedCount++
-					}
-				}
-			}
+			// Adapter au format de sync
+			requisitions := []map[string]any{sessionData}
+			addedCount := syncSessions(app, e, requisitions)
 
 			return e.JSON(200, map[string]any{
 				"message": "Discovery complete",
-				"found":   len(result.Requisitions),
 				"added":   addedCount,
 			})
 		})
@@ -244,8 +283,14 @@ func main() {
 				country = "FR" // Default fallback
 			}
 
+			userId := ""
+			if auth := e.Auth; auth != nil {
+				userId = auth.Id
+			}
+			appId, privateKey, _, _ := getBankSettings(app, userId)
+
 			// 2. Générer le JWT
-			token, err := generateEnableBankingJWT(app)
+			token, err := generateEnableBankingJWT(appId, privateKey)
 			if err != nil {
 				return e.JSON(500, map[string]any{"error": "JWT Generation Failed", "details": err.Error()})
 			}
@@ -316,8 +361,14 @@ func main() {
 				return e.JSON(400, map[string]any{"error": "Aucun code d'autorisation reçu", "bank_error": errorBanque})
 			}
 
+			userId := ""
+			if auth := e.Auth; auth != nil {
+				userId = auth.Id
+			}
+			appId, privateKey, _, _ := getBankSettings(app, userId)
+
 			// 1. Générer le JWT
-			token, err := generateEnableBankingJWT(app)
+			token, err := generateEnableBankingJWT(appId, privateKey)
 			if err != nil {
 				return e.JSON(500, map[string]any{"error": "JWT Generation Failed", "details": err.Error()})
 			}
@@ -360,6 +411,18 @@ func main() {
 			}
 			if err := json.Unmarshal(body, &sessionResult); err != nil {
 				return e.JSON(500, map[string]any{"error": "Failed to parse EnableBanking response", "details": err.Error()})
+			}
+
+			// 4b. Sauvegarder le session_id dans bank_settings pour persistence par instance
+			if userId != "" {
+				collectionSettings, _ := app.FindCollectionByNameOrId("bank_settings")
+				recordSet, _ := app.FindFirstRecordByFilter("bank_settings", "user = {:userId}", dbx.Params{"userId": userId})
+				if recordSet == nil {
+					recordSet = core.NewRecord(collectionSettings)
+					recordSet.Set("user", userId)
+				}
+				recordSet.Set("session_id", sessionResult.SessionId)
+				app.Save(recordSet)
 			}
 
 			// 5. Enregistrer le consentement en BDD PocketBase
@@ -459,7 +522,12 @@ func main() {
 			}
 
 			// 3. Appeler Enable Banking
-			token, err := generateEnableBankingJWT(app)
+			userId := ""
+			if auth := e.Auth; auth != nil {
+				userId = auth.Id
+			}
+			appId, privateKey, _, _ := getBankSettings(app, userId)
+			token, err := generateEnableBankingJWT(appId, privateKey)
 			if err != nil {
 				return e.JSON(500, map[string]any{"error": "JWT Gen Failed"})
 			}
@@ -576,4 +644,45 @@ func main() {
 	if err := app.Start(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// syncSessions est une fonction utilitaire pour synchroniser les requisitions/sessions reçues avec PocketBase
+func syncSessions(app *pocketbase.PocketBase, e *core.RequestEvent, requisitions []map[string]any) int {
+	collection, err := app.FindCollectionByNameOrId("bank_connections")
+	if err != nil {
+		fmt.Printf("Erreur : collection 'bank_connections' non trouvée\n")
+		return 0
+	}
+
+	userId := ""
+	if authRecord := e.Auth; authRecord != nil {
+		userId = authRecord.Id
+	}
+
+	addedCount := 0
+	for _, reqData := range requisitions {
+		reqId, _ := reqData["id"].(string)
+		if reqId == "" {
+			continue
+		}
+
+		// Vérifier si elle existe déjà
+		existing, _ := app.FindFirstRecordByFilter("bank_connections", "requisition_id = {:id}", dbx.Params{"id": reqId})
+		if existing == nil {
+			// Créer une nouvelle liaison
+			record := core.NewRecord(collection)
+			record.Set("requisition_id", reqId)
+			record.Set("user", userId)
+			record.Set("bank_name", reqData["aspsp_id"])
+			record.Set("status", reqData["status"])
+			if err := app.Save(record); err == nil {
+				addedCount++
+			}
+		} else if reqData["status"] != nil {
+			// Mettre à jour le statut si session trouvée
+			existing.Set("status", reqData["status"])
+			app.Save(existing)
+		}
+	}
+	return addedCount
 }

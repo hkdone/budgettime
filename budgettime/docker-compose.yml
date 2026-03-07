@@ -7,7 +7,7 @@ services:
     ports:
       - "8097:8090"
     environment:
-      - ENABLE_BANKING_APP_ID=${ENABLE_BANKING_APP_ID}
+      - PORT=8097
     volumes:
       - ./pb_data:/pb/pb_data # Données persistantes
       - ./pb_migrations:/pb/pb_migrations # Migrations de schéma (CRUCIAL)

@@ -150,4 +150,52 @@ class OpenBankingService {
       throw Exception('Échec de la synchronisation: $e');
     }
   }
+
+  /// 6. Récupère les réglages Enable Banking (App ID, etc.)
+  Future<Map<String, dynamic>> getSettings() async {
+    try {
+      final url = Uri.parse(pb.baseURL).resolve('api/banking/settings');
+      final response = await http.get(
+        url,
+        headers: {'Authorization': pb.authStore.token},
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Erreur Settings: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Impossible de charger les réglages : $e');
+    }
+  }
+
+  /// 7. Sauvegarde les réglages Enable Banking
+  Future<void> saveSettings({
+    required String appId,
+    required String privateKey,
+    String? sessionId,
+  }) async {
+    try {
+      final url = Uri.parse(pb.baseURL).resolve('api/banking/settings');
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': pb.authStore.token,
+        },
+        body: json.encode({
+          'app_id': appId,
+          'private_key': privateKey,
+          'session_id': sessionId,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Erreur sauvegarde: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Impossible de sauvegarder les réglages : $e');
+    }
+  }
 }
