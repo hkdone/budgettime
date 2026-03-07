@@ -211,6 +211,7 @@ migrate((app) => {
             });
         }
 
+        // On assigne les nouvelles définitions
         collection.fields = config.fields;
 
         if (config.indexes) {
@@ -231,8 +232,5 @@ migrate((app) => {
         app.save(c);
     });
 }, (app) => {
-    const names = ["bank_sync_logs", "bank_accounts", "bank_connections", "bank_settings"];
-    names.forEach(name => {
-        try { app.delete(app.findCollectionByNameOrId(name)); } catch (_) { }
-    });
+    // Aucune action de retour destructrice par défaut
 })
