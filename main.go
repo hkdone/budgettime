@@ -87,13 +87,31 @@ func main() {
 
 	// Exposition des endpoints Enable Banking
 	app.OnServe().BindFunc(func(e *core.ServeEvent) error {
+		fmt.Println("[BudgetTime] Initialisation des routes banking...")
+
+		// Diagnostic au démarrage : Vérifier si les collections bancaires existent
+		collectionsToCheck := []string{"bank_settings", "bank_connections", "bank_accounts", "bank_sync_logs", "raw_inbox"}
+		for _, name := range collectionsToCheck {
+			_, err := app.FindCollectionByNameOrId(name)
+			if err != nil {
+				fmt.Printf("[BudgetTime] ALERTE: Collection '%s' manquante en base (Erreur: %v)\n", name, err)
+			} else {
+				fmt.Printf("[BudgetTime] Collection '%s' OK\n", name)
+			}
+		}
+
 		// Créer un groupe pour toutes les routes banking et exiger une authentification
 		// apis.RequireAuth() charge également le contexte d'authentification s'il est présent
 		banking := e.Router.Group("/api/banking").Bind(apis.RequireAuth())
 
 		// Endpoint : Générer un JWT pour Enable Banking
 		banking.GET("/jwt", func(e *core.RequestEvent) error {
+			if e.Auth == nil {
+				fmt.Println("[BudgetTime] Erreur: e.Auth est nil dans /jwt")
+				return e.Error(401, "Accès refusé: authentification PocketBase manquante", nil)
+			}
 			userId := e.Auth.Id
+			fmt.Printf("[BudgetTime] /jwt demandé par userId: %s\n", userId)
 			appId, privateKey, _, _ := getBankSettings(app, userId)
 			token, err := generateEnableBankingJWT(appId, privateKey)
 			if err != nil {
@@ -106,8 +124,16 @@ func main() {
 
 		// Endpoint : Récupérer les réglages Enable Banking
 		banking.GET("/settings", func(e *core.RequestEvent) error {
+			if e.Auth == nil {
+				fmt.Println("[BudgetTime] Erreur: e.Auth est nil dans GET /settings")
+				return e.Error(401, "Authentification obligatoire", nil)
+			}
 			userId := e.Auth.Id
-			appId, privateKey, sessionId, _ := getBankSettings(app, userId)
+			fmt.Printf("[BudgetTime] GET /settings pour userId: %s\n", userId)
+			appId, privateKey, sessionId, err := getBankSettings(app, userId)
+			if err != nil {
+				fmt.Printf("[BudgetTime] Erreur lors de getBankSettings: %v\n", err)
+			}
 			return e.JSON(200, map[string]any{
 				"app_id":      appId,
 				"has_key":     privateKey != "",
@@ -118,18 +144,33 @@ func main() {
 
 		// Endpoint : Sauvegarder les réglages Enable Banking
 		banking.POST("/settings", func(e *core.RequestEvent) error {
+			if e.Auth == nil {
+				fmt.Println("[BudgetTime] Erreur: e.Auth est nil dans POST /settings")
+				return e.Error(401, "Authentification obligatoire pour sauvegarder", nil)
+			}
 			userId := e.Auth.Id
+			fmt.Printf("[BudgetTime] POST /settings pour userId: %s\n", userId)
+
 			var data struct {
 				AppId      string `json:"app_id"`
 				PrivateKey string `json:"private_key"`
 				SessionId  string `json:"session_id"`
 			}
 			if err := e.BindBody(&data); err != nil {
-				return e.Error(400, "Invalid body", err)
+				fmt.Printf("[BudgetTime] Erreur BindBody: %v\n", err)
+				return e.Error(400, "Corps de requête invalide", err)
 			}
 
-			collection, _ := app.FindCollectionByNameOrId("bank_settings")
-			record, _ := app.FindFirstRecordByFilter("bank_settings", "user = {:userId}", dbx.Params{"userId": userId})
+			collection, err := app.FindCollectionByNameOrId("bank_settings")
+			if err != nil || collection == nil {
+				fmt.Printf("[BudgetTime] ERREUR FATALE: Collection 'bank_settings' introuvable: %v\n", err)
+				return e.Error(500, "Erreur serveur: Collection 'bank_settings' manquante. Vérifiez vos migrations.", nil)
+			}
+
+			record, err := app.FindFirstRecordByFilter("bank_settings", "user = {:userId}", dbx.Params{"userId": userId})
+			if err != nil {
+				fmt.Printf("[BudgetTime] Info: Aucun enregistrement existant trouvé pour cet utilisateur (Erreur: %v)\n", err)
+			}
 			if record == nil {
 				record = core.NewRecord(collection)
 				record.Set("user", userId)
@@ -145,13 +186,19 @@ func main() {
 			}
 
 			if err := app.Save(record); err != nil {
-				return e.Error(500, "Failed to save settings", err)
+				fmt.Printf("[BudgetTime] ERREUR LORS DU SAVE: %v\n", err)
+				return e.Error(500, fmt.Sprintf("Échec de la sauvegarde en base: %v", err), err)
 			}
+
+			fmt.Println("[BudgetTime] Réglages sauvegardés avec succès.")
 			return e.JSON(200, map[string]string{"message": "Settings saved"})
 		})
 
 		// Endpoint : Récupérer la liste des banques (ASPSPs)
 		banking.GET("/aspsps", func(e *core.RequestEvent) error {
+			if e.Auth == nil {
+				return e.Error(401, "Auth record missing (ASPSPs)", nil)
+			}
 			country := e.Request.URL.Query().Get("country")
 			if country == "" {
 				country = "FR"
@@ -190,6 +237,9 @@ func main() {
 
 		// Endpoint : Découvrir les liaisons existantes
 		banking.GET("/discover", func(e *core.RequestEvent) error {
+			if e.Auth == nil {
+				return e.Error(401, "Auth record missing (Discover)", nil)
+			}
 			userId := e.Auth.Id
 			appId, privateKey, sessionID, _ := getBankSettings(app, userId)
 			token, err := generateEnableBankingJWT(appId, privateKey)
@@ -241,6 +291,9 @@ func main() {
 
 		// Endpoint : Demander un lien d'autorisation
 		banking.POST("/auth", func(e *core.RequestEvent) error {
+			if e.Auth == nil {
+				return e.Error(401, "Auth record missing (Auth URL)", nil)
+			}
 			var reqData struct {
 				BankID      string `json:"bank_id"`
 				Country     string `json:"country"`
