@@ -303,6 +303,7 @@ func main() {
 					} `json:"accounts"`
 				}
 				body, _ := io.ReadAll(resp.Body)
+				fmt.Printf("[BudgetTime] Discovery Raw Body from EnableBanking: %s\n", string(body))
 				json.Unmarshal(body, &accResult)
 
 				for _, acc := range accResult.Accounts {
@@ -376,7 +377,9 @@ func main() {
 			stateAuth := fmt.Sprintf("bt_%s_%s", userId, reqData.BankID)
 			authPayload := map[string]any{
 				"access": map[string]any{
-					"valid_until": validUntil,
+					"valid_until":  validUntil,
+					"balances":     map[string]any{},
+					"transactions": map[string]any{},
 				},
 				"aspsp": map[string]any{
 					"name":    reqData.BankID,
