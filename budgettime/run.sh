@@ -23,11 +23,12 @@ caddy start --config /pb/Caddyfile
 # Si le dossier /data existe, on est dans Home Assistant OS
 if [ -d "/data" ]; then
     echo "Environment: Home Assistant Add-on (HTTPS with Caddy Proxy)"
-    mkdir -p /share/budgettime
+    mkdir -p /share/budgettime/secrets
     cd /share/budgettime
     exec /pb/pocketbase serve --http="localhost:8080" --dir="pb_data"
 else
     echo "Environment: Docker Standard (HTTPS with Caddy Proxy)"
+    mkdir -p /pb/secrets
     cd /pb
     exec /pb/pocketbase serve --http="localhost:8080" --dir="pb_data"
 fi

@@ -57,48 +57,6 @@ class SettingsPage extends ConsumerWidget {
             ),
           ),
           const Divider(),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Text(
-              'Réceptions (Smart Inbox)',
-              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
-            ),
-          ),
-          Consumer(
-            builder: (context, ref, child) {
-              final state = ref.watch(settingsControllerProvider);
-              return state.when(
-                data: (settings) {
-                  return Column(
-                    children: settings.activeParsers.entries.map((entry) {
-                      final name = entry.key == 'la_banque_postale'
-                          ? 'La Banque Postale'
-                          : entry.key == 'credit_mutuel'
-                          ? 'Crédit Mutuel'
-                          : entry.key;
-                      return CheckboxListTile(
-                        title: Text(name),
-                        subtitle: Text(
-                          'Activer le parser automatique pour $name',
-                        ),
-                        value: entry.value,
-                        onChanged: (val) {
-                          if (val != null) {
-                            ref
-                                .read(settingsControllerProvider.notifier)
-                                .toggleParser(entry.key, val);
-                          }
-                        },
-                      );
-                    }).toList(),
-                  );
-                },
-                loading: () => const Center(child: LinearProgressIndicator()),
-                error: (e, s) => ListTile(title: Text('Erreur: $e')),
-              );
-            },
-          ),
-          const Divider(),
           ListTile(
             leading: const Icon(Icons.people),
             title: const Text('Gérer les membres'),

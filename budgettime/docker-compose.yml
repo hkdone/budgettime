@@ -12,6 +12,7 @@ services:
       - ./pb_data:/pb/pb_data # Données persistantes
       - ./pb_migrations:/pb/pb_migrations # Migrations de schéma (CRUCIAL)
       - ./pb_public:/pb/pb_public # Fichiers Web (Frontend)
-      - ./pocketbase:/pb/pocketbase # Binaire exécutable natif (Mise à jour auto sans rebuild Docker)
+      - ./pocketbase:/pb/pocketbase # Binaire exécutable natif
+      - ./secrets:/pb/secrets # Clés Enable Banking (.pem)
       # - /volume1/docker/budget/pb_data:/pb/pb_data # Exemple Synology absolu
     restart: unless-stopped

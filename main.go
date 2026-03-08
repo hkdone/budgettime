@@ -94,9 +94,9 @@ func main() {
 		for _, name := range collectionsToCheck {
 			_, err := app.FindCollectionByNameOrId(name)
 			if err != nil {
-				fmt.Printf("[BudgetTime] ALERTE: Collection '%s' manquante en base (Erreur: %v)\n", name, err)
+				fmt.Printf("[BudgetTime] INFO: Collection '%s' absente (Optionnel)\n", name)
 			} else {
-				fmt.Printf("[BudgetTime] Collection '%s' OK\n", name)
+				fmt.Printf("[BudgetTime] Collection '%s' active\n", name)
 			}
 		}
 
@@ -115,7 +115,11 @@ func main() {
 			appId, privateKey, _, _ := getBankSettings(app, userId)
 			token, err := generateEnableBankingJWT(appId, privateKey)
 			if err != nil {
-				return e.Error(500, "JWT Generation Failed", err)
+				return e.JSON(200, map[string]any{
+					"token":          "",
+					"config_missing": true,
+					"message":        "Identifiant ou clé Enable Banking manquante sur le serveur.",
+				})
 			}
 			return e.JSON(200, map[string]string{
 				"token": token,
@@ -207,7 +211,11 @@ func main() {
 			appId, privateKey, _, _ := getBankSettings(app, userId)
 			token, err := generateEnableBankingJWT(appId, privateKey)
 			if err != nil {
-				return e.JSON(500, map[string]any{"error": "JWT Generation Failed", "details": err.Error()})
+				return e.JSON(200, map[string]any{
+					"aspsps":         []any{},
+					"config_missing": true,
+					"message":        "Configuration bancaire absente sur ce serveur.",
+				})
 			}
 
 			apiURL := "https://api.enablebanking.com/aspsps?country=" + country
@@ -244,7 +252,12 @@ func main() {
 			appId, privateKey, sessionID, _ := getBankSettings(app, userId)
 			token, err := generateEnableBankingJWT(appId, privateKey)
 			if err != nil {
-				return e.JSON(500, map[string]any{"error": "Failed to generate JWT", "details": err.Error()})
+				return e.JSON(200, map[string]any{
+					"found":          0,
+					"added":          0,
+					"config_missing": true,
+					"message":        "Configuration bancaire absente.",
+				})
 			}
 			if sessionID == "" {
 				return e.JSON(404, map[string]any{

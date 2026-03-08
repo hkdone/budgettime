@@ -1,4 +1,3 @@
-import 'dart:convert';
 import '../../../core/services/database_service.dart';
 import '../domain/settings_repository.dart';
 import '../domain/app_settings.dart';
@@ -22,18 +21,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
         final data = records.items.first.data;
         final fiscalDay = data['fiscal_day_start'] ?? 1;
 
-        final parsers = {'la_banque_postale': true, 'credit_mutuel': true};
-
-        if (data['active_parsers'] != null) {
-          final Map<String, dynamic> saved = data['active_parsers'] is String
-              ? jsonDecode(data['active_parsers'])
-              : data['active_parsers'];
-          saved.forEach((key, value) {
-            if (value is bool) parsers[key] = value;
-          });
-        }
-
-        return AppSettings(fiscalDayStart: fiscalDay, activeParsers: parsers);
+        return AppSettings(fiscalDayStart: fiscalDay);
       }
     } catch (e) {
       // settings might not exist yet
@@ -46,11 +34,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
     final user = _dbService.pb.authStore.record;
     if (user == null) return;
 
-    final body = {
-      'user': user.id,
-      'fiscal_day_start': settings.fiscalDayStart,
-      'active_parsers': settings.activeParsers,
-    };
+    final body = {'user': user.id, 'fiscal_day_start': settings.fiscalDayStart};
 
     try {
       final records = await _dbService.pb

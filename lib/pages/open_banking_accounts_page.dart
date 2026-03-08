@@ -148,8 +148,6 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
 
   Future<void> _showSettingsDialog() async {
     final appIdController = TextEditingController(text: _appId);
-    final keyController =
-        TextEditingController(); // On ne préremplit pas la clé pour la sécu
 
     return showDialog(
       context: context,
@@ -158,9 +156,18 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Chaque instance de BudgetTime doit avoir son propre compte Enable Banking (gratuit).',
+                'Approche Sécurisée (Secrets Serveur)',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Déposez votre fichier .pem dans le dossier "secrets" du serveur pour chaque instance (Synology, CasaOS, HA).',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
               const SizedBox(height: 16),
@@ -168,24 +175,48 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
                 controller: appIdController,
                 decoration: const InputDecoration(
                   labelText: 'Application ID',
+                  hintText: 'ex: 12345-abcde...',
                   border: OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 16),
-              TextField(
-                controller: keyController,
-                maxLines: 5,
-                decoration: const InputDecoration(
-                  labelText: 'RSA Private Key (PEM)',
-                  hintText: '-----BEGIN RSA PRIVATE KEY-----...',
-                  border: OutlineInputBorder(),
-                ),
+              Row(
+                children: [
+                  Icon(
+                    _hasKey ? Icons.check_circle : Icons.error_outline,
+                    color: _hasKey ? Colors.green : Colors.orange,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _hasKey
+                          ? 'Clé privée (.pem) détectée sur le serveur.'
+                          : 'Aucune clé privée détectée sur le serveur pour cet ID.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _hasKey ? Colors.green : Colors.orange,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
               ),
+              if (!_hasKey) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Nom attendu : ${appIdController.text.isEmpty ? "VOTRE_ID" : appIdController.text}.pem',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
               if (_sessionId != null) ...[
                 const SizedBox(height: 16),
+                const Divider(),
                 SelectableText(
                   'Session ID actuelle: $_sessionId',
-                  style: const TextStyle(fontSize: 10, color: Colors.blue),
+                  style: const TextStyle(fontSize: 10, color: Colors.grey),
                 ),
               ],
             ],
@@ -194,7 +225,7 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
+            child: const Text('Fermer'),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -202,14 +233,16 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
               try {
                 await _bankingService.saveSettings(
                   appId: appIdController.text,
-                  privateKey: keyController.text,
+                  // La clé privée est désormais gérée côté serveur
                 );
                 if (localContext.mounted) {
                   Navigator.pop(localContext);
-                  _loadSettingsAndBanks();
-                  ScaffoldMessenger.of(localContext).showSnackBar(
-                    const SnackBar(content: Text('Réglages sauvegardés')),
-                  );
+                  await _loadSettingsAndBanks();
+                  if (localContext.mounted) {
+                    ScaffoldMessenger.of(localContext).showSnackBar(
+                      const SnackBar(content: Text('Identifiant mis à jour')),
+                    );
+                  }
                 }
               } catch (e) {
                 if (localContext.mounted) {
@@ -222,7 +255,7 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
                 }
               }
             },
-            child: const Text('Sauvegarder'),
+            child: const Text('Enregistrer l\'ID'),
           ),
         ],
       ),
@@ -249,60 +282,43 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _errorMessage.isNotEmpty
+          : _errorMessage.isNotEmpty && (_appId == null || !_hasKey)
           ? Center(
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      _appId == null || !_hasKey
-                          ? Icons.warning_amber
-                          : Icons.info_outline,
+                    const Icon(
+                      Icons.account_balance_outlined,
                       size: 60,
-                      color: _appId == null || !_hasKey
-                          ? Colors.red
-                          : Colors.orange,
+                      color: Colors.blueGrey,
                     ),
                     const SizedBox(height: 16),
-                    Text(
-                      _appId == null || !_hasKey
-                          ? 'Configuration manquante'
-                          : 'Importation manuelle requise',
-                      style: const TextStyle(
+                    const Text(
+                      'Liaison Bancaire Optionnelle',
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      _appId == null || !_hasKey
-                          ? 'Veuillez configurer votre Application ID et votre Clé RSA dans les réglages.'
-                          : 'Si vous avez déjà lié vos banques sur Enable Banking, l\'API ne permet pas de les lister automatiquement sans Session ID.',
+                    const Text(
+                      'Vous n\'avez pas encore configuré d\'identifiant Enable Banking sur ce serveur. Vous pouvez le faire dans les réglages si vous souhaitez synchroniser vos comptes automatiquement.',
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 24),
-                    if (_appId == null || !_hasKey)
-                      ElevatedButton.icon(
-                        onPressed: _showSettingsDialog,
-                        icon: const Icon(Icons.settings),
-                        label: const Text('Ouvrir les réglages'),
-                      )
-                    else ...[
-                      ElevatedButton(
-                        onPressed: _discoverConnections,
-                        child: const Text('Tenter une découverte automatique'),
-                      ),
-                      TextButton(
-                        onPressed: () => setState(() => _showManualList = true),
-                        child: const Text('Afficher la liste manuelle'),
-                      ),
-                    ],
+                    ElevatedButton.icon(
+                      onPressed: _showSettingsDialog,
+                      icon: const Icon(Icons.settings),
+                      label: const Text('Configurer maintenant'),
+                    ),
                   ],
                 ),
               ),
             )
+          : _errorMessage.isNotEmpty
+          ? Center(child: Text('Erreur: $_errorMessage'))
           : SingleChildScrollView(
               child: Column(
                 children: [

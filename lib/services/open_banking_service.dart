@@ -173,7 +173,7 @@ class OpenBankingService {
   /// 7. Sauvegarde les réglages Enable Banking
   Future<void> saveSettings({
     required String appId,
-    required String privateKey,
+    String? privateKey,
     String? sessionId,
   }) async {
     try {
@@ -186,7 +186,7 @@ class OpenBankingService {
         },
         body: json.encode({
           'app_id': appId,
-          'private_key': privateKey,
+          'private_key': privateKey ?? '',
           'session_id': sessionId,
         }),
       );

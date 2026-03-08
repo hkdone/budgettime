@@ -22,6 +22,9 @@ COPY pb_public /pb/pb_public
 # Copie des Migrations PocketBase
 COPY pb_migrations /pb/pb_migrations
 
+# Création du dossier pour les secrets (Enable Banking)
+RUN mkdir -p /pb/secrets
+
 # Script de lancement
 COPY run.sh /run.sh
 RUN dos2unix /run.sh

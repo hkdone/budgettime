@@ -178,23 +178,6 @@ migrate((app) => {
             ],
             "listRule": "connection_id.user = @request.auth.id",
             "viewRule": "connection_id.user = @request.auth.id"
-        },
-        {
-            "id": "bank_settings_01",
-            "name": "bank_settings",
-            "type": "base",
-            "fields": [
-                { "id": "bankset_user", "name": "user", "type": "relation", "required": true, "collectionId": "_pb_users_auth_", "cascadeDelete": true, "maxSelect": 1 },
-                { "id": "bankset_appid", "name": "app_id", "type": "text", "required": false },
-                { "id": "bankset_key", "name": "private_key", "type": "text", "required": false },
-                { "id": "bankset_sess", "name": "session_id", "type": "text", "required": false },
-                { "id": "bankset_psu", "name": "psu_type", "type": "text", "required": false }
-            ],
-            "listRule": "user = @request.auth.id",
-            "viewRule": "user = @request.auth.id",
-            "createRule": "user = @request.auth.id",
-            "updateRule": "user = @request.auth.id",
-            "deleteRule": "user = @request.auth.id"
         }
     ];
 
@@ -211,7 +194,6 @@ migrate((app) => {
             });
         }
 
-        // On assigne les nouvelles définitions
         collection.fields = config.fields;
 
         if (config.indexes) {
@@ -232,5 +214,8 @@ migrate((app) => {
         app.save(c);
     });
 }, (app) => {
-    // Aucune action de retour destructrice par défaut
+    const names = ["bank_sync_logs", "bank_accounts", "bank_connections"];
+    names.forEach(name => {
+        try { app.delete(app.findCollectionByNameOrId(name)); } catch (_) { }
+    });
 })
