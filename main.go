@@ -142,9 +142,21 @@ func main() {
 			fmt.Printf("[BudgetTime] GET /settings pour userId: %s\n", userId)
 			appId, privateKey, err := getBankSettings(app)
 			hasKey := err == nil && privateKey != ""
+
+			// Récupérer les sessions (requisition_id) enregistrées pour cet utilisateur
+			var sessions []string
+			err = app.DB().Select("requisition_id").
+				From("bank_connections").
+				Where(dbx.HashExp{"user": userId}).
+				Column(&sessions)
+			if err != nil {
+				sessions = []string{}
+			}
+
 			return e.JSON(200, map[string]any{
-				"app_id":  appId,
-				"has_key": hasKey,
+				"app_id":   appId,
+				"has_key":  hasKey,
+				"sessions": sessions,
 			})
 		})
 
@@ -208,12 +220,81 @@ func main() {
 			if e.Auth == nil {
 				return e.Error(401, "Auth record missing (Discover)", nil)
 			}
-			// On ne peut plus discover via une session_id globale car elle n'est plus stockée.
-			// L'UI devra passer par une liste de connexions déjà stockées dans bank_connections.
+			userId := e.Auth.Id
+			appId, privateKey, err := getBankSettings(app)
+			if err != nil {
+				return e.JSON(500, map[string]any{"error": "Fichier .pem manquant"})
+			}
+			token, err := generateEnableBankingJWT(appId, privateKey)
+
+			// 1. Lister les connexions de l'utilisateur
+			var connections []struct {
+				Id            string `db:"id"`
+				RequisitionId string `db:"requisition_id"`
+			}
+			err = app.DB().Select("id", "requisition_id").
+				From("bank_connections").
+				Where(dbx.HashExp{"user": userId}).
+				All(&connections)
+
+			if err != nil {
+				return e.JSON(200, map[string]any{"found": 0, "added": 0, "message": "Aucune connexion trouvée en base"})
+			}
+
+			client := &http.Client{Timeout: 10 * time.Second}
+			collectionAcc, _ := app.FindCollectionByNameOrId("bank_accounts")
+			totalAdded := 0
+
+			for _, conn := range connections {
+				req, _ := http.NewRequest("GET", "https://api.enablebanking.com/accounts", nil)
+				req.Header.Set("Authorization", "Bearer "+token)
+				// Passage de la session via query ou header selon l'API. Enable Banking utilise souvent le Bearer Token qui représente la session si c'est un token d'accès temporaire,
+				// MAIS ici on utilise un JWT Application. Donc on doit passer la session dans l'URL ou un header spécifique.
+				// Selon la doc Enable Banking, pour lister les comptes d'une session : GET /accounts avec le header Authorization: Bearer <session_jwt>
+				// Cependant, nous utilisons un JWT d'application. Pour accéder aux comptes d'une session spécifique,
+				// il faut parfois un token de session. Mais l'API permet aussi d'utiliser le JWT App avec le context.
+				// Correction : Utilisons l'URL avec session_id si possible ou le header X-Session-Id si supporté (à vérifier).
+				// Plus simple avec Enable Banking : GET /accounts?session_id=...
+				q := req.URL.Query()
+				q.Add("session_id", conn.RequisitionId)
+				req.URL.RawQuery = q.Encode()
+
+				resp, err := client.Do(req)
+				if err != nil || resp.StatusCode != 200 {
+					continue
+				}
+				defer resp.Body.Close()
+
+				var accResult struct {
+					Accounts []struct {
+						Uid string `json:"uid"`
+					} `json:"accounts"`
+				}
+				body, _ := io.ReadAll(resp.Body)
+				json.Unmarshal(body, &accResult)
+
+				for _, acc := range accResult.Accounts {
+					// Vérifier si le compte existe déjà
+					var exists int
+					app.DB().Select("count(*)").From("bank_accounts").
+						Where(dbx.HashExp{"remote_account_id": acc.Uid}).Row(&exists)
+
+					if exists == 0 && collectionAcc != nil {
+						recordAcc := core.NewRecord(collectionAcc)
+						recordAcc.Set("connection_id", conn.Id)
+						recordAcc.Set("remote_account_id", acc.Uid)
+						recordAcc.Set("iban", acc.Uid)
+						if err := app.Save(recordAcc); err == nil {
+							totalAdded++
+						}
+					}
+				}
+			}
+
 			return e.JSON(200, map[string]any{
-				"message": "Discovery (Sessions) désactivé. Utilisez la liste des connexions enregistrées.",
-				"found":   0,
-				"added":   0,
+				"found":   len(connections),
+				"added":   totalAdded,
+				"message": fmt.Sprintf("Découverte terminée : %d liaisons trouvées, %d nouveaux comptes ajoutés.", len(connections), totalAdded),
 			})
 		})
 
@@ -297,6 +378,7 @@ func main() {
 			}
 
 			state := e.Request.URL.Query().Get("state")
+			fmt.Printf("[BudgetTime] Callback reçu - state: %s, code: %s\n", state, code)
 			userId := ""
 
 			bankName := "Banque Connectée"
@@ -316,6 +398,7 @@ func main() {
 					userId = auth.Id
 				}
 			}
+			fmt.Printf("[BudgetTime] Identification utilisateur callback : %s\n", userId)
 			appId, privateKey, err := getBankSettings(app)
 			if err != nil {
 				return e.JSON(500, map[string]any{"error": "Fichier .pem manquant", "details": err.Error()})
@@ -362,6 +445,7 @@ func main() {
 
 			collectionConn, err := app.FindCollectionByNameOrId("bank_connections")
 			if err != nil {
+				fmt.Printf("[BudgetTime] Erreur : Table bank_connections introuvable\n")
 				return e.JSON(500, map[string]any{"error": "Table bank_connections manquante"})
 			}
 			recordConn := core.NewRecord(collectionConn)
@@ -371,19 +455,28 @@ func main() {
 			recordConn.Set("valid_until", time.Now().AddDate(0, 0, 90).Format("2006-01-02 15:04:05.000Z"))
 
 			if err := app.Save(recordConn); err != nil {
+				fmt.Printf("[BudgetTime] Erreur sauvegarde connexion: %v\n", err)
 				return e.JSON(500, map[string]any{"error": "Impossible de sauvegarder la connexion bancaire", "details": err.Error()})
 			}
+			fmt.Printf("[BudgetTime] Connexion bancaire sauvegardée ID: %s\n", recordConn.Id)
 
+			compteCount := 0
 			collectionAcc, err := app.FindCollectionByNameOrId("bank_accounts")
 			if err == nil {
 				for _, acc := range sessionResult.Accounts {
+					if acc.Uid == "" {
+						continue
+					}
 					recordAcc := core.NewRecord(collectionAcc)
 					recordAcc.Set("connection_id", recordConn.Id)
 					recordAcc.Set("remote_account_id", acc.Uid)
 					recordAcc.Set("iban", acc.Uid)
-					app.Save(recordAcc)
+					if err := app.Save(recordAcc); err == nil {
+						compteCount++
+					}
 				}
 			}
+			fmt.Printf("[BudgetTime] %d comptes sauvegardés pour cette liaison.\n", compteCount)
 
 			// Rediriger vers l'application au lieu d'afficher du JSON
 			return e.Redirect(302, "/")

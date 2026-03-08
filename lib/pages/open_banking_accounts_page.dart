@@ -18,6 +18,7 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
   bool _showManualList = false;
   String? _appId;
   bool _hasKey = false;
+  List<String> _sessions = [];
 
   @override
   void initState() {
@@ -40,6 +41,7 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
       setState(() {
         _appId = settings['app_id'];
         _hasKey = settings['has_key'] ?? false;
+        _sessions = List<String>.from(settings['sessions'] ?? []);
       });
     } catch (e) {
       debugPrint(
@@ -214,6 +216,37 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
                   ),
                 ],
               ),
+              if (_sessions.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                const Divider(),
+                const Text(
+                  'Sessions Actives (Requisitions) :',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                ..._sessions.map(
+                  (s) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4.0),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                      ),
+                      child: SelectableText(
+                        s,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 10,
+                          color: Colors.blue,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
