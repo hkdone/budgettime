@@ -58,12 +58,10 @@ class InboxRepositoryImpl implements InboxRepository {
 
     final records = await _dbService.pb
         .collection('raw_inbox')
-        .getFullList(filter: 'user = "${user.id}" && is_processed = false');
+        .getFullList(filter: 'user = "${user.id}"');
 
     for (final record in records) {
-      await _dbService.pb
-          .collection('raw_inbox')
-          .update(record.id, body: {'is_processed': true});
+      await _dbService.pb.collection('raw_inbox').delete(record.id);
     }
   }
 }

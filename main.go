@@ -479,9 +479,11 @@ func main() {
 				SessionId string `json:"session_id"`
 				Status    string `json:"status"`
 				Accounts  []struct {
-					Uid      string `json:"uid"`
-					Iban     string `json:"iban"`
-					Bban     string `json:"bban"`
+					Uid       string `json:"uid"`
+					AccountId struct {
+						Iban string `json:"iban"`
+						Bban string `json:"bban"`
+					} `json:"account_id"`
 					Name     string `json:"name"`
 					Currency string `json:"currency"`
 				} `json:"accounts"`
@@ -522,17 +524,16 @@ func main() {
 					recordAcc.Set("remote_account_id", acc.Uid)
 					// Construction d'un label explicite : Nom + IBAN
 					displayLabel := acc.Name
-					if acc.Iban != "" {
+					ibanValue := acc.AccountId.Iban
+					if ibanValue == "" {
+						ibanValue = acc.AccountId.Bban
+					}
+
+					if ibanValue != "" {
 						if displayLabel != "" {
-							displayLabel += " - " + acc.Iban
+							displayLabel += " - " + ibanValue
 						} else {
-							displayLabel = acc.Iban
-						}
-					} else if acc.Bban != "" {
-						if displayLabel != "" {
-							displayLabel += " - " + acc.Bban
-						} else {
-							displayLabel = acc.Bban
+							displayLabel = ibanValue
 						}
 					}
 

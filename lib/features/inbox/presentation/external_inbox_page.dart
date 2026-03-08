@@ -42,12 +42,26 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
             icon: const Icon(Icons.refresh),
             onPressed: () => controller.refresh(),
           ),
-          if (state.items.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.delete_sweep, color: Colors.redAccent),
-              tooltip: 'Tout vider',
-              onPressed: () => _confirmDeleteAll(),
-            ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              if (value == 'clear_all') {
+                _confirmDeleteAll();
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'clear_all',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete_sweep, color: Colors.redAccent),
+                    SizedBox(width: 8),
+                    Text('Vider/Reset Inbox'),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
       body: state.isLoading
@@ -420,7 +434,7 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
                             : null,
                       );
 
-                      if (mounted) {
+                      if (context.mounted) {
                         Navigator.of(
                           context,
                           rootNavigator: true,
@@ -436,7 +450,7 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
                         ref.read(inboxControllerProvider.notifier).refresh();
                       }
                     } catch (e) {
-                      if (mounted) {
+                      if (context.mounted) {
                         Navigator.of(
                           context,
                           rootNavigator: true,
