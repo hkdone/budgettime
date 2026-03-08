@@ -28,6 +28,11 @@ caddy start --config /pb/Caddyfile
 if [ -d "/data" ]; then
     echo "Environment: Home Assistant Add-on (HTTPS with Caddy Proxy)"
     mkdir -p /share/budgettime/secrets
+    
+    # Link pb_public into the share directory so the web UI is resolved by PocketBase
+    rm -rf /share/budgettime/pb_public
+    ln -s /pb/pb_public /share/budgettime/pb_public
+
     cd /share/budgettime
     exec /pb/pocketbase serve --http="localhost:8080" --dir="pb_data"
 else
