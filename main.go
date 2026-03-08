@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -237,6 +238,7 @@ func main() {
 				country = "FR"
 			}
 
+			userId := e.Auth.Id
 			appId, privateKey, err := getBankSettings(app)
 			if err != nil {
 				return e.JSON(500, map[string]any{"error": "Fichier .pem manquant", "details": err.Error()})
@@ -244,7 +246,7 @@ func main() {
 			token, err := generateEnableBankingJWT(appId, privateKey)
 
 			validUntil := time.Now().Add(90 * 24 * time.Hour).Format(time.RFC3339)
-			stateAuth := "budgettime_" + reqData.BankID
+			stateAuth := fmt.Sprintf("bt_%s_%s", userId, reqData.BankID)
 			authPayload := map[string]any{
 				"access": map[string]any{
 					"valid_until": validUntil,
@@ -286,17 +288,29 @@ func main() {
 			return e.String(200, string(body))
 		})
 
-		// Endpoint : Callback de la banque
-		banking.GET("/callback", func(e *core.RequestEvent) error {
+		// Endpoint : Callback de la banque (Public car c'est une redirection externe)
+		e.Router.GET("/api/banking/callback", func(e *core.RequestEvent) error {
 			code := e.Request.URL.Query().Get("code")
 			if code == "" {
 				errorBanque := e.Request.URL.Query().Get("error")
 				return e.JSON(400, map[string]any{"error": "Aucun code d'autorisation reçu", "bank_error": errorBanque})
 			}
 
+			state := e.Request.URL.Query().Get("state")
 			userId := ""
-			if auth := e.Auth; auth != nil {
-				userId = auth.Id
+
+			if len(state) > 3 && strings.HasPrefix(state, "bt_") {
+				partsArray := strings.Split(state, "_")
+				if len(partsArray) >= 2 {
+					userId = partsArray[1]
+				}
+			}
+
+			if userId == "" {
+				// Fallback si l'auth est quand même présente (test direct)
+				if auth := e.Auth; auth != nil {
+					userId = auth.Id
+				}
 			}
 			appId, privateKey, err := getBankSettings(app)
 			if err != nil {
