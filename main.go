@@ -378,8 +378,8 @@ func main() {
 			authPayload := map[string]any{
 				"access": map[string]any{
 					"valid_until":  validUntil,
-					"balances":     map[string]any{},
-					"transactions": map[string]any{},
+					"balances":     true,
+					"transactions": true,
 				},
 				"aspsp": map[string]any{
 					"name":    reqData.BankID,
