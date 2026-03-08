@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -303,7 +304,7 @@ func main() {
 					} `json:"accounts"`
 				}
 				body, _ := io.ReadAll(resp.Body)
-				fmt.Printf("[BudgetTime] Discovery Raw Body from EnableBanking: %s\n", string(body))
+				fmt.Printf("[BudgetTime] Discovery Raw Body: %s\n", string(body))
 				json.Unmarshal(body, &accResult)
 
 				for _, acc := range accResult.Accounts {
@@ -380,6 +381,7 @@ func main() {
 					"valid_until":  validUntil,
 					"balances":     true,
 					"transactions": true,
+					"allPsd2":      "allAccounts",
 				},
 				"aspsp": map[string]any{
 					"name":    reqData.BankID,
@@ -471,12 +473,7 @@ func main() {
 			defer resp.Body.Close()
 
 			body, _ := io.ReadAll(resp.Body)
-			if resp.StatusCode != 200 {
-				return e.JSON(resp.StatusCode, map[string]any{
-					"error":   "EnableBanking failed to create session",
-					"details": string(body),
-				})
-			}
+			fmt.Printf("[BudgetTime] Session/Accounts Raw Body: %s\n", string(body))
 
 			var sessionResult struct {
 				SessionId string `json:"session_id"`
@@ -523,19 +520,29 @@ func main() {
 					recordAcc := core.NewRecord(collectionAcc)
 					recordAcc.Set("connection_id", recordConn.Id)
 					recordAcc.Set("remote_account_id", acc.Uid)
-					displayLabel := acc.Iban
-					if displayLabel == "" {
-						displayLabel = acc.Bban
+					// Construction d'un label explicite : Nom + IBAN
+					displayLabel := acc.Name
+					if acc.Iban != "" {
+						if displayLabel != "" {
+							displayLabel += " - " + acc.Iban
+						} else {
+							displayLabel = acc.Iban
+						}
+					} else if acc.Bban != "" {
+						if displayLabel != "" {
+							displayLabel += " - " + acc.Bban
+						} else {
+							displayLabel = acc.Bban
+						}
 					}
-					if displayLabel == "" {
-						displayLabel = acc.Name
-					}
+
 					if displayLabel == "" {
 						displayLabel = acc.Uid
 					}
-					// If it still looks like a technical ID but we have a bank name, prefix it
-					if (displayLabel == "" || (strings.Contains(displayLabel, "-") && len(displayLabel) > 20)) && bankName != "" {
-						displayLabel = bankName + " (" + acc.Uid[:8] + ")"
+
+					// Si c'est encore très technique (ex: UUID) et qu'on a le nom de la banque
+					if len(displayLabel) > 20 && strings.Contains(displayLabel, "-") && bankName != "" {
+						displayLabel = bankName + " (" + displayLabel[:8] + ")"
 					}
 
 					recordAcc.Set("iban", displayLabel)
@@ -546,8 +553,30 @@ func main() {
 			}
 			fmt.Printf("[BudgetTime] %d comptes sauvegardés (Total détectés: %d)\n", compteCount, len(sessionResult.Accounts))
 
-			// Rediriger vers l'application au lieu d'afficher du JSON
-			return e.Redirect(302, "/")
+			// Rediriger vers l'application ou fermer la page si c'est un popup
+			html := `
+			<!DOCTYPE html>
+			<html>
+			<head><title>BudgetTime - Connexion Réussie</title></head>
+			<body style="font-family: sans-serif; text-align: center; padding: 50px;">
+				<h2 style="color: #2e7d32;">Connexion Réussie !</h2>
+				<p>Vos comptes bancaires ont été liés avec succès.</p>
+				<p>Cette fenêtre va se fermer automatiquement...</p>
+				<script>
+					setTimeout(function() {
+						if (window.opener) {
+							// Si c'est un popup, on ferme
+							window.close();
+						} else {
+							// Sinon on redirige vers l'accueil
+							window.location.href = "/";
+						}
+					}, 2000);
+				</script>
+				<noscript><meta http-equiv="refresh" content="2;url=/"></noscript>
+			</body>
+			</html>`
+			return e.HTML(200, html)
 		})
 
 		// Endpoint : Synchronisation des transactions
@@ -616,10 +645,10 @@ func main() {
 			} else {
 				now := time.Now()
 				dateEnd = now.Format("2006-01-02")
-				dateStart = now.AddDate(0, 0, -30).Format("2006-01-02") // 30 jours par défaut
+				dateStart = now.AddDate(0, 0, -90).Format("2006-01-02") // 90 jours par défaut pour le sync initial
 				qParams = fmt.Sprintf("date_from=%s&date_to=%s", dateStart, dateEnd)
 			}
-			apiURL += "?" + qParams + "&session_id=" + bankConnection.RequisitionId
+			apiURL += "?" + qParams + "&session_id=" + bankConnection.RequisitionId + "&strategy=longest"
 
 			fmt.Printf("[BudgetTime] Appel EnableBanking Sync API: %s\n", apiURL)
 			req, err := http.NewRequest("GET", apiURL, nil)
@@ -635,6 +664,53 @@ func main() {
 
 			body, _ := io.ReadAll(resp.Body)
 			fmt.Printf("[BudgetTime] Réponse Sync Status: %d\n", resp.StatusCode)
+			rawBodyLog := string(body)
+			if len(rawBodyLog) > 1000 {
+				fmt.Printf("[BudgetTime] Sync Raw Body (tronqué): %s...\n", rawBodyLog[:1000])
+			} else {
+				fmt.Printf("[BudgetTime] Sync Raw Body: %s\n", rawBodyLog)
+			}
+
+			// Diagnostic Balances & Update Balance
+			balanceURL := fmt.Sprintf("https://api.enablebanking.com/accounts/%s/balances?session_id=%s", bankAccount.RemoteAccountId, bankConnection.RequisitionId)
+			bReq, _ := http.NewRequest("GET", balanceURL, nil)
+			bReq.Header.Set("Authorization", "Bearer "+token)
+			bResp, errB := client.Do(bReq)
+			if errB == nil {
+				bBody, _ := io.ReadAll(bResp.Body)
+				fmt.Printf("[BudgetTime] Diagnostic Balances: %s (Status %v)\n", string(bBody), bResp.StatusCode)
+				bResp.Body.Close()
+
+				// Mise à jour du solde local
+				var bResult struct {
+					Balances []map[string]any `json:"balances"`
+				}
+				if json.Unmarshal(bBody, &bResult) == nil && len(bResult.Balances) > 0 {
+					finalBalance := ""
+					for _, b := range bResult.Balances {
+						if name, _ := b["name"].(string); name == "AccountingBalance" {
+							if am, ok := b["balance_amount"].(map[string]any); ok {
+								finalBalance, _ = am["amount"].(string)
+							}
+							break
+						}
+					}
+					// Fallback au premier solde si AccountingBalance non trouvé
+					if finalBalance == "" {
+						if am, ok := bResult.Balances[0]["balance_amount"].(map[string]any); ok {
+							finalBalance, _ = am["amount"].(string)
+						}
+					}
+
+					if finalBalance != "" {
+						app.DB().NewQuery("UPDATE bank_accounts SET balance = {:bal} WHERE remote_account_id = {:id}").
+							Bind(dbx.Params{"bal": finalBalance, "id": bankAccount.RemoteAccountId}).
+							Execute()
+					}
+				}
+			} else {
+				fmt.Printf("[BudgetTime] Diagnostic Balances: Echec Appel\n")
+			}
 
 			if resp.StatusCode != 200 {
 				collectionLogs, _ := app.FindCollectionByNameOrId("bank_sync_logs")
@@ -648,17 +724,7 @@ func main() {
 			}
 
 			var result struct {
-				Transactions []struct {
-					TransactionId string `json:"transaction_id"`
-					BookingDate   string `json:"booking_date"`
-					Amount        struct {
-						Value    string `json:"value"`
-						Currency string `json:"currency"`
-					} `json:"amount"`
-					CreditorName   string `json:"creditor_name"`
-					DebtorName     string `json:"debtor_name"`
-					RemittanceInfo string `json:"remittance_information_unstructured"`
-				} `json:"transactions"`
+				Transactions []map[string]any `json:"transactions"`
 			}
 			if err := json.Unmarshal(body, &result); err != nil {
 				fmt.Printf("[BudgetTime] Erreur Unmarshal Sync: %v\n", err)
@@ -666,18 +732,64 @@ func main() {
 			}
 
 			if len(result.Transactions) == 0 {
-				fmt.Printf("[BudgetTime] EnableBanking a renvoyé 0 transactions pour cette période. Corps brut: %s\n", string(body))
+				fmt.Printf("[BudgetTime] EnableBanking a renvoyé 0 transactions pour cette période.\n")
 			}
 
 			collectionInbox, _ := app.FindCollectionByNameOrId("raw_inbox")
 			insertedCount := 0
 			for _, t := range result.Transactions {
-				label := t.CreditorName
-				if label == "" {
-					label = t.DebtorName
+				// Extraction flexible des données
+				tId, _ := t["transaction_id"].(string)
+				if tId == "" {
+					tId, _ = t["entry_reference"].(string)
+				}
+				if tId == "" {
+					tId, _ = t["internal_transaction_id"].(string)
+				}
+				// Si toujours pas d'ID, hash du payload
+				if tId == "" {
+					p, _ := json.Marshal(t)
+					h := sha256.Sum256(p)
+					tId = fmt.Sprintf("h%x", h[:8])
+				}
+
+				bookingDate, _ := t["booking_date"].(string)
+				if bookingDate == "" {
+					bookingDate, _ = t["transaction_date"].(string)
+				}
+				if bookingDate == "" {
+					bookingDate = time.Now().Format("2006-01-02")
+				}
+
+				amountValue := ""
+				// Essayer amount.value (notre ancien format) ou transaction_amount.amount (le nouveau vu dans doc)
+				if am, ok := t["amount"].(map[string]any); ok {
+					amountValue, _ = am["value"].(string)
+				} else if am, ok := t["transaction_amount"].(map[string]any); ok {
+					amountValue, _ = am["amount"].(string)
+				}
+
+				// Signe basé sur credit_debit_indicator (DBIT = dépense = négatif)
+				if cd, _ := t["credit_debit_indicator"].(string); cd == "DBIT" && !strings.HasPrefix(amountValue, "-") {
+					amountValue = "-" + amountValue
+				}
+
+				label := ""
+				if cr, ok := t["creditor"].(map[string]any); ok {
+					label, _ = cr["name"].(string)
 				}
 				if label == "" {
-					label = t.RemittanceInfo
+					if de, ok := t["debtor"].(map[string]any); ok {
+						label, _ = de["name"].(string)
+					}
+				}
+				if label == "" {
+					label, _ = t["remittance_information_unstructured"].(string)
+				}
+				if label == "" {
+					if rems, ok := t["remittance_information"].([]any); ok && len(rems) > 0 {
+						label, _ = rems[0].(string)
+					}
 				}
 				if label == "" {
 					label = "Transaction bancaire"
@@ -685,17 +797,17 @@ func main() {
 
 				var existing int
 				app.DB().Select("count(id)").From("raw_inbox").
-					Where(dbx.HashExp{"raw_payload": t.TransactionId, "user": bankConnection.UserId}).
+					Where(dbx.HashExp{"raw_payload": tId, "user": bankConnection.UserId}).
 					Row(&existing)
 
 				if existing == 0 {
 					record := core.NewRecord(collectionInbox)
-					record.Set("date", t.BookingDate+" 12:00:00.000Z")
+					record.Set("date", bookingDate+" 12:00:00.000Z")
 					record.Set("label", label)
-					record.Set("amount", t.Amount.Value)
+					record.Set("amount", amountValue)
 					record.Set("user", bankConnection.UserId)
 					record.Set("is_processed", false)
-					record.Set("raw_payload", t.TransactionId)
+					record.Set("raw_payload", tId)
 					if err := app.Save(record); err == nil {
 						insertedCount++
 					}

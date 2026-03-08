@@ -42,6 +42,12 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
             icon: const Icon(Icons.refresh),
             onPressed: () => controller.refresh(),
           ),
+          if (state.items.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.delete_sweep, color: Colors.redAccent),
+              tooltip: 'Tout vider',
+              onPressed: () => _confirmDeleteAll(),
+            ),
         ],
       ),
       body: state.isLoading
@@ -188,6 +194,34 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
     );
   }
 
+  void _confirmDeleteAll() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Tout vider ?'),
+        content: const Text(
+          'Toutes les réceptions externes non traitées seront marquées comme ignorées. Cette opération est irréversible.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () {
+              ref.read(inboxControllerProvider.notifier).deleteAll();
+              Navigator.pop(context);
+            },
+            child: const Text(
+              'Tout supprimer',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _processItem(InboxItem item) {
     // 1. Get preview data from the controller
     final previewData = ref
@@ -205,6 +239,7 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
         'type': item.amount >= 0 ? 'income' : 'expense',
       },
       // Ensure we don't have an ID that would trigger an "Edit"
+      'status': 'effective',
       'id': null,
       'fromInbox': true,
     };
@@ -385,8 +420,11 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
                             : null,
                       );
 
-                      if (context.mounted) {
-                        Navigator.pop(context); // Remove loader
+                      if (mounted) {
+                        Navigator.of(
+                          context,
+                          rootNavigator: true,
+                        ).pop(); // Force close loader
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
@@ -398,11 +436,16 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
                         ref.read(inboxControllerProvider.notifier).refresh();
                       }
                     } catch (e) {
-                      if (context.mounted) {
-                        Navigator.pop(context); // Remove loader
+                      if (mounted) {
+                        Navigator.of(
+                          context,
+                          rootNavigator: true,
+                        ).pop(); // Force close loader
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(e.toString()),
+                            content: Text(
+                              "Synchro échouée ou trop longue. Vérifiez l'inbox dans quelques instants. Erreur: $e",
+                            ),
                             backgroundColor: Colors.red,
                           ),
                         );

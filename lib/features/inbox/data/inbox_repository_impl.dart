@@ -50,4 +50,20 @@ class InboxRepositoryImpl implements InboxRepository {
           },
         );
   }
+
+  @override
+  Future<void> deleteAll() async {
+    final user = _dbService.pb.authStore.record;
+    if (user == null) return;
+
+    final records = await _dbService.pb
+        .collection('raw_inbox')
+        .getFullList(filter: 'user = "${user.id}" && is_processed = false');
+
+    for (final record in records) {
+      await _dbService.pb
+          .collection('raw_inbox')
+          .update(record.id, body: {'is_processed': true});
+    }
+  }
 }

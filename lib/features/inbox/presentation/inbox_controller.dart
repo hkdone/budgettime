@@ -66,6 +66,16 @@ class InboxController extends StateNotifier<InboxState> {
       state = state.copyWith(error: e.toString());
     }
   }
+
+  Future<void> deleteAll() async {
+    try {
+      state = state.copyWith(isLoading: true, error: null);
+      await _repository.deleteAll();
+      await refresh();
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
 }
 
 final inboxControllerProvider =

@@ -7,4 +7,7 @@ abstract class InboxRepository {
 
   /// Mark an item as error
   Future<void> markAsError(String id, String errorMessage);
+
+  /// Mark all unprocessed items as processed
+  Future<void> deleteAll();
 }
