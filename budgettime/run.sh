@@ -11,7 +11,11 @@ if [ ! -f "server.crt" ]; then
 fi
 
 # Création du Caddyfile pour le reverse proxy HTTPS
-echo ":8090 {
+echo "{
+    auto_https disable_redirects
+}
+
+:8090 {
     tls /pb/server.crt /pb/server.key
     reverse_proxy localhost:8080
 }" > /pb/Caddyfile
