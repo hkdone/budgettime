@@ -20,38 +20,31 @@ import (
 )
 
 // getBankSettings récupère les réglages Enable Banking pour un utilisateur donné
-// Désormais, il ignore la base de données et se base sur l'environnement et les fichiers .pem
-func getBankSettings(app *pocketbase.PocketBase, userId string) (appId, privateKey, sessionId string, err error) {
-	// Fallback sur les variables d'environnement
-	appId = os.Getenv("ENABLE_BANKING_APP_ID")
-	sessionId = os.Getenv("ENABLE_BANKING_SESSION_ID")
+// Désormais, il ignore la base de données et se base sur le dossier secrets
+func getBankSettings(app *pocketbase.PocketBase) (appId, privateKey string, err error) {
+	// Chercher les fichiers .pem dans le dossier secrets (à côté de pb_data)
+	baseDir := filepath.Dir(app.DataDir())
+	secretsDir := filepath.Join(baseDir, "secrets")
 
-	if envKey := os.Getenv("ENABLE_BANKING_PRIVATE_KEY"); envKey != "" {
-		privateKey = envKey
-	} else if appId != "" {
-		// Chercher le fichier .pem par défaut dans le dossier secrets
-		baseDir := filepath.Dir(app.DataDir())
-		keyPath := filepath.Join(baseDir, "secrets", fmt.Sprintf("%s.pem", appId))
-		bytes, err := os.ReadFile(keyPath)
-		if err == nil {
-			privateKey = string(bytes)
-		}
-	} else {
-		// Tenter de découvrir l'AppID en listant le dossier secrets
-		baseDir := filepath.Dir(app.DataDir())
-		secretsDir := filepath.Join(baseDir, "secrets")
-		files, _ := os.ReadDir(secretsDir)
-		for _, f := range files {
-			if !f.IsDir() && filepath.Ext(f.Name()) == ".pem" {
-				appId = f.Name()[0 : len(f.Name())-4]
-				bytes, _ := os.ReadFile(filepath.Join(secretsDir, f.Name()))
+	files, err := os.ReadDir(secretsDir)
+	if err != nil {
+		return "", "", fmt.Errorf("impossible de lire le dossier secrets: %w", err)
+	}
+
+	for _, f := range files {
+		if !f.IsDir() && filepath.Ext(f.Name()) == ".pem" {
+			// L'App ID est le nom du fichier sans .pem
+			appId = f.Name()[0 : len(f.Name())-4]
+			keyPath := filepath.Join(secretsDir, f.Name())
+			bytes, err := os.ReadFile(keyPath)
+			if err == nil {
 				privateKey = string(bytes)
-				break // On prend le premier trouvé pour l'instant
+				return appId, privateKey, nil
 			}
 		}
 	}
 
-	return appId, privateKey, sessionId, nil
+	return "", "", fmt.Errorf("aucune clé .pem trouvée dans %s", secretsDir)
 }
 
 // generateEnableBankingJWT génère un JWT à partir des identifiants fournis
@@ -121,14 +114,17 @@ func main() {
 			}
 			userId := e.Auth.Id
 			fmt.Printf("[BudgetTime] /jwt demandé par userId: %s\n", userId)
-			appId, privateKey, _, _ := getBankSettings(app, userId)
-			token, err := generateEnableBankingJWT(appId, privateKey)
+			appId, privateKey, err := getBankSettings(app)
 			if err != nil {
 				return e.JSON(200, map[string]any{
 					"token":          "",
 					"config_missing": true,
-					"message":        "Identifiant ou clé Enable Banking manquante sur le serveur.",
+					"message":        err.Error(),
 				})
+			}
+			token, err := generateEnableBankingJWT(appId, privateKey)
+			if err != nil {
+				return e.JSON(500, map[string]any{"error": err.Error()})
 			}
 			return e.JSON(200, map[string]string{
 				"token": token,
@@ -143,15 +139,11 @@ func main() {
 			}
 			userId := e.Auth.Id
 			fmt.Printf("[BudgetTime] GET /settings pour userId: %s\n", userId)
-			appId, privateKey, sessionId, err := getBankSettings(app, userId)
-			if err != nil {
-				fmt.Printf("[BudgetTime] Erreur lors de getBankSettings: %v\n", err)
-			}
+			appId, privateKey, err := getBankSettings(app)
+			hasKey := err == nil && privateKey != ""
 			return e.JSON(200, map[string]any{
-				"app_id":      appId,
-				"has_key":     privateKey != "",
-				"session_id":  sessionId,
-				"private_key": privateKey,
+				"app_id":  appId,
+				"has_key": hasKey,
 			})
 		})
 
@@ -175,16 +167,15 @@ func main() {
 			if country == "" {
 				country = "FR"
 			}
-			userId := e.Auth.Id
-			appId, privateKey, _, _ := getBankSettings(app, userId)
-			token, err := generateEnableBankingJWT(appId, privateKey)
+			appId, privateKey, err := getBankSettings(app)
 			if err != nil {
 				return e.JSON(200, map[string]any{
 					"aspsps":         []any{},
 					"config_missing": true,
-					"message":        "Configuration bancaire absente sur ce serveur.",
+					"message":        "Fichier .pem manquant dans /secrets",
 				})
 			}
+			token, err := generateEnableBankingJWT(appId, privateKey)
 
 			apiURL := "https://api.enablebanking.com/aspsps?country=" + country
 			req, err := http.NewRequest("GET", apiURL, nil)
@@ -216,57 +207,12 @@ func main() {
 			if e.Auth == nil {
 				return e.Error(401, "Auth record missing (Discover)", nil)
 			}
-			userId := e.Auth.Id
-			appId, privateKey, sessionID, _ := getBankSettings(app, userId)
-			token, err := generateEnableBankingJWT(appId, privateKey)
-			if err != nil {
-				return e.JSON(200, map[string]any{
-					"found":          0,
-					"added":          0,
-					"config_missing": true,
-					"message":        "Configuration bancaire absente.",
-				})
-			}
-			if sessionID == "" {
-				return e.JSON(404, map[string]any{
-					"error":      "No Session ID configured",
-					"suggestion": "Merci de configurer votre Application ID et de lier votre banque via l'UI.",
-				})
-			}
-
-			apiURL := "https://api.enablebanking.com/sessions/" + sessionID
-			req, err := http.NewRequest("GET", apiURL, nil)
-			if err != nil {
-				return e.JSON(500, map[string]any{"error": "Failed to create request"})
-			}
-			req.Header.Set("Authorization", "Bearer "+token)
-
-			client := &http.Client{}
-			resp, err := client.Do(req)
-			if err != nil {
-				return e.JSON(500, map[string]any{"error": "Failed to call Enable Banking API"})
-			}
-			defer resp.Body.Close()
-
-			if resp.StatusCode != 200 {
-				body, _ := io.ReadAll(resp.Body)
-				return e.JSON(resp.StatusCode, map[string]any{
-					"error":   "Enable Banking API error (Session not found)",
-					"details": string(body),
-				})
-			}
-
-			var sessionData map[string]any
-			if err := json.NewDecoder(resp.Body).Decode(&sessionData); err != nil {
-				return e.JSON(500, map[string]any{"error": "Failed to parse session data"})
-			}
-
-			requisitions := []map[string]any{sessionData}
-			addedCount := syncSessions(app, e, requisitions)
-
+			// On ne peut plus discover via une session_id globale car elle n'est plus stockée.
+			// L'UI devra passer par une liste de connexions déjà stockées dans bank_connections.
 			return e.JSON(200, map[string]any{
-				"message": "Discovery complete",
-				"added":   addedCount,
+				"message": "Discovery (Sessions) désactivé. Utilisez la liste des connexions enregistrées.",
+				"found":   0,
+				"added":   0,
 			})
 		})
 
@@ -291,12 +237,11 @@ func main() {
 				country = "FR"
 			}
 
-			userId := e.Auth.Id
-			appId, privateKey, _, _ := getBankSettings(app, userId)
-			token, err := generateEnableBankingJWT(appId, privateKey)
+			appId, privateKey, err := getBankSettings(app)
 			if err != nil {
-				return e.JSON(500, map[string]any{"error": "JWT Generation Failed", "details": err.Error()})
+				return e.JSON(500, map[string]any{"error": "Fichier .pem manquant", "details": err.Error()})
 			}
+			token, err := generateEnableBankingJWT(appId, privateKey)
 
 			validUntil := time.Now().Add(90 * 24 * time.Hour).Format(time.RFC3339)
 			stateAuth := "budgettime_" + reqData.BankID
@@ -353,11 +298,11 @@ func main() {
 			if auth := e.Auth; auth != nil {
 				userId = auth.Id
 			}
-			appId, privateKey, _, _ := getBankSettings(app, userId)
-			token, err := generateEnableBankingJWT(appId, privateKey)
+			appId, privateKey, err := getBankSettings(app)
 			if err != nil {
-				return e.JSON(500, map[string]any{"error": "JWT Generation Failed", "details": err.Error()})
+				return e.JSON(500, map[string]any{"error": "Fichier .pem manquant", "details": err.Error()})
 			}
+			token, err := generateEnableBankingJWT(appId, privateKey)
 
 			sessionPayload := map[string]any{"code": code}
 			jsonData, _ := json.Marshal(sessionPayload)
@@ -384,9 +329,11 @@ func main() {
 			}
 
 			var sessionResult struct {
-				SessionId string   `json:"session_id"`
-				Status    string   `json:"status"`
-				Accounts  []string `json:"accounts"`
+				SessionId string `json:"session_id"`
+				Status    string `json:"status"`
+				Accounts  []struct {
+					Uid string `json:"uid"`
+				} `json:"accounts"`
 			}
 			if err := json.Unmarshal(body, &sessionResult); err != nil {
 				return e.JSON(500, map[string]any{"error": "Failed to parse EnableBanking response", "details": err.Error()})
@@ -411,11 +358,11 @@ func main() {
 
 			collectionAcc, err := app.FindCollectionByNameOrId("bank_accounts")
 			if err == nil {
-				for _, accIban := range sessionResult.Accounts {
+				for _, acc := range sessionResult.Accounts {
 					recordAcc := core.NewRecord(collectionAcc)
 					recordAcc.Set("connection_id", recordConn.Id)
-					recordAcc.Set("remote_account_id", accIban)
-					recordAcc.Set("iban", accIban)
+					recordAcc.Set("remote_account_id", acc.Uid)
+					recordAcc.Set("iban", acc.Uid)
 					app.Save(recordAcc)
 				}
 			}
@@ -478,12 +425,11 @@ func main() {
 				return e.JSON(429, map[string]any{"error": "Rate limit: une synchro par heure maximum"})
 			}
 
-			userId := e.Auth.Id
-			appId, privateKey, _, _ := getBankSettings(app, userId)
-			token, err := generateEnableBankingJWT(appId, privateKey)
+			appId, privateKey, err := getBankSettings(app)
 			if err != nil {
-				return e.JSON(500, map[string]any{"error": "JWT Gen Failed"})
+				return e.JSON(500, map[string]any{"error": "Fichier .pem manquant"})
 			}
+			token, err := generateEnableBankingJWT(appId, privateKey)
 
 			apiURL := fmt.Sprintf("https://api.enablebanking.com/accounts/%s/transactions", bankAccount.RemoteAccountId)
 			if dateStart != "" && dateEnd != "" {

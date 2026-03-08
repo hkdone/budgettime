@@ -18,7 +18,6 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
   bool _showManualList = false;
   String? _appId;
   bool _hasKey = false;
-  String? _sessionId;
 
   @override
   void initState() {
@@ -41,7 +40,6 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
       setState(() {
         _appId = settings['app_id'];
         _hasKey = settings['has_key'] ?? false;
-        _sessionId = settings['session_id'];
       });
     } catch (e) {
       debugPrint(
@@ -150,8 +148,6 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
   }
 
   Future<void> _showSettingsDialog() async {
-    final appIdController = TextEditingController(text: _appId);
-
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -162,7 +158,7 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Approche Sécurisée (Secrets Serveur)',
+                'Approche Sécurisée (Fichier .pem)',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: Colors.blue,
@@ -170,18 +166,32 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Déposez votre fichier .pem dans le dossier "secrets" du serveur pour chaque instance (Synology, CasaOS, HA).',
+                'Le serveur utilise désormais exclusivement le dossier "secrets". Déposez-y votre fichier .pem.',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
               const SizedBox(height: 16),
-              TextField(
-                controller: appIdController,
-                decoration: const InputDecoration(
-                  labelText: 'Application ID',
-                  hintText: 'ex: 12345-abcde...',
-                  border: OutlineInputBorder(),
+              if (_appId != null && _appId!.isNotEmpty) ...[
+                const Text(
+                  'Application ID détecté :',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                 ),
-              ),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: SelectableText(
+                    _appId!,
+                    style: const TextStyle(fontFamily: 'monospace'),
+                  ),
+                ),
+              ] else ...[
+                const Text(
+                  'Aucun fichier .pem détecté dans le dossier "secrets".',
+                  style: TextStyle(color: Colors.red, fontSize: 12),
+                ),
+              ],
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -193,8 +203,8 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
                   Expanded(
                     child: Text(
                       _hasKey
-                          ? 'Clé privée (.pem) détectée sur le serveur.'
-                          : 'Aucune clé privée détectée sur le serveur pour cet ID.',
+                          ? 'Clé privée (.pem) active.'
+                          : 'Veuillez déposer votre fichier .pem dans le dossier /pb/secrets.',
                       style: TextStyle(
                         fontSize: 12,
                         color: _hasKey ? Colors.green : Colors.orange,
@@ -204,24 +214,6 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
                   ),
                 ],
               ),
-              if (!_hasKey) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'Nom attendu : ${appIdController.text.isEmpty ? "VOTRE_ID" : appIdController.text}.pem',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ],
-              if (_sessionId != null) ...[
-                const SizedBox(height: 16),
-                const Divider(),
-                SelectableText(
-                  'Session ID actuelle: $_sessionId',
-                  style: const TextStyle(fontSize: 10, color: Colors.grey),
-                ),
-              ],
             ],
           ),
         ),
@@ -233,32 +225,15 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
           ElevatedButton(
             onPressed: () async {
               final localContext = context;
-              try {
-                await _bankingService.saveSettings(
-                  appId: appIdController.text,
-                  // La clé privée est désormais gérée côté serveur
+              await _loadSettingsAndBanks();
+              if (localContext.mounted) {
+                Navigator.pop(localContext);
+                ScaffoldMessenger.of(localContext).showSnackBar(
+                  const SnackBar(content: Text('Réglages actualisés')),
                 );
-                if (localContext.mounted) {
-                  Navigator.pop(localContext);
-                  await _loadSettingsAndBanks();
-                  if (localContext.mounted) {
-                    ScaffoldMessenger.of(localContext).showSnackBar(
-                      const SnackBar(content: Text('Identifiant mis à jour')),
-                    );
-                  }
-                }
-              } catch (e) {
-                if (localContext.mounted) {
-                  ScaffoldMessenger.of(localContext).showSnackBar(
-                    SnackBar(
-                      content: Text('Erreur: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
               }
             },
-            child: const Text('Enregistrer l\'ID'),
+            child: const Text('Actualiser'),
           ),
         ],
       ),
