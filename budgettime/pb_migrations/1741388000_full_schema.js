@@ -1,6 +1,6 @@
 migrate((app) => {
-    const collectionConfigs = [
-        {
+    const collections = [
+        new Collection({
             "id": "accounts000000",
             "name": "accounts",
             "type": "base",
@@ -17,8 +17,8 @@ migrate((app) => {
             "createRule": "user = @request.auth.id",
             "updateRule": "user = @request.auth.id",
             "deleteRule": "user = @request.auth.id"
-        },
-        {
+        }),
+        new Collection({
             "id": "members000000",
             "name": "members",
             "type": "base",
@@ -32,8 +32,8 @@ migrate((app) => {
             "createRule": "user = @request.auth.id",
             "updateRule": "user = @request.auth.id",
             "deleteRule": "user = @request.auth.id"
-        },
-        {
+        }),
+        new Collection({
             "id": "categories000000",
             "name": "categories",
             "type": "base",
@@ -49,8 +49,8 @@ migrate((app) => {
             "createRule": "user = @request.auth.id",
             "updateRule": "user = @request.auth.id",
             "deleteRule": "user = @request.auth.id"
-        },
-        {
+        }),
+        new Collection({
             "id": "recurrences000",
             "name": "recurrences",
             "type": "base",
@@ -71,8 +71,8 @@ migrate((app) => {
             "createRule": "user = @request.auth.id",
             "updateRule": "user = @request.auth.id",
             "deleteRule": "user = @request.auth.id"
-        },
-        {
+        }),
+        new Collection({
             "id": "transactions00",
             "name": "transactions",
             "type": "base",
@@ -95,8 +95,8 @@ migrate((app) => {
             "createRule": "user = @request.auth.id",
             "updateRule": "user = @request.auth.id",
             "deleteRule": "user = @request.auth.id"
-        },
-        {
+        }),
+        new Collection({
             "id": "rawinbox000000",
             "name": "raw_inbox",
             "type": "base",
@@ -114,8 +114,8 @@ migrate((app) => {
             "createRule": "",
             "updateRule": "user = @request.auth.id",
             "deleteRule": "user = @request.auth.id"
-        },
-        {
+        }),
+        new Collection({
             "id": "settings000000",
             "name": "settings",
             "type": "base",
@@ -128,49 +128,78 @@ migrate((app) => {
             "createRule": "user = @request.auth.id",
             "updateRule": "user = @request.auth.id",
             "deleteRule": "user = @request.auth.id"
-        }
+        }),
+        // On réintègre les collections banking nécessaires (sauf bank_settings)
+        new Collection({
+            "id": "bankconn000000",
+            "name": "bank_connections",
+            "type": "base",
+            "fields": [
+                { "id": "bc_user", "name": "user", "type": "relation", "required": true, "options": { "collectionId": "_pb_users_auth_", "cascadeDelete": true, "maxSelect": 1 } },
+                { "id": "bc_name", "name": "bank_name", "type": "text", "required": false },
+                { "id": "bc_reqid", "name": "requisition_id", "type": "text", "required": true },
+                { "id": "bc_status", "name": "status", "type": "text", "required": false },
+                { "id": "bc_valid", "name": "valid_until", "type": "date", "required": false }
+            ],
+            "listRule": "user = @request.auth.id",
+            "viewRule": "user = @request.auth.id",
+            "createRule": "user = @request.auth.id",
+            "updateRule": "user = @request.auth.id",
+            "deleteRule": "user = @request.auth.id"
+        }),
+        new Collection({
+            "id": "bankacc0000000",
+            "name": "bank_accounts",
+            "type": "base",
+            "fields": [
+                { "id": "ba_conn", "name": "connection_id", "type": "relation", "required": true, "options": { "collectionId": "bankconn000000", "cascadeDelete": true, "maxSelect": 1 } },
+                { "id": "ba_remote", "name": "remote_account_id", "type": "text", "required": true },
+                { "id": "ba_iban", "name": "iban", "type": "text", "required": false },
+                { "id": "ba_local", "name": "local_account_id", "type": "relation", "required": false, "options": { "collectionId": "accounts000000", "cascadeDelete": false, "maxSelect": 1 } }
+            ],
+            "listRule": "@request.auth.id != ''",
+            "viewRule": "@request.auth.id != ''",
+            "createRule": "@request.auth.id != ''",
+            "updateRule": "@request.auth.id != ''",
+            "deleteRule": "@request.auth.id != ''"
+        }),
+        new Collection({
+            "id": "banksync00000",
+            "name": "bank_sync_logs",
+            "type": "base",
+            "fields": [
+                { "id": "bs_conn", "name": "connection_id", "type": "relation", "required": true, "options": { "collectionId": "bankconn000000", "cascadeDelete": true, "maxSelect": 1 } },
+                { "id": "bs_status", "name": "status", "type": "text", "required": true },
+                { "id": "bs_count", "name": "transactions_count", "type": "number", "required": false }
+            ],
+            "listRule": "@request.auth.id != ''",
+            "viewRule": "@request.auth.id != ''",
+            "createRule": "@request.auth.id != ''",
+            "updateRule": "@request.auth.id != ''",
+            "deleteRule": "@request.auth.id != ''"
+        })
     ];
 
-    // Étape 1 : Créer ou Mettre à jour la structure
-    collectionConfigs.forEach(config => {
-        let collection;
+    for (const collection of collections) {
         try {
-            collection = app.findCollectionByNameOrId(config.name);
+            const existing = app.findCollectionByNameOrId(collection.name);
+            existing.fields = collection.fields;
+            existing.listRule = collection.listRule;
+            existing.viewRule = collection.viewRule;
+            existing.createRule = collection.createRule;
+            existing.updateRule = collection.updateRule;
+            existing.deleteRule = collection.deleteRule;
+            app.save(existing);
         } catch (_) {
-            collection = new Collection({
-                "id": config.id,
-                "name": config.name,
-                "type": config.type
-            });
+            app.save(collection);
         }
+    }
 
-        collection.fields = config.fields;
-        if (config.indexes) {
-            collection.indexes = config.indexes;
-        }
-
-        app.save(collection);
-    });
-
-    // Étape 2 : Appliquer les règles
-    collectionConfigs.forEach(config => {
-        const c = app.findCollectionByNameOrId(config.name);
-        c.listRule = config.listRule || null;
-        c.viewRule = config.viewRule || null;
-        c.createRule = config.createRule || null;
-        c.updateRule = config.updateRule || null;
-        c.deleteRule = config.deleteRule || null;
-        app.save(c);
-    });
-
-    // Nettoyage final des collections obsolètes
-    const namesToRemove = ["bank_settings", "bank_sync_logs", "bank_accounts", "bank_connections"];
-    namesToRemove.forEach(name => {
-        try {
-            const col = app.findCollectionByNameOrId(name);
-            if (col) { app.delete(col); }
-        } catch (_) { }
-    });
+    // Uniquement bank_settings est supprimé car remplacé par les fichiers .pem
+    try {
+        const col = app.findCollectionByNameOrId("bank_settings");
+        app.delete(col);
+    } catch (_) { }
 }, (app) => {
     // Rollback
-})
+});
