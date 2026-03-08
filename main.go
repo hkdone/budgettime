@@ -20,25 +20,34 @@ import (
 )
 
 // getBankSettings récupère les réglages Enable Banking pour un utilisateur donné
+// Désormais, il ignore la base de données et se base sur l'environnement et les fichiers .pem
 func getBankSettings(app *pocketbase.PocketBase, userId string) (appId, privateKey, sessionId string, err error) {
-	record, err := app.FindFirstRecordByFilter("bank_settings", "user = {:userId}", dbx.Params{"userId": userId})
-	if err == nil && record != nil {
-		return record.GetString("app_id"), record.GetString("private_key"), record.GetString("session_id"), nil
-	}
-
-	// Fallback sur les variables d'environnement si non trouvé en base (pour rétrocompatibilité)
+	// Fallback sur les variables d'environnement
 	appId = os.Getenv("ENABLE_BANKING_APP_ID")
 	sessionId = os.Getenv("ENABLE_BANKING_SESSION_ID")
 
 	if envKey := os.Getenv("ENABLE_BANKING_PRIVATE_KEY"); envKey != "" {
 		privateKey = envKey
 	} else if appId != "" {
-		// Chercher le fichier .pem par défaut
+		// Chercher le fichier .pem par défaut dans le dossier secrets
 		baseDir := filepath.Dir(app.DataDir())
 		keyPath := filepath.Join(baseDir, "secrets", fmt.Sprintf("%s.pem", appId))
 		bytes, err := os.ReadFile(keyPath)
 		if err == nil {
 			privateKey = string(bytes)
+		}
+	} else {
+		// Tenter de découvrir l'AppID en listant le dossier secrets
+		baseDir := filepath.Dir(app.DataDir())
+		secretsDir := filepath.Join(baseDir, "secrets")
+		files, _ := os.ReadDir(secretsDir)
+		for _, f := range files {
+			if !f.IsDir() && filepath.Ext(f.Name()) == ".pem" {
+				appId = f.Name()[0 : len(f.Name())-4]
+				bytes, _ := os.ReadFile(filepath.Join(secretsDir, f.Name()))
+				privateKey = string(bytes)
+				break // On prend le premier trouvé pour l'instant
+			}
 		}
 	}
 
@@ -90,7 +99,7 @@ func main() {
 		fmt.Println("[BudgetTime] Initialisation des routes banking...")
 
 		// Diagnostic au démarrage : Vérifier si les collections bancaires existent
-		collectionsToCheck := []string{"bank_settings", "bank_connections", "bank_accounts", "bank_sync_logs", "raw_inbox"}
+		collectionsToCheck := []string{"raw_inbox"}
 		for _, name := range collectionsToCheck {
 			_, err := app.FindCollectionByNameOrId(name)
 			if err != nil {
@@ -146,56 +155,15 @@ func main() {
 			})
 		})
 
-		// Endpoint : Sauvegarder les réglages Enable Banking
+		// Endpoint : "Sauvegarder" les réglages (Désormais informatif car géré par fichiers)
 		banking.POST("/settings", func(e *core.RequestEvent) error {
 			if e.Auth == nil {
-				fmt.Println("[BudgetTime] Erreur: e.Auth est nil dans POST /settings")
-				return e.Error(401, "Authentification obligatoire pour sauvegarder", nil)
+				return e.Error(401, "Authentification obligatoire", nil)
 			}
-			userId := e.Auth.Id
-			fmt.Printf("[BudgetTime] POST /settings pour userId: %s\n", userId)
-
-			var data struct {
-				AppId      string `json:"app_id"`
-				PrivateKey string `json:"private_key"`
-				SessionId  string `json:"session_id"`
-			}
-			if err := e.BindBody(&data); err != nil {
-				fmt.Printf("[BudgetTime] Erreur BindBody: %v\n", err)
-				return e.Error(400, "Corps de requête invalide", err)
-			}
-
-			collection, err := app.FindCollectionByNameOrId("bank_settings")
-			if err != nil || collection == nil {
-				fmt.Printf("[BudgetTime] ERREUR FATALE: Collection 'bank_settings' introuvable: %v\n", err)
-				return e.Error(500, "Erreur serveur: Collection 'bank_settings' manquante. Vérifiez vos migrations.", nil)
-			}
-
-			record, err := app.FindFirstRecordByFilter("bank_settings", "user = {:userId}", dbx.Params{"userId": userId})
-			if err != nil {
-				fmt.Printf("[BudgetTime] Info: Aucun enregistrement existant trouvé pour cet utilisateur (Erreur: %v)\n", err)
-			}
-			if record == nil {
-				record = core.NewRecord(collection)
-				record.Set("user", userId)
-			}
-			if data.AppId != "" {
-				record.Set("app_id", data.AppId)
-			}
-			if data.PrivateKey != "" {
-				record.Set("private_key", data.PrivateKey)
-			}
-			if data.SessionId != "" {
-				record.Set("session_id", data.SessionId)
-			}
-
-			if err := app.Save(record); err != nil {
-				fmt.Printf("[BudgetTime] ERREUR LORS DU SAVE: %v\n", err)
-				return e.Error(500, fmt.Sprintf("Échec de la sauvegarde en base: %v", err), err)
-			}
-
-			fmt.Println("[BudgetTime] Réglages sauvegardés avec succès.")
-			return e.JSON(200, map[string]string{"message": "Settings saved"})
+			// On ne sauvegarde plus rien en base. L'utilisateur doit mettre le fichier .pem manuellement.
+			return e.JSON(200, map[string]string{
+				"message": "Note: Les réglages sont désormais gérés par fichiers .pem dans le dossier /pb/secrets du serveur.",
+			})
 		})
 
 		// Endpoint : Récupérer la liste des banques (ASPSPs)
@@ -424,16 +392,8 @@ func main() {
 				return e.JSON(500, map[string]any{"error": "Failed to parse EnableBanking response", "details": err.Error()})
 			}
 
-			if userId != "" {
-				collectionSettings, _ := app.FindCollectionByNameOrId("bank_settings")
-				recordSet, _ := app.FindFirstRecordByFilter("bank_settings", "user = {:userId}", dbx.Params{"userId": userId})
-				if recordSet == nil {
-					recordSet = core.NewRecord(collectionSettings)
-					recordSet.Set("user", userId)
-				}
-				recordSet.Set("session_id", sessionResult.SessionId)
-				app.Save(recordSet)
-			}
+			// On ne sauvegarde plus la session_id en base dans bank_settings.
+			// Elle sera découverte via /discover si besoin, ou passée par env var.
 
 			collectionConn, err := app.FindCollectionByNameOrId("bank_connections")
 			if err != nil {

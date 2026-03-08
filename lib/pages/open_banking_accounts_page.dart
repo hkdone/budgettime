@@ -44,7 +44,10 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
         _sessionId = settings['session_id'];
       });
     } catch (e) {
-      debugPrint('Erreur lors du chargement des réglages: $e');
+      debugPrint(
+        'Note: Réglages bancaires non trouvés en base (Optionnel): $e',
+      );
+      // On continue, le serveur utilisera peut-être les env vars ou le dossier secrets
     }
   }
 

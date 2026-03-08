@@ -55733,7 +55733,7 @@ break
 case 3:q=2
 k=p.pop()
 m=A.a7(k)
-A.wY().$1("Erreur lors du chargement des r\xe9glages: "+A.m(m))
+A.wY().$1("Note: R\xe9glages bancaires non trouv\xe9s en base (Optionnel): "+A.m(m))
 s=5
 break
 case 2:s=1
