@@ -99,7 +99,18 @@ class OpenBankingService {
     }
   }
 
-  /// 4. Découvre les connexions existantes (Mode Personnel)
+  /// 5. Lie un compte bancaire distant à un compte BudgetTime local
+  Future<void> linkAccount(String bankAccountId, String localAccountId) async {
+    try {
+      await pb
+          .collection('bank_accounts')
+          .update(bankAccountId, body: {'local_account_id': localAccountId});
+    } catch (e) {
+      throw Exception('Impossible de lier le compte: $e');
+    }
+  }
+
+  /// 6. Découvre les connexions existantes (Mode Personnel)
   Future<Map<String, dynamic>> discoverConnections() async {
     try {
       final url = Uri.parse(pb.baseURL).resolve('api/banking/discover');
@@ -161,12 +172,35 @@ class OpenBankingService {
       );
 
       if (response.statusCode == 200) {
-        return json.decode(response.body);
+        final data = json.decode(response.body);
+        return {
+          'app_id': data['app_id'],
+          'has_key': data['has_key'],
+          'sessions': data['sessions'] ?? [],
+        };
       } else {
         throw Exception('Erreur Settings: ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Impossible de charger les réglages : $e');
+    }
+  }
+
+  /// 6.5 Supprimer une session bancaire
+  Future<void> deleteSession(String sessionId) async {
+    try {
+      final url = Uri.parse(
+        pb.baseURL,
+      ).resolve('api/banking/sessions/$sessionId');
+      final response = await http.delete(
+        url,
+        headers: {'Authorization': pb.authStore.token},
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Erreur suppression session: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Impossible de supprimer la session : $e');
     }
   }
 

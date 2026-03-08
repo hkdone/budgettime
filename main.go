@@ -143,20 +143,23 @@ func main() {
 			appId, privateKey, err := getBankSettings(app)
 			hasKey := err == nil && privateKey != ""
 
-			// Récupérer les sessions (requisition_id) enregistrées pour cet utilisateur
-			var sessions []string
-			err = app.DB().Select("requisition_id").
+			// Récupérer les sessions détaillées
+			type sessionInfo struct {
+				Id            string `json:"id"`
+				RequisitionId string `json:"requisition_id"`
+				BankName      string `json:"bank_name"`
+				ValidUntil    string `json:"valid_until"`
+			}
+			sessionDetails := []sessionInfo{}
+			app.DB().Select("id", "requisition_id", "bank_name", "valid_until").
 				From("bank_connections").
 				Where(dbx.HashExp{"user": userId}).
-				Column(&sessions)
-			if err != nil {
-				sessions = []string{}
-			}
+				All(&sessionDetails)
 
 			return e.JSON(200, map[string]any{
 				"app_id":   appId,
 				"has_key":  hasKey,
-				"sessions": sessions,
+				"sessions": sessionDetails,
 			})
 		})
 
@@ -215,6 +218,30 @@ func main() {
 			return e.String(200, string(body))
 		})
 
+		// Endpoint : Supprimer une connexion bancaire (session)
+		banking.DELETE("/sessions/:id", func(e *core.RequestEvent) error {
+			if e.Auth == nil {
+				return e.Error(401, "Auth missing", nil)
+			}
+			id := e.Request.PathValue("id")
+			record, err := app.FindRecordById("bank_connections", id)
+			if err != nil {
+				return e.JSON(404, map[string]any{"error": "Session introuvable"})
+			}
+			if record.GetString("user") != e.Auth.Id {
+				return e.JSON(403, map[string]any{"error": "Accès refusé"})
+			}
+
+			// Optionnel : Supprimer aussi les comptes associés ?
+			// Probablement oui pour garder propre.
+			app.DB().Delete("bank_accounts", dbx.HashExp{"connection_id": id}).Execute()
+
+			if err := app.Delete(record); err != nil {
+				return e.JSON(500, map[string]any{"error": "Échec de suppression", "details": err.Error()})
+			}
+			return e.JSON(200, map[string]any{"message": "Session supprimée"})
+		})
+
 		// Endpoint : Découvrir les liaisons existantes
 		banking.GET("/discover", func(e *core.RequestEvent) error {
 			if e.Auth == nil {
@@ -267,7 +294,10 @@ func main() {
 
 				var accResult struct {
 					Accounts []struct {
-						Uid string `json:"uid"`
+						Uid      string `json:"uid"`
+						Iban     string `json:"iban"`
+						Name     string `json:"name"`
+						Currency string `json:"currency"`
 					} `json:"accounts"`
 				}
 				body, _ := io.ReadAll(resp.Body)
@@ -283,7 +313,15 @@ func main() {
 						recordAcc := core.NewRecord(collectionAcc)
 						recordAcc.Set("connection_id", conn.Id)
 						recordAcc.Set("remote_account_id", acc.Uid)
-						recordAcc.Set("iban", acc.Uid)
+						// Priorité IBAN > Name > UID
+						displayLabel := acc.Iban
+						if displayLabel == "" {
+							displayLabel = acc.Name
+						}
+						if displayLabel == "" {
+							displayLabel = acc.Uid
+						}
+						recordAcc.Set("iban", displayLabel)
 						if err := app.Save(recordAcc); err == nil {
 							totalAdded++
 						}
@@ -433,7 +471,10 @@ func main() {
 				SessionId string `json:"session_id"`
 				Status    string `json:"status"`
 				Accounts  []struct {
-					Uid string `json:"uid"`
+					Uid      string `json:"uid"`
+					Iban     string `json:"iban"`
+					Name     string `json:"name"`
+					Currency string `json:"currency"`
 				} `json:"accounts"`
 			}
 			if err := json.Unmarshal(body, &sessionResult); err != nil {
@@ -470,7 +511,15 @@ func main() {
 					recordAcc := core.NewRecord(collectionAcc)
 					recordAcc.Set("connection_id", recordConn.Id)
 					recordAcc.Set("remote_account_id", acc.Uid)
-					recordAcc.Set("iban", acc.Uid)
+					// Priorité IBAN > Name > UID
+					displayLabel := acc.Iban
+					if displayLabel == "" {
+						displayLabel = acc.Name
+					}
+					if displayLabel == "" {
+						displayLabel = acc.Uid
+					}
+					recordAcc.Set("iban", displayLabel)
 					if err := app.Save(recordAcc); err == nil {
 						compteCount++
 					}
@@ -488,9 +537,7 @@ func main() {
 			dateStart := e.Request.URL.Query().Get("date_start")
 			dateEnd := e.Request.URL.Query().Get("date_end")
 
-			if accountId == "" {
-				return e.JSON(400, map[string]any{"error": "account_id is required"})
-			}
+			fmt.Printf("[BudgetTime] Lancement Sync pour compte: %s\n", accountId)
 
 			var bankAccount struct {
 				RemoteAccountId string `db:"remote_account_id"`
@@ -552,11 +599,22 @@ func main() {
 				apiURL += fmt.Sprintf("?date_from=%s&date_to=%s", dateStart, dateEnd)
 			}
 
+			fmt.Printf("[BudgetTime] Appel EnableBanking Sync API: %s\n", apiURL)
 			req, err := http.NewRequest("GET", apiURL, nil)
 			req.Header.Set("Authorization", "Bearer "+token)
-			client := &http.Client{Timeout: 30 * time.Second}
+
+			client := &http.Client{Timeout: 45 * time.Second} // Timeout plus généreu pour le sync
 			resp, err := client.Do(req)
-			if err != nil || resp.StatusCode != 200 {
+			if err != nil {
+				fmt.Printf("[BudgetTime] Erreur Réseau Sync: %v\n", err)
+				return e.JSON(500, map[string]any{"error": "Sync Network Error", "details": err.Error()})
+			}
+			defer resp.Body.Close()
+
+			body, _ := io.ReadAll(resp.Body)
+			fmt.Printf("[BudgetTime] Réponse Sync Status: %d\n", resp.StatusCode)
+
+			if resp.StatusCode != 200 {
 				collectionLogs, _ := app.FindCollectionByNameOrId("bank_sync_logs")
 				if collectionLogs != nil {
 					recordLog := core.NewRecord(collectionLogs)
@@ -564,10 +622,8 @@ func main() {
 					recordLog.Set("status", "error")
 					app.Save(recordLog)
 				}
-				return e.JSON(500, map[string]any{"error": "API Call Failed"})
+				return e.JSON(resp.StatusCode, map[string]any{"error": "EnableBanking returns error", "details": string(body)})
 			}
-			defer resp.Body.Close()
-			body, _ := io.ReadAll(resp.Body)
 
 			var result struct {
 				Transactions []struct {

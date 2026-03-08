@@ -261,7 +261,6 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) {
           final currentRange = selectedDateRange;
-          final currentAccountId = selectedAccountId;
           if (isLoadingAccounts) {
             bankingService
                 .getConnectedAccounts()
@@ -307,7 +306,8 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
                               ),
                             );
                           }).toList(),
-                          onChanged: (value) => selectedAccountId = value,
+                          onChanged: (value) =>
+                              setDialogState(() => selectedAccountId = value),
                         ),
                       const SizedBox(height: 16),
                       ElevatedButton.icon(
@@ -338,7 +338,7 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
               if (!isLoadingAccounts && accounts.isNotEmpty)
                 ElevatedButton(
                   onPressed: () async {
-                    if (currentAccountId == null) {
+                    if (selectedAccountId == null) {
                       if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -361,7 +361,7 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
 
                     try {
                       final result = await bankingService.syncTransactions(
-                        currentAccountId,
+                        selectedAccountId!,
                         dateStart: currentRange != null
                             ? DateFormat(
                                 'yyyy-MM-dd',

@@ -18,7 +18,9 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
   bool _showManualList = false;
   String? _appId;
   bool _hasKey = false;
-  List<String> _sessions = [];
+  List<dynamic> _sessions = [];
+  List<dynamic> _connectedAccounts = [];
+  List<dynamic> _localAccounts = [];
 
   @override
   void initState() {
@@ -29,9 +31,25 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
   Future<void> _loadSettingsAndBanks() async {
     await _fetchSettings();
     if (_appId != null && _hasKey) {
-      _fetchAspsps();
+      await _fetchAspsps();
+      await _fetchConnectedData();
     } else {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _fetchConnectedData() async {
+    try {
+      final connected = await _bankingService.getConnectedAccounts();
+      final locals = await _bankingService.pb
+          .collection('accounts')
+          .getFullList();
+      setState(() {
+        _connectedAccounts = connected;
+        _localAccounts = locals.map((e) => e.toJson()).toList();
+      });
+    } catch (e) {
+      debugPrint('Erreur fetch data: $e');
     }
   }
 
@@ -41,7 +59,7 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
       setState(() {
         _appId = settings['app_id'];
         _hasKey = settings['has_key'] ?? false;
-        _sessions = List<String>.from(settings['sessions'] ?? []);
+        _sessions = settings['sessions'] ?? [];
       });
     } catch (e) {
       debugPrint(
@@ -88,6 +106,7 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
             backgroundColor: Colors.green,
           ),
         );
+        _fetchConnectedData();
       }
     } catch (e) {
       if (localContext.mounted) {
@@ -220,32 +239,65 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
                 const SizedBox(height: 20),
                 const Divider(),
                 const Text(
-                  'Sessions Actives (Requisitions) :',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  'Sessions Bancaires Actives :',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 8),
-                ..._sessions.map(
-                  (s) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4.0),
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                const SizedBox(height: 12),
+                ..._sessions.map((s) {
+                  final String requisitionId = s['requisition_id'] ?? '';
+                  final String bankName = s['bank_name'] ?? 'Banque';
+                  final String validUntil = s['valid_until'] ?? '';
+
+                  int daysLeft = 0;
+                  if (validUntil.isNotEmpty) {
+                    try {
+                      final expiry = DateTime.parse(validUntil);
+                      daysLeft = expiry.difference(DateTime.now()).inDays;
+                    } catch (_) {}
+                  }
+
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      dense: true,
+                      leading: Icon(
+                        Icons.vpn_key,
+                        color: daysLeft > 7 ? Colors.green : Colors.orange,
                       ),
-                      child: SelectableText(
-                        s,
-                        style: const TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 10,
-                          color: Colors.blue,
+                      title: Text(
+                        bankName,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'ID: ${requisitionId.length > 8 ? "${requisitionId.substring(0, 8)}..." : requisitionId}',
+                          ),
+                          Text(
+                            daysLeft > 0
+                                ? 'Expire dans $daysLeft jours'
+                                : 'Expirée ou expire aujourd\'hui',
+                            style: TextStyle(
+                              color: daysLeft > 10 ? Colors.grey : Colors.red,
+                              fontWeight: daysLeft > 10
+                                  ? null
+                                  : FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.red,
+                          size: 20,
                         ),
+                        onPressed: () => _confirmDeleteSession(s['id']),
                       ),
                     ),
-                  ),
-                ),
+                  );
+                }),
               ],
             ],
           ),
@@ -267,6 +319,41 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
               }
             },
             child: const Text('Actualiser'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteSession(String sessionId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Supprimer cette session ?'),
+        content: const Text(
+          'Cela réinitialisera la liaison bancaire pour cette banque. Vous devrez vous reconnecter si nécessaire.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await _bankingService.deleteSession(sessionId);
+                _fetchSettings();
+                _fetchConnectedData();
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(e.toString())));
+                }
+              }
+            },
+            child: const Text('Supprimer', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -361,6 +448,114 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
                     ),
                   ),
                   const SizedBox(height: 40),
+                  const SizedBox(height: 24),
+                  if (_connectedAccounts.isNotEmpty) ...[
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 24.0),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Mes Comptes Bancaires Liés :',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _connectedAccounts.length,
+                      itemBuilder: (context, index) {
+                        final acc = _connectedAccounts[index];
+                        final connection = acc['expand']?['connection_id'];
+                        final bankName = connection?['bank_name'] ?? 'Banque';
+                        final iban = acc['iban'] ?? 'Inconnu';
+
+                        return Card(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 8,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.account_balance,
+                                      color: Colors.blue,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        '$bankName - $iban',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Lier à un compte BudgetTime :',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                DropdownButtonFormField<String>(
+                                  initialValue: acc['local_account_id'],
+                                  isExpanded: true,
+                                  hint: const Text('Choisir un compte local'),
+                                  items: [
+                                    const DropdownMenuItem<String>(
+                                      value: null,
+                                      child: Text('Non lié'),
+                                    ),
+                                    ..._localAccounts.map((local) {
+                                      return DropdownMenuItem<String>(
+                                        value: local['id'],
+                                        child: Text(
+                                          local['name'] ?? 'Sans nom',
+                                        ),
+                                      );
+                                    }),
+                                  ],
+                                  onChanged: (val) async {
+                                    try {
+                                      await _bankingService.linkAccount(
+                                        acc['id'],
+                                        val ?? '',
+                                      );
+                                      _fetchConnectedData();
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(content: Text(e.toString())),
+                                        );
+                                      }
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  const Divider(),
+                  const SizedBox(height: 16),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 32.0),
                     child: ElevatedButton.icon(
