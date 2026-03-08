@@ -296,16 +296,24 @@ func main() {
 
 				var accResult struct {
 					Accounts []struct {
-						Uid      string `json:"uid"`
-						Iban     string `json:"iban"`
-						Bban     string `json:"bban"`
+						Uid       string `json:"uid"`
+						AccountId struct {
+							Iban string `json:"iban"`
+							Bban string `json:"bban"`
+						} `json:"account_id"`
+						AllAccountIds []struct {
+							Identification string `json:"identification"`
+							SchemeName     string `json:"scheme_name"`
+						} `json:"all_account_ids"`
 						Name     string `json:"name"`
 						Currency string `json:"currency"`
 					} `json:"accounts"`
 				}
 				body, _ := io.ReadAll(resp.Body)
 				fmt.Printf("[BudgetTime] Discovery Raw Body: %s\n", string(body))
-				json.Unmarshal(body, &accResult)
+				if err := json.Unmarshal(body, &accResult); err != nil {
+					fmt.Printf("[BudgetTime] Error unmarshaling discover: %v\n", err)
+				}
 
 				for _, acc := range accResult.Accounts {
 					// Vérifier si le compte existe déjà
@@ -317,18 +325,26 @@ func main() {
 						recordAcc := core.NewRecord(collectionAcc)
 						recordAcc.Set("connection_id", conn.Id)
 						recordAcc.Set("remote_account_id", acc.Uid)
-						// Priorité IBAN > BBAN > (Banque + Name) > UID
-						displayLabel := acc.Iban
-						if displayLabel == "" {
-							displayLabel = acc.Bban
+						// Priorité IBAN > BBAN > AllAccountIds > Name > UID
+						displayLabel := acc.Name
+						ibanValue := acc.AccountId.Iban
+						if ibanValue == "" {
+							ibanValue = acc.AccountId.Bban
 						}
-						if displayLabel == "" {
-							displayLabel = conn.BankName
-							if acc.Name != "" {
-								displayLabel += " - " + acc.Name
+						if ibanValue == "" {
+							for _, alt := range acc.AllAccountIds {
+								if alt.SchemeName == "IBAN" || alt.SchemeName == "BBAN" {
+									ibanValue = alt.Identification
+									break
+								}
 							}
-							if acc.Uid != "" {
-								displayLabel += " (" + acc.Uid[:8] + ")"
+						}
+
+						if ibanValue != "" {
+							if displayLabel != "" {
+								displayLabel += " - " + ibanValue
+							} else {
+								displayLabel = ibanValue
 							}
 						}
 						recordAcc.Set("iban", displayLabel)
@@ -484,6 +500,10 @@ func main() {
 						Iban string `json:"iban"`
 						Bban string `json:"bban"`
 					} `json:"account_id"`
+					AllAccountIds []struct {
+						Identification string `json:"identification"`
+						SchemeName     string `json:"scheme_name"`
+					} `json:"all_account_ids"`
 					Name     string `json:"name"`
 					Currency string `json:"currency"`
 				} `json:"accounts"`
@@ -528,6 +548,18 @@ func main() {
 					if ibanValue == "" {
 						ibanValue = acc.AccountId.Bban
 					}
+
+					// Fallback sur all_account_ids si IBAN absent de account_id
+					if ibanValue == "" {
+						for _, alt := range acc.AllAccountIds {
+							if alt.SchemeName == "IBAN" || alt.SchemeName == "BBAN" {
+								ibanValue = alt.Identification
+								break
+							}
+						}
+					}
+
+					fmt.Printf("[BudgetTime] Account ID: %s, Name: %s, Extracted IBAN: %s\n", acc.Uid, acc.Name, ibanValue)
 
 					if ibanValue != "" {
 						if displayLabel != "" {

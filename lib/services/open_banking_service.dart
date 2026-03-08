@@ -146,10 +146,9 @@ class OpenBankingService {
       if (dateEnd != null) urlStr += '&date_end=$dateEnd';
 
       final url = Uri.parse(urlStr);
-      final response = await http.get(
-        url,
-        headers: {'Authorization': pb.authStore.token},
-      );
+      final response = await http
+          .get(url, headers: {'Authorization': pb.authStore.token})
+          .timeout(const Duration(seconds: 30));
 
       final data = json.decode(response.body);
       if (response.statusCode == 200) {
