@@ -58,6 +58,12 @@ if (Test-Path budgettime/pb_migrations) {
     Write-Host "Keeping existing migrations in budgettime subfolder..." 
 }
 # Note: we no longer copy from root to subfolder as the source of truth is now IN the subfolder
+
+# Copy Go source files for Home Assistant multi-stage build
+Write-Host "Copying Go source files for HA multi-stage build..."
+Copy-Item main.go budgettime/
+Copy-Item go.mod budgettime/
+Copy-Item go.sum budgettime/
 if (Test-Path docker-compose.yml) {
     Copy-Item docker-compose.yml budgettime/
 }
