@@ -219,7 +219,7 @@ func main() {
 		})
 
 		// Endpoint : Supprimer une connexion bancaire (session)
-		banking.DELETE("/sessions/:id", func(e *core.RequestEvent) error {
+		banking.DELETE("/sessions/{id}", func(e *core.RequestEvent) error {
 			if e.Auth == nil {
 				return e.Error(401, "Auth missing", nil)
 			}
@@ -511,7 +511,6 @@ func main() {
 					recordAcc := core.NewRecord(collectionAcc)
 					recordAcc.Set("connection_id", recordConn.Id)
 					recordAcc.Set("remote_account_id", acc.Uid)
-					// Priorité IBAN > Name > UID
 					displayLabel := acc.Iban
 					if displayLabel == "" {
 						displayLabel = acc.Name
@@ -519,13 +518,18 @@ func main() {
 					if displayLabel == "" {
 						displayLabel = acc.Uid
 					}
+					// If it still looks like a technical ID but we have a bank name, prefix it
+					if strings.Contains(displayLabel, "-") && len(displayLabel) > 20 {
+						displayLabel = bankName + " (" + displayLabel[:8] + ")"
+					}
+
 					recordAcc.Set("iban", displayLabel)
 					if err := app.Save(recordAcc); err == nil {
 						compteCount++
 					}
 				}
 			}
-			fmt.Printf("[BudgetTime] %d comptes sauvegardés pour cette liaison.\n", compteCount)
+			fmt.Printf("[BudgetTime] %d comptes sauvegardés (Total détectés: %d)\n", compteCount, len(sessionResult.Accounts))
 
 			// Rediriger vers l'application au lieu d'afficher du JSON
 			return e.Redirect(302, "/")
@@ -672,6 +676,8 @@ func main() {
 					}
 				}
 			}
+
+			fmt.Printf("[BudgetTime] Sync fini: %d transactions reçues, %d nouvelles insérées.\n", len(result.Transactions), insertedCount)
 
 			collectionLogs, _ := app.FindCollectionByNameOrId("bank_sync_logs")
 			if collectionLogs != nil {
