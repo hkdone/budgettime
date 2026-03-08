@@ -91,7 +91,7 @@ class OpenBankingService {
           .collection('bank_accounts')
           .getFullList(
             expand:
-                'connection_id', // Pour afficher 'Banque Connectée' ou le nom
+                'connection_id,local_account_id', // Expansion pour afficher noms banques et comptes locaux
           );
       return records.map((r) => r.toJson()).toList();
     } catch (e) {

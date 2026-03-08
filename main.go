@@ -258,8 +258,9 @@ func main() {
 			var connections []struct {
 				Id            string `db:"id"`
 				RequisitionId string `db:"requisition_id"`
+				BankName      string `db:"bank_name"`
 			}
-			err = app.DB().Select("id", "requisition_id").
+			err = app.DB().Select("id", "requisition_id", "bank_name").
 				From("bank_connections").
 				Where(dbx.HashExp{"user": userId}).
 				All(&connections)
@@ -313,13 +314,16 @@ func main() {
 						recordAcc := core.NewRecord(collectionAcc)
 						recordAcc.Set("connection_id", conn.Id)
 						recordAcc.Set("remote_account_id", acc.Uid)
-						// Priorité IBAN > Name > UID
+						// Priorité IBAN > (Banque + Name) > UID
 						displayLabel := acc.Iban
 						if displayLabel == "" {
-							displayLabel = acc.Name
-						}
-						if displayLabel == "" {
-							displayLabel = acc.Uid
+							displayLabel = conn.BankName
+							if acc.Name != "" {
+								displayLabel += " - " + acc.Name
+							}
+							if acc.Uid != "" {
+								displayLabel += " (" + acc.Uid[:8] + ")"
+							}
 						}
 						recordAcc.Set("iban", displayLabel)
 						if err := app.Save(recordAcc); err == nil {
@@ -642,7 +646,14 @@ func main() {
 					RemittanceInfo string `json:"remittance_information_unstructured"`
 				} `json:"transactions"`
 			}
-			json.Unmarshal(body, &result)
+			if err := json.Unmarshal(body, &result); err != nil {
+				fmt.Printf("[BudgetTime] Erreur Unmarshal Sync: %v\n", err)
+				return e.JSON(500, map[string]any{"error": "Failed to parse transactions", "details": err.Error()})
+			}
+
+			if len(result.Transactions) == 0 {
+				fmt.Printf("[BudgetTime] EnableBanking a renvoyé 0 transactions pour cette période. Corps brut: %s\n", string(body))
+			}
 
 			collectionInbox, _ := app.FindCollectionByNameOrId("raw_inbox")
 			insertedCount := 0

@@ -299,11 +299,24 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
                             labelText: 'Compte',
                           ),
                           items: accounts.map((acc) {
+                            final localName =
+                                acc['expand']?['local_account_id']?['name'];
+                            final bankName =
+                                acc['expand']?['connection_id']?['bank_name'] ??
+                                'Banque';
+                            final iban =
+                                acc['iban'] ?? acc['remote_account_id'];
+
+                            String label = iban;
+                            if (localName != null) {
+                              label = '$localName ($iban)';
+                            } else if (bankName != 'Banque') {
+                              label = '$bankName - $iban';
+                            }
+
                             return DropdownMenuItem<String>(
                               value: acc['remote_account_id'],
-                              child: Text(
-                                acc['iban'] ?? acc['remote_account_id'],
-                              ),
+                              child: Text(label),
                             );
                           }).toList(),
                           onChanged: (value) =>
