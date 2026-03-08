@@ -299,10 +299,14 @@ func main() {
 			state := e.Request.URL.Query().Get("state")
 			userId := ""
 
+			bankName := "Banque Connectée"
 			if len(state) > 3 && strings.HasPrefix(state, "bt_") {
 				partsArray := strings.Split(state, "_")
 				if len(partsArray) >= 2 {
 					userId = partsArray[1]
+				}
+				if len(partsArray) >= 3 {
+					bankName = strings.ReplaceAll(partsArray[2], "+", " ")
 				}
 			}
 
@@ -362,7 +366,7 @@ func main() {
 			}
 			recordConn := core.NewRecord(collectionConn)
 			recordConn.Set("user", userId)
-			recordConn.Set("bank_name", "Banque Connectée")
+			recordConn.Set("bank_name", bankName)
 			recordConn.Set("requisition_id", sessionResult.SessionId)
 			recordConn.Set("valid_until", time.Now().AddDate(0, 0, 90).Format("2006-01-02 15:04:05.000Z"))
 
@@ -381,8 +385,8 @@ func main() {
 				}
 			}
 
-			e.Response.Header().Set("Content-Type", "application/json; charset=utf-8")
-			return e.String(200, string(body))
+			// Rediriger vers l'application au lieu d'afficher du JSON
+			return e.Redirect(302, "/")
 		})
 
 		// Endpoint : Synchronisation des transactions
