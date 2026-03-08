@@ -297,6 +297,7 @@ func main() {
 					Accounts []struct {
 						Uid      string `json:"uid"`
 						Iban     string `json:"iban"`
+						Bban     string `json:"bban"`
 						Name     string `json:"name"`
 						Currency string `json:"currency"`
 					} `json:"accounts"`
@@ -314,8 +315,11 @@ func main() {
 						recordAcc := core.NewRecord(collectionAcc)
 						recordAcc.Set("connection_id", conn.Id)
 						recordAcc.Set("remote_account_id", acc.Uid)
-						// Priorité IBAN > (Banque + Name) > UID
+						// Priorité IBAN > BBAN > (Banque + Name) > UID
 						displayLabel := acc.Iban
+						if displayLabel == "" {
+							displayLabel = acc.Bban
+						}
 						if displayLabel == "" {
 							displayLabel = conn.BankName
 							if acc.Name != "" {
@@ -477,6 +481,7 @@ func main() {
 				Accounts  []struct {
 					Uid      string `json:"uid"`
 					Iban     string `json:"iban"`
+					Bban     string `json:"bban"`
 					Name     string `json:"name"`
 					Currency string `json:"currency"`
 				} `json:"accounts"`
@@ -517,14 +522,17 @@ func main() {
 					recordAcc.Set("remote_account_id", acc.Uid)
 					displayLabel := acc.Iban
 					if displayLabel == "" {
+						displayLabel = acc.Bban
+					}
+					if displayLabel == "" {
 						displayLabel = acc.Name
 					}
 					if displayLabel == "" {
 						displayLabel = acc.Uid
 					}
 					// If it still looks like a technical ID but we have a bank name, prefix it
-					if strings.Contains(displayLabel, "-") && len(displayLabel) > 20 {
-						displayLabel = bankName + " (" + displayLabel[:8] + ")"
+					if (displayLabel == "" || (strings.Contains(displayLabel, "-") && len(displayLabel) > 20)) && bankName != "" {
+						displayLabel = bankName + " (" + acc.Uid[:8] + ")"
 					}
 
 					recordAcc.Set("iban", displayLabel)
@@ -598,14 +606,17 @@ func main() {
 			token, err := generateEnableBankingJWT(appId, privateKey)
 
 			apiURL := fmt.Sprintf("https://api.enablebanking.com/accounts/%s/transactions", bankAccount.RemoteAccountId)
+			// AJOUT INDISPENSABLE : session_id
+			qParams := ""
 			if dateStart != "" && dateEnd != "" {
-				apiURL += fmt.Sprintf("?date_from=%s&date_to=%s", dateStart, dateEnd)
+				qParams = fmt.Sprintf("date_from=%s&date_to=%s", dateStart, dateEnd)
 			} else {
 				now := time.Now()
 				dateEnd = now.Format("2006-01-02")
-				dateStart = now.AddDate(0, 0, -10).Format("2006-01-02")
-				apiURL += fmt.Sprintf("?date_from=%s&date_to=%s", dateStart, dateEnd)
+				dateStart = now.AddDate(0, 0, -30).Format("2006-01-02") // 30 jours par défaut
+				qParams = fmt.Sprintf("date_from=%s&date_to=%s", dateStart, dateEnd)
 			}
+			apiURL += "?" + qParams + "&session_id=" + bankConnection.RequisitionId
 
 			fmt.Printf("[BudgetTime] Appel EnableBanking Sync API: %s\n", apiURL)
 			req, err := http.NewRequest("GET", apiURL, nil)
