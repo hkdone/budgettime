@@ -573,10 +573,7 @@ func main() {
 						displayLabel = acc.Uid
 					}
 
-					// Si c'est encore très technique (ex: UUID) et qu'on a le nom de la banque
-					if len(displayLabel) > 20 && strings.Contains(displayLabel, "-") && bankName != "" {
-						displayLabel = bankName + " (" + displayLabel[:8] + ")"
-					}
+					// On ne tronque plus, on garde le label complet (Nom + IBAN)
 
 					recordAcc.Set("iban", displayLabel)
 					if err := app.Save(recordAcc); err == nil {

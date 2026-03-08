@@ -435,34 +435,31 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
                       );
 
                       if (context.mounted) {
-                        Navigator.of(
-                          context,
-                          rootNavigator: true,
-                        ).pop(); // Force close loader
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              'Sync terminée: ${result['inserted']} transactions ajoutées.',
+                              'Sync terminée: ${result['inserted'] ?? 0} transactions ajoutées.',
                             ),
                             backgroundColor: Colors.green,
                           ),
                         );
-                        ref.read(inboxControllerProvider.notifier).refresh();
                       }
                     } catch (e) {
                       if (context.mounted) {
-                        Navigator.of(
-                          context,
-                          rootNavigator: true,
-                        ).pop(); // Force close loader
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              "Synchro échouée ou trop longue. Vérifiez l'inbox dans quelques instants. Erreur: $e",
+                              'Synchro échouée ou trop longue (mais peut-être en cours). Erreur: $e',
                             ),
                             backgroundColor: Colors.red,
                           ),
                         );
+                      }
+                    } finally {
+                      if (context.mounted) {
+                        Navigator.of(context, rootNavigator: true).maybePop();
+                        // Rafraîchissement forcé du provider
+                        ref.read(inboxControllerProvider.notifier).refresh();
                       }
                     }
                   },
