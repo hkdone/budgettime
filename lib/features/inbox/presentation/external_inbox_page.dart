@@ -256,6 +256,9 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
       'status': 'effective',
       'id': null,
       'fromInbox': true,
+      // Auto-Mapping du compte
+      if (item.metadata != null && item.metadata!['local_account_id'] != null)
+        'account': item.metadata!['local_account_id'],
     };
 
     // 3. Navigate

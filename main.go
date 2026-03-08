@@ -19,6 +19,7 @@ import (
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/plugins/jsvm"
+	"github.com/pocketbase/pocketbase/tools/cron"
 )
 
 // getBankSettings récupère les réglages Enable Banking pour un utilisateur donné
@@ -92,6 +93,46 @@ func main() {
 	// Exposition des endpoints Enable Banking
 	app.OnServe().BindFunc(func(e *core.ServeEvent) error {
 		fmt.Println("[BudgetTime] Initialisation des routes banking...")
+
+		// Initialiser le système Cron
+		scheduler := cron.New()
+		errCron := scheduler.Add("daily_sync", "0 8 * * *", func() {
+			fmt.Println("[BudgetTime] Lancement CRON de synchronisation quotidienne (08:00)")
+			now := time.Now()
+			dateStart := now.AddDate(0, 0, -1).Format("2006-01-02") // Hier
+			dateEnd := now.Format("2006-01-02")                     // Aujourd'hui
+
+			var linkedAccounts []struct {
+				LocalAccountId string `db:"local_account_id"`
+			}
+			err := app.DB().Select("local_account_id").
+				From("bank_accounts").
+				Where(dbx.Not(dbx.HashExp{"local_account_id": ""})).
+				AndWhere(dbx.Not(dbx.HashExp{"local_account_id": nil})).
+				All(&linkedAccounts)
+
+			if err == nil {
+				if len(linkedAccounts) == 0 {
+					fmt.Println("[BudgetTime] CRON ignoré : aucun compte bancaire lié localement.")
+					return
+				}
+				for _, acc := range linkedAccounts {
+					inserted, errSync := runSyncForAccount(app, acc.LocalAccountId, dateStart, dateEnd)
+					if errSync != nil {
+						fmt.Printf("[BudgetTime] Erreur Sync Cron pour compte %s: %v\n", acc.LocalAccountId, errSync)
+					} else {
+						fmt.Printf("[BudgetTime] Succès Sync Cron pour compte %s: %d insérées\n", acc.LocalAccountId, inserted)
+					}
+				}
+			} else {
+				fmt.Printf("[BudgetTime] Erreur lecture bank_accounts pour cron: %v\n", err)
+			}
+		})
+		if errCron != nil {
+			fmt.Printf("[BudgetTime] Erreur création Cron: %v\n", errCron)
+		} else {
+			scheduler.Start()
+		}
 
 		// Diagnostic au démarrage : Vérifier si les collections bancaires existent
 		collectionsToCheck := []string{"raw_inbox"}
@@ -615,244 +656,16 @@ func main() {
 			dateStart := e.Request.URL.Query().Get("date_start")
 			dateEnd := e.Request.URL.Query().Get("date_end")
 
-			fmt.Printf("[BudgetTime] Lancement Sync pour compte: %s\n", accountId)
-
-			var bankAccount struct {
-				RemoteAccountId string `db:"remote_account_id"`
-				ConnectionId    string `db:"connection_id"`
-			}
-			err := app.DB().Select("remote_account_id", "connection_id").
-				From("bank_accounts").
-				Where(dbx.HashExp{"local_account_id": accountId}).
-				Limit(1).
-				One(&bankAccount)
+			insertedCount, err := runSyncForAccount(app, accountId, dateStart, dateEnd)
 			if err != nil {
-				err = app.DB().Select("remote_account_id", "connection_id").
-					From("bank_accounts").
-					Where(dbx.HashExp{"remote_account_id": accountId}).
-					Limit(1).
-					One(&bankAccount)
-				if err != nil {
-					return e.JSON(404, map[string]any{"error": "Compte bancaire non trouvé localement"})
+				status := 500
+				errMsg := err.Error()
+				if strings.Contains(errMsg, "non trouvé") || strings.Contains(errMsg, "introuvable") {
+					status = 404
+				} else if strings.Contains(errMsg, "Rate limit") {
+					status = 429
 				}
-			}
-
-			var bankConnection struct {
-				Id            string `db:"id"`
-				RequisitionId string `db:"requisition_id"`
-				UserId        string `db:"user"`
-			}
-			err = app.DB().Select("id", "requisition_id", "user").
-				From("bank_connections").
-				Where(dbx.HashExp{"id": bankAccount.ConnectionId}).
-				Limit(1).
-				One(&bankConnection)
-			if err != nil {
-				return e.JSON(404, map[string]any{"error": "Connexion parente introuvable"})
-			}
-
-			var count int
-			app.DB().Select("count(id)").From("bank_sync_logs").
-				Where(dbx.HashExp{"connection_id": bankConnection.Id, "status": "success"}).
-				AndWhere(dbx.NewExp("created > datetime('now', '-1 hour')")).
-				Row(&count)
-
-			if count > 0 {
-				return e.JSON(429, map[string]any{"error": "Rate limit: une synchro par heure maximum"})
-			}
-
-			appId, privateKey, err := getBankSettings(app)
-			if err != nil {
-				return e.JSON(500, map[string]any{"error": "Fichier .pem manquant"})
-			}
-			token, err := generateEnableBankingJWT(appId, privateKey)
-
-			apiURL := fmt.Sprintf("https://api.enablebanking.com/accounts/%s/transactions", bankAccount.RemoteAccountId)
-			// AJOUT INDISPENSABLE : session_id
-			qParams := ""
-			if dateStart != "" && dateEnd != "" {
-				qParams = fmt.Sprintf("date_from=%s&date_to=%s", dateStart, dateEnd)
-			} else {
-				now := time.Now()
-				dateEnd = now.Format("2006-01-02")
-				dateStart = now.AddDate(0, 0, -90).Format("2006-01-02") // 90 jours par défaut pour le sync initial
-				qParams = fmt.Sprintf("date_from=%s&date_to=%s", dateStart, dateEnd)
-			}
-			apiURL += "?" + qParams + "&session_id=" + bankConnection.RequisitionId + "&strategy=longest"
-
-			fmt.Printf("[BudgetTime] Appel EnableBanking Sync API: %s\n", apiURL)
-			req, err := http.NewRequest("GET", apiURL, nil)
-			req.Header.Set("Authorization", "Bearer "+token)
-
-			client := &http.Client{Timeout: 45 * time.Second} // Timeout plus généreu pour le sync
-			resp, err := client.Do(req)
-			if err != nil {
-				fmt.Printf("[BudgetTime] Erreur Réseau Sync: %v\n", err)
-				return e.JSON(500, map[string]any{"error": "Sync Network Error", "details": err.Error()})
-			}
-			defer resp.Body.Close()
-
-			body, _ := io.ReadAll(resp.Body)
-			fmt.Printf("[BudgetTime] Réponse Sync Status: %d\n", resp.StatusCode)
-			rawBodyLog := string(body)
-			if len(rawBodyLog) > 1000 {
-				fmt.Printf("[BudgetTime] Sync Raw Body (tronqué): %s...\n", rawBodyLog[:1000])
-			} else {
-				fmt.Printf("[BudgetTime] Sync Raw Body: %s\n", rawBodyLog)
-			}
-
-			// Diagnostic Balances & Update Balance
-			balanceURL := fmt.Sprintf("https://api.enablebanking.com/accounts/%s/balances?session_id=%s", bankAccount.RemoteAccountId, bankConnection.RequisitionId)
-			bReq, _ := http.NewRequest("GET", balanceURL, nil)
-			bReq.Header.Set("Authorization", "Bearer "+token)
-			bResp, errB := client.Do(bReq)
-			if errB == nil {
-				bBody, _ := io.ReadAll(bResp.Body)
-				fmt.Printf("[BudgetTime] Diagnostic Balances: %s (Status %v)\n", string(bBody), bResp.StatusCode)
-				bResp.Body.Close()
-
-				// Mise à jour du solde local
-				var bResult struct {
-					Balances []map[string]any `json:"balances"`
-				}
-				if json.Unmarshal(bBody, &bResult) == nil && len(bResult.Balances) > 0 {
-					finalBalance := ""
-					for _, b := range bResult.Balances {
-						if name, _ := b["name"].(string); name == "AccountingBalance" {
-							if am, ok := b["balance_amount"].(map[string]any); ok {
-								finalBalance, _ = am["amount"].(string)
-							}
-							break
-						}
-					}
-					// Fallback au premier solde si AccountingBalance non trouvé
-					if finalBalance == "" {
-						if am, ok := bResult.Balances[0]["balance_amount"].(map[string]any); ok {
-							finalBalance, _ = am["amount"].(string)
-						}
-					}
-
-					if finalBalance != "" {
-						app.DB().NewQuery("UPDATE bank_accounts SET balance = {:bal} WHERE remote_account_id = {:id}").
-							Bind(dbx.Params{"bal": finalBalance, "id": bankAccount.RemoteAccountId}).
-							Execute()
-					}
-				}
-			} else {
-				fmt.Printf("[BudgetTime] Diagnostic Balances: Echec Appel\n")
-			}
-
-			if resp.StatusCode != 200 {
-				collectionLogs, _ := app.FindCollectionByNameOrId("bank_sync_logs")
-				if collectionLogs != nil {
-					recordLog := core.NewRecord(collectionLogs)
-					recordLog.Set("connection_id", bankConnection.Id)
-					recordLog.Set("status", "error")
-					app.Save(recordLog)
-				}
-				return e.JSON(resp.StatusCode, map[string]any{"error": "EnableBanking returns error", "details": string(body)})
-			}
-
-			var result struct {
-				Transactions []map[string]any `json:"transactions"`
-			}
-			if err := json.Unmarshal(body, &result); err != nil {
-				fmt.Printf("[BudgetTime] Erreur Unmarshal Sync: %v\n", err)
-				return e.JSON(500, map[string]any{"error": "Failed to parse transactions", "details": err.Error()})
-			}
-
-			if len(result.Transactions) == 0 {
-				fmt.Printf("[BudgetTime] EnableBanking a renvoyé 0 transactions pour cette période.\n")
-			}
-
-			collectionInbox, _ := app.FindCollectionByNameOrId("raw_inbox")
-			insertedCount := 0
-			for _, t := range result.Transactions {
-				// Extraction flexible des données
-				tId, _ := t["transaction_id"].(string)
-				if tId == "" {
-					tId, _ = t["entry_reference"].(string)
-				}
-				if tId == "" {
-					tId, _ = t["internal_transaction_id"].(string)
-				}
-				// Si toujours pas d'ID, hash du payload
-				if tId == "" {
-					p, _ := json.Marshal(t)
-					h := sha256.Sum256(p)
-					tId = fmt.Sprintf("h%x", h[:8])
-				}
-
-				bookingDate, _ := t["booking_date"].(string)
-				if bookingDate == "" {
-					bookingDate, _ = t["transaction_date"].(string)
-				}
-				if bookingDate == "" {
-					bookingDate = time.Now().Format("2006-01-02")
-				}
-
-				amountValue := ""
-				// Essayer amount.value (notre ancien format) ou transaction_amount.amount (le nouveau vu dans doc)
-				if am, ok := t["amount"].(map[string]any); ok {
-					amountValue, _ = am["value"].(string)
-				} else if am, ok := t["transaction_amount"].(map[string]any); ok {
-					amountValue, _ = am["amount"].(string)
-				}
-
-				// Signe basé sur credit_debit_indicator (DBIT = dépense = négatif)
-				if cd, _ := t["credit_debit_indicator"].(string); cd == "DBIT" && !strings.HasPrefix(amountValue, "-") {
-					amountValue = "-" + amountValue
-				}
-
-				label := ""
-				if cr, ok := t["creditor"].(map[string]any); ok {
-					label, _ = cr["name"].(string)
-				}
-				if label == "" {
-					if de, ok := t["debtor"].(map[string]any); ok {
-						label, _ = de["name"].(string)
-					}
-				}
-				if label == "" {
-					label, _ = t["remittance_information_unstructured"].(string)
-				}
-				if label == "" {
-					if rems, ok := t["remittance_information"].([]any); ok && len(rems) > 0 {
-						label, _ = rems[0].(string)
-					}
-				}
-				if label == "" {
-					label = "Transaction bancaire"
-				}
-
-				var existing int
-				app.DB().Select("count(id)").From("raw_inbox").
-					Where(dbx.HashExp{"raw_payload": tId, "user": bankConnection.UserId}).
-					Row(&existing)
-
-				if existing == 0 {
-					record := core.NewRecord(collectionInbox)
-					record.Set("date", bookingDate+" 12:00:00.000Z")
-					record.Set("label", label)
-					record.Set("amount", amountValue)
-					record.Set("user", bankConnection.UserId)
-					record.Set("is_processed", false)
-					record.Set("raw_payload", tId)
-					if err := app.Save(record); err == nil {
-						insertedCount++
-					}
-				}
-			}
-
-			fmt.Printf("[BudgetTime] Sync fini: %d transactions reçues, %d nouvelles insérées.\n", len(result.Transactions), insertedCount)
-
-			collectionLogs, _ := app.FindCollectionByNameOrId("bank_sync_logs")
-			if collectionLogs != nil {
-				recordLog := core.NewRecord(collectionLogs)
-				recordLog.Set("connection_id", bankConnection.Id)
-				recordLog.Set("status", "success")
-				recordLog.Set("transactions_count", insertedCount)
-				app.Save(recordLog)
+				return e.JSON(status, map[string]any{"error": errMsg})
 			}
 
 			return e.JSON(200, map[string]any{
@@ -871,6 +684,262 @@ func main() {
 	if err := app.Start(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// runSyncForAccount effectue la synchro pour un compte donné via l'API EnableBanking
+func runSyncForAccount(app *pocketbase.PocketBase, accountId, dateStart, dateEnd string) (int, error) {
+	fmt.Printf("[BudgetTime] Lancement Sync pour compte: %s\n", accountId)
+
+	var bankAccount struct {
+		RemoteAccountId string `db:"remote_account_id"`
+		ConnectionId    string `db:"connection_id"`
+		LocalAccountId  string `db:"local_account_id"`
+	}
+	err := app.DB().Select("remote_account_id", "connection_id", "local_account_id").
+		From("bank_accounts").
+		Where(dbx.HashExp{"local_account_id": accountId}).
+		Limit(1).
+		One(&bankAccount)
+	if err != nil {
+		err = app.DB().Select("remote_account_id", "connection_id", "local_account_id").
+			From("bank_accounts").
+			Where(dbx.HashExp{"remote_account_id": accountId}).
+			Limit(1).
+			One(&bankAccount)
+		if err != nil {
+			return 0, fmt.Errorf("Compte bancaire non trouvé localement")
+		}
+	}
+
+	var bankConnection struct {
+		Id            string `db:"id"`
+		RequisitionId string `db:"requisition_id"`
+		UserId        string `db:"user"`
+	}
+	err = app.DB().Select("id", "requisition_id", "user").
+		From("bank_connections").
+		Where(dbx.HashExp{"id": bankAccount.ConnectionId}).
+		Limit(1).
+		One(&bankConnection)
+	if err != nil {
+		return 0, fmt.Errorf("Connexion parente introuvable")
+	}
+
+	var count int
+	app.DB().Select("count(id)").From("bank_sync_logs").
+		Where(dbx.HashExp{"connection_id": bankConnection.Id, "status": "success"}).
+		AndWhere(dbx.NewExp("created > datetime('now', '-1 hour')")).
+		Row(&count)
+
+	if count > 0 {
+		return 0, fmt.Errorf("Rate limit: une synchro par heure maximum")
+	}
+
+	appId, privateKey, err := getBankSettings(app)
+	if err != nil {
+		return 0, fmt.Errorf("Fichier .pem manquant")
+	}
+	token, err := generateEnableBankingJWT(appId, privateKey)
+	if err != nil {
+		return 0, fmt.Errorf("Erreur génération JWT: %w", err)
+	}
+
+	apiURL := fmt.Sprintf("https://api.enablebanking.com/accounts/%s/transactions", bankAccount.RemoteAccountId)
+	qParams := ""
+	if dateStart != "" && dateEnd != "" {
+		qParams = fmt.Sprintf("date_from=%s&date_to=%s", dateStart, dateEnd)
+	} else {
+		now := time.Now()
+		dateEnd = now.Format("2006-01-02")
+		dateStart = now.AddDate(0, 0, -90).Format("2006-01-02") // 90 jours par défaut pour le sync initial
+		qParams = fmt.Sprintf("date_from=%s&date_to=%s", dateStart, dateEnd)
+	}
+	apiURL += "?" + qParams + "&session_id=" + bankConnection.RequisitionId + "&strategy=longest"
+
+	fmt.Printf("[BudgetTime] Appel EnableBanking Sync API: %s\n", apiURL)
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return 0, fmt.Errorf("Erreur création requête: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	client := &http.Client{Timeout: 45 * time.Second} // Timeout plus généreux pour le sync
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Printf("[BudgetTime] Erreur Réseau Sync: %v\n", err)
+		return 0, fmt.Errorf("Sync Network Error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	fmt.Printf("[BudgetTime] Réponse Sync Status: %d\n", resp.StatusCode)
+	rawBodyLog := string(body)
+	if len(rawBodyLog) > 1000 {
+		fmt.Printf("[BudgetTime] Sync Raw Body (tronqué): %s...\n", rawBodyLog[:1000])
+	} else {
+		fmt.Printf("[BudgetTime] Sync Raw Body: %s\n", rawBodyLog)
+	}
+
+	// Diagnostic Balances & Update Balance
+	balanceURL := fmt.Sprintf("https://api.enablebanking.com/accounts/%s/balances?session_id=%s", bankAccount.RemoteAccountId, bankConnection.RequisitionId)
+	bReq, _ := http.NewRequest("GET", balanceURL, nil)
+	bReq.Header.Set("Authorization", "Bearer "+token)
+	bResp, errB := client.Do(bReq)
+	if errB == nil {
+		bBody, _ := io.ReadAll(bResp.Body)
+		fmt.Printf("[BudgetTime] Diagnostic Balances: %s (Status %v)\n", string(bBody), bResp.StatusCode)
+		bResp.Body.Close()
+
+		// Mise à jour du solde local
+		var bResult struct {
+			Balances []map[string]any `json:"balances"`
+		}
+		if json.Unmarshal(bBody, &bResult) == nil && len(bResult.Balances) > 0 {
+			finalBalance := ""
+			for _, b := range bResult.Balances {
+				if name, _ := b["name"].(string); name == "AccountingBalance" {
+					if am, ok := b["balance_amount"].(map[string]any); ok {
+						finalBalance, _ = am["amount"].(string)
+					}
+					break
+				}
+			}
+			// Fallback au premier solde
+			if finalBalance == "" {
+				if am, ok := bResult.Balances[0]["balance_amount"].(map[string]any); ok {
+					finalBalance, _ = am["amount"].(string)
+				}
+			}
+
+			if finalBalance != "" {
+				app.DB().NewQuery("UPDATE bank_accounts SET balance = {:bal} WHERE remote_account_id = {:id}").
+					Bind(dbx.Params{"bal": finalBalance, "id": bankAccount.RemoteAccountId}).
+					Execute()
+			}
+		}
+	} else {
+		fmt.Printf("[BudgetTime] Diagnostic Balances: Echec Appel\n")
+	}
+
+	if resp.StatusCode != 200 {
+		collectionLogs, _ := app.FindCollectionByNameOrId("bank_sync_logs")
+		if collectionLogs != nil {
+			recordLog := core.NewRecord(collectionLogs)
+			recordLog.Set("connection_id", bankConnection.Id)
+			recordLog.Set("status", "error")
+			app.Save(recordLog)
+		}
+		return 0, fmt.Errorf("EnableBanking returns error: %s", string(body))
+	}
+
+	var result struct {
+		Transactions []map[string]any `json:"transactions"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		fmt.Printf("[BudgetTime] Erreur Unmarshal Sync: %v\n", err)
+		return 0, fmt.Errorf("Failed to parse transactions: %w", err)
+	}
+
+	if len(result.Transactions) == 0 {
+		fmt.Printf("[BudgetTime] EnableBanking a renvoyé 0 transactions pour cette période.\n")
+	}
+
+	collectionInbox, _ := app.FindCollectionByNameOrId("raw_inbox")
+	insertedCount := 0
+	for _, t := range result.Transactions {
+		// Extraction flexible des données
+		tId, _ := t["transaction_id"].(string)
+		if tId == "" {
+			tId, _ = t["entry_reference"].(string)
+		}
+		if tId == "" {
+			tId, _ = t["internal_transaction_id"].(string)
+		}
+		// Hash du payload si aucun ID
+		if tId == "" {
+			p, _ := json.Marshal(t)
+			h := sha256.Sum256(p)
+			tId = fmt.Sprintf("h%x", h[:8])
+		}
+
+		bookingDate, _ := t["booking_date"].(string)
+		if bookingDate == "" {
+			bookingDate, _ = t["transaction_date"].(string)
+		}
+		if bookingDate == "" {
+			bookingDate = time.Now().Format("2006-01-02")
+		}
+
+		amountValue := ""
+		if am, ok := t["amount"].(map[string]any); ok {
+			amountValue, _ = am["value"].(string)
+		} else if am, ok := t["transaction_amount"].(map[string]any); ok {
+			amountValue, _ = am["amount"].(string)
+		}
+
+		if cd, _ := t["credit_debit_indicator"].(string); cd == "DBIT" && !strings.HasPrefix(amountValue, "-") {
+			amountValue = "-" + amountValue
+		}
+
+		label := ""
+		if cr, ok := t["creditor"].(map[string]any); ok {
+			label, _ = cr["name"].(string)
+		}
+		if label == "" {
+			if de, ok := t["debtor"].(map[string]any); ok {
+				label, _ = de["name"].(string)
+			}
+		}
+		if label == "" {
+			label, _ = t["remittance_information_unstructured"].(string)
+		}
+		if label == "" {
+			if rems, ok := t["remittance_information"].([]any); ok && len(rems) > 0 {
+				label, _ = rems[0].(string)
+			}
+		}
+		if label == "" {
+			label = "Transaction bancaire"
+		}
+
+		var existing int
+		app.DB().Select("count(id)").From("raw_inbox").
+			Where(dbx.HashExp{"raw_payload": tId, "user": bankConnection.UserId}).
+			Row(&existing)
+
+		if existing == 0 {
+			record := core.NewRecord(collectionInbox)
+			record.Set("date", bookingDate+" 12:00:00.000Z")
+			record.Set("label", label)
+			record.Set("amount", amountValue)
+			record.Set("user", bankConnection.UserId)
+			record.Set("is_processed", false)
+			record.Set("raw_payload", tId)
+
+			// AJOUT DU METADATA POUR AUTO-MAPPING
+			if bankAccount.LocalAccountId != "" {
+				metadata := map[string]any{"local_account_id": bankAccount.LocalAccountId}
+				record.Set("metadata", metadata)
+			}
+
+			if err := app.Save(record); err == nil {
+				insertedCount++
+			}
+		}
+	}
+
+	fmt.Printf("[BudgetTime] Sync fini: %d transactions reçues, %d nouvelles insérées.\n", len(result.Transactions), insertedCount)
+
+	collectionLogs, _ := app.FindCollectionByNameOrId("bank_sync_logs")
+	if collectionLogs != nil {
+		recordLog := core.NewRecord(collectionLogs)
+		recordLog.Set("connection_id", bankConnection.Id)
+		recordLog.Set("status", "success")
+		recordLog.Set("transactions_count", insertedCount)
+		app.Save(recordLog)
+	}
+
+	return insertedCount, nil
 }
 
 // syncSessions est une fonction utilitaire pour synchroniser les requisitions/sessions reçues avec PocketBase
