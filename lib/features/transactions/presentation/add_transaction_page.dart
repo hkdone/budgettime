@@ -36,9 +36,9 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
   String _recurrenceFrequency = 'monthly';
   String _status = 'projected';
 
-  List<Map<String, dynamic>> _matchingProjections = [];
-  String? _selectedProjectionIdToReconcile;
-  bool _isLoadingProjections = false;
+  List<Map<String, dynamic>> _matchingReconciliations = [];
+  String? _selectedReconciliationId;
+  bool _isLoadingReconciliations = false;
 
   @override
   void initState() {
@@ -115,45 +115,46 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
       }
 
       if (t['fromInbox'] == true) {
-        _loadMatchingProjections();
+        _loadMatchingReconciliations();
       }
     }
   }
 
-  Future<void> _loadMatchingProjections() async {
+  Future<void> _loadMatchingReconciliations() async {
     if (widget.transactionToEdit == null ||
         widget.transactionToEdit!['fromInbox'] != true) {
       return;
     }
 
     setState(() {
-      _isLoadingProjections = true;
+      _isLoadingReconciliations = true;
     });
 
     try {
-      final amount = widget.transactionToEdit!['amount'] != null
-          ? (widget.transactionToEdit!['amount'] as num).abs().toDouble()
-          : 0.0;
-      if (amount <= 0) return;
+      if (_selectedAccountId == null) {
+        setState(() {
+          _isLoadingReconciliations = false;
+        });
+        return;
+      }
 
-      final maxDate = _date.add(const Duration(days: 5));
-      final projections = await ref
+      final inboxDate = widget.transactionToEdit!['date'] != null
+          ? DateTime.parse(widget.transactionToEdit!['date'])
+          : _date;
+
+      final results = await ref
           .read(transactionRepositoryProvider)
-          .getMatchingProjectedTransactions(
-            amount: amount,
+          .getTransactionsForReconciliation(
+            accountId: _selectedAccountId!,
             type: _type,
-            maxDate: maxDate,
+            inboxDate: inboxDate,
           );
-
-      // Only show top 5 matches
-      final limitedProjections = projections.take(5).toList();
 
       if (mounted) {
         setState(() {
-          _matchingProjections = limitedProjections;
-          if (limitedProjections.isNotEmpty) {
-            _selectedProjectionIdToReconcile =
-                limitedProjections.first['id'] as String;
+          _matchingReconciliations = results;
+          if (results.isNotEmpty) {
+            _selectedReconciliationId = results.first['id'] as String;
           }
         });
       }
@@ -161,7 +162,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
     } finally {
       if (mounted) {
         setState(() {
-          _isLoadingProjections = false;
+          _isLoadingReconciliations = false;
         });
       }
     }
@@ -355,10 +356,10 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                   memberId: _selectedMemberId,
                 );
           } else {
-            if (_selectedProjectionIdToReconcile != null) {
+            if (_selectedReconciliationId != null) {
               await ref
                   .read(transactionRepositoryProvider)
-                  .deleteTransaction(_selectedProjectionIdToReconcile!);
+                  .deleteTransaction(_selectedReconciliationId!);
             }
             await ref.read(transactionRepositoryProvider).addTransaction(data);
           }
@@ -556,13 +557,13 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                   ),
                 ),
               ],
-              if (_isLoadingProjections)
+              if (_isLoadingReconciliations)
                 const Padding(
                   padding: EdgeInsets.only(top: 16.0),
                   child: Center(child: CircularProgressIndicator()),
                 ),
-              if (!_isLoadingProjections &&
-                  _matchingProjections.isNotEmpty) ...[
+              if (!_isLoadingReconciliations &&
+                  _matchingReconciliations.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -582,7 +583,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                           SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Rapprochement bancaire possible',
+                              'Recoupement bancaire possible',
                               style: TextStyle(fontWeight: FontWeight.bold),
                             ),
                           ),
@@ -590,11 +591,11 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        'Des transactions prévisionnelles correspondent à ce montant. Sélectionnez-en une pour la remplacer par cette opération réelle.',
+                        'Des transactions locales existent autour de cette date. Cochez celle correspondante pour la remplacer par l\'opération bancaire trouvée.',
                         style: TextStyle(fontSize: 12),
                       ),
                       const SizedBox(height: 8),
-                      ..._matchingProjections.map((proj) {
+                      ..._matchingReconciliations.map((proj) {
                         final String projId = proj['id'] as String;
                         return CheckboxListTile(
                           title: Text(
@@ -605,13 +606,13 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                               'dd/MM/yyyy',
                             ).format(DateTime.parse(proj['date'])),
                           ),
-                          value: _selectedProjectionIdToReconcile == projId,
+                          value: _selectedReconciliationId == projId,
                           onChanged: (bool? checked) {
                             setState(() {
                               if (checked == true) {
-                                _selectedProjectionIdToReconcile = projId;
+                                _selectedReconciliationId = projId;
                               } else {
-                                _selectedProjectionIdToReconcile = null;
+                                _selectedReconciliationId = null;
                               }
                             });
                           },
@@ -625,11 +626,11 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                         title: const Text(
                           'Ne pas rapprocher (Créer une nouvelle)',
                         ),
-                        value: _selectedProjectionIdToReconcile == null,
+                        value: _selectedReconciliationId == null,
                         onChanged: (bool? checked) {
                           setState(() {
                             if (checked == true) {
-                              _selectedProjectionIdToReconcile = null;
+                              _selectedReconciliationId = null;
                             }
                           });
                         },

@@ -19,6 +19,12 @@ abstract class TransactionRepository {
     required DateTime maxDate,
   });
 
+  Future<List<Map<String, dynamic>>> getTransactionsForReconciliation({
+    required String accountId,
+    required String type,
+    required DateTime inboxDate,
+  });
+
   Future<double> getBalance({
     String? accountId,
     String? status,
