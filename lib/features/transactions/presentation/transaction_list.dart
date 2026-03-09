@@ -58,15 +58,7 @@ class _TransactionListState extends ConsumerState<TransactionList> {
     // 2. Sort dates in ascending order (croissant)
     final sortedDates = groupedTransactions.keys.toList()..sort();
 
-    // 3. Initialize/Update expansion states for Today, Yesterday, Tomorrow
-    final now = DateTime.now();
-    final today = DateFormat('yyyy-MM-dd').format(now);
-    final yesterday = DateFormat(
-      'yyyy-MM-dd',
-    ).format(now.subtract(const Duration(days: 1)));
-    final tomorrow = DateFormat(
-      'yyyy-MM-dd',
-    ).format(now.add(const Duration(days: 1)));
+    // 3. Initialize/Update expansion states
 
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
@@ -75,9 +67,11 @@ class _TransactionListState extends ConsumerState<TransactionList> {
         final date = DateTime.parse(dateStr);
 
         // Determine if it should be expanded by default
-        final bool isDefaultExpanded =
-            dateStr == today || dateStr == yesterday || dateStr == tomorrow;
-        final bool isExpanded = _expandedStates[dateStr] ?? isDefaultExpanded;
+        // Expand dates containing at least one projected transaction, collapse others.
+        final bool hasProjected = dayTransactions.any(
+          (t) => (t['status'] ?? 'effective') == 'projected',
+        );
+        final bool isExpanded = _expandedStates[dateStr] ?? hasProjected;
 
         return Column(
           children: [
