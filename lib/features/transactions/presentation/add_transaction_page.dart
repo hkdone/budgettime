@@ -56,19 +56,19 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
       final t = widget.transactionToEdit!;
 
       // Pre-fill fields for either an edit OR a suggestion (like from Inbox)
+      if (t['expand'] != null && t['expand']['account'] != null) {
+        _selectedAccountId = t['expand']['account']['id'];
+      } else if (t['account'] != null) {
+        _selectedAccountId = t['account'];
+      }
+
+      if (t['expand'] != null && t['expand']['member'] != null) {
+        _selectedMemberId = t['expand']['member']['id'];
+      } else if (t['member'] != null) {
+        _selectedMemberId = t['member'];
+      }
+
       if (t['id'] != null) {
-        if (t['expand'] != null && t['expand']['account'] != null) {
-          _selectedAccountId = t['expand']['account']['id'];
-        } else {
-          _selectedAccountId = t['account'];
-        }
-
-        if (t['expand'] != null && t['expand']['member'] != null) {
-          _selectedMemberId = t['expand']['member']['id'];
-        } else {
-          _selectedMemberId = t['member'];
-        }
-
         if (t['expand'] != null && t['expand']['recurrence'] != null) {
           final recurrence = t['expand']['recurrence'];
           _isRecurring = true;

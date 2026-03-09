@@ -102,26 +102,26 @@ func main() {
 			dateStart := now.AddDate(0, 0, -1).Format("2006-01-02") // Hier
 			dateEnd := now.Format("2006-01-02")                     // Aujourd'hui
 
-			var linkedAccounts []struct {
-				LocalAccountId string `db:"local_account_id"`
+			var allAccounts []struct {
+				RemoteAccountId string `db:"remote_account_id"`
 			}
-			err := app.DB().Select("local_account_id").
+			err := app.DB().Select("remote_account_id").
 				From("bank_accounts").
-				Where(dbx.Not(dbx.HashExp{"local_account_id": ""})).
-				AndWhere(dbx.Not(dbx.HashExp{"local_account_id": nil})).
-				All(&linkedAccounts)
+				Where(dbx.Not(dbx.HashExp{"remote_account_id": ""})).
+				AndWhere(dbx.Not(dbx.HashExp{"remote_account_id": nil})).
+				All(&allAccounts)
 
 			if err == nil {
-				if len(linkedAccounts) == 0 {
-					fmt.Println("[BudgetTime] CRON ignoré : aucun compte bancaire lié localement.")
+				if len(allAccounts) == 0 {
+					fmt.Println("[BudgetTime] CRON ignoré : aucun compte bancaire distant trouvé.")
 					return
 				}
-				for _, acc := range linkedAccounts {
-					inserted, errSync := runSyncForAccount(app, acc.LocalAccountId, dateStart, dateEnd)
+				for _, acc := range allAccounts {
+					inserted, errSync := runSyncForAccount(app, acc.RemoteAccountId, dateStart, dateEnd)
 					if errSync != nil {
-						fmt.Printf("[BudgetTime] Erreur Sync Cron pour compte %s: %v\n", acc.LocalAccountId, errSync)
+						fmt.Printf("[BudgetTime] Erreur Sync Cron pour compte %s: %v\n", acc.RemoteAccountId, errSync)
 					} else {
-						fmt.Printf("[BudgetTime] Succès Sync Cron pour compte %s: %d insérées\n", acc.LocalAccountId, inserted)
+						fmt.Printf("[BudgetTime] Succès Sync Cron pour compte %s: %d insérées\n", acc.RemoteAccountId, inserted)
 					}
 				}
 			} else {
