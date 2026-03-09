@@ -110,6 +110,45 @@ class OpenBankingService {
     }
   }
 
+  /// 5b. Read linked external bank account (IBAN) for a local account
+  Future<Map<String, dynamic>?> getLinkedBankAccount(
+    String localAccountId,
+  ) async {
+    try {
+      final records = await pb
+          .collection('bank_accounts')
+          .getFullList(filter: 'local_account_id = "$localAccountId"');
+      if (records.isNotEmpty) {
+        return records.first.toJson();
+      }
+      return null;
+    } catch (_) {
+      return null; // Fail silently if no linkage or network error
+    }
+  }
+
+  /// 5c. Fetch current balance directly from EnableBanking
+  Future<double?> fetchExternalBalance(String accountId) async {
+    try {
+      final baseUri = Uri.parse(pb.baseURL);
+      final url = baseUri.resolve('api/banking/balance?account_id=$accountId');
+
+      final response = await http
+          .get(url, headers: {'Authorization': pb.authStore.token})
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['balance'] != null) {
+          return double.tryParse(data['balance'].toString());
+        }
+      }
+      return null;
+    } catch (e) {
+      throw Exception('Erreur lors de la récupération du solde externe : $e');
+    }
+  }
+
   /// 6. Découvre les connexions existantes (Mode Personnel)
   Future<Map<String, dynamic>> discoverConnections() async {
     try {

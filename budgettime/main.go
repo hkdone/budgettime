@@ -674,6 +674,104 @@ func main() {
 			})
 		})
 
+		// Endpoint : Récupération du vrai solde externe
+		banking.GET("/balance", func(e *core.RequestEvent) error {
+			accountId := e.Request.URL.Query().Get("account_id")
+
+			var bankAccount struct {
+				RemoteAccountId string `db:"remote_account_id"`
+				ConnectionId    string `db:"connection_id"`
+				LocalAccountId  string `db:"local_account_id"`
+			}
+			err := app.DB().Select("remote_account_id", "connection_id", "local_account_id").
+				From("bank_accounts").
+				Where(dbx.HashExp{"local_account_id": accountId}).
+				Limit(1).
+				One(&bankAccount)
+			if err != nil {
+				err = app.DB().Select("remote_account_id", "connection_id", "local_account_id").
+					From("bank_accounts").
+					Where(dbx.HashExp{"remote_account_id": accountId}).
+					Limit(1).
+					One(&bankAccount)
+				if err != nil {
+					return e.JSON(404, map[string]any{"error": "Compte bancaire non trouvé localement"})
+				}
+			}
+
+			var bankConnection struct {
+				Id            string `db:"id"`
+				RequisitionId string `db:"requisition_id"`
+				UserId        string `db:"user"`
+			}
+			err = app.DB().Select("id", "requisition_id", "user").
+				From("bank_connections").
+				Where(dbx.HashExp{"id": bankAccount.ConnectionId}).
+				Limit(1).
+				One(&bankConnection)
+			if err != nil {
+				return e.JSON(404, map[string]any{"error": "Connexion parente introuvable"})
+			}
+
+			appId, privateKey, err := getBankSettings(app)
+			if err != nil {
+				return e.JSON(500, map[string]any{"error": "Fichier .pem manquant"})
+			}
+			token, err := generateEnableBankingJWT(appId, privateKey)
+			if err != nil {
+				return e.JSON(500, map[string]any{"error": "Erreur JWT"})
+			}
+
+			balanceURL := fmt.Sprintf("https://api.enablebanking.com/accounts/%s/balances?session_id=%s", bankAccount.RemoteAccountId, bankConnection.RequisitionId)
+			req, _ := http.NewRequest("GET", balanceURL, nil)
+			req.Header.Set("Authorization", "Bearer "+token)
+
+			client := &http.Client{Timeout: 10 * time.Second}
+			resp, err := client.Do(req)
+			if err != nil {
+				return e.JSON(500, map[string]any{"error": "Network Error"})
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != 200 {
+				return e.JSON(resp.StatusCode, map[string]any{"error": "EnableBanking returns error"})
+			}
+
+			body, _ := io.ReadAll(resp.Body)
+			var bResult struct {
+				Balances []map[string]any `json:"balances"`
+			}
+			if err := json.Unmarshal(body, &bResult); err != nil || len(bResult.Balances) == 0 {
+				return e.JSON(500, map[string]any{"error": "No balances found"})
+			}
+
+			finalBalance := ""
+			for _, b := range bResult.Balances {
+				if name, _ := b["name"].(string); name == "AccountingBalance" {
+					if am, ok := b["balance_amount"].(map[string]any); ok {
+						finalBalance, _ = am["amount"].(string)
+					}
+					break
+				}
+			}
+			if finalBalance == "" {
+				if am, ok := bResult.Balances[0]["balance_amount"].(map[string]any); ok {
+					finalBalance, _ = am["amount"].(string)
+				}
+			}
+
+			if finalBalance != "" {
+				// We also update the database silently since we have the fresh data
+				app.DB().NewQuery("UPDATE bank_accounts SET balance = {:bal} WHERE remote_account_id = {:id}").
+					Bind(dbx.Params{"bal": finalBalance, "id": bankAccount.RemoteAccountId}).
+					Execute()
+
+				return e.JSON(200, map[string]any{"balance": finalBalance})
+			}
+
+			return e.JSON(500, map[string]any{"error": "Amount not found in balance"})
+		})
+
 		// Servir le Frontend Web
 		publicDir := filepath.Join(filepath.Dir(app.DataDir()), "pb_public")
 		e.Router.GET("/{path...}", apis.Static(os.DirFS(publicDir), false))
@@ -780,47 +878,7 @@ func runSyncForAccount(app *pocketbase.PocketBase, accountId, dateStart, dateEnd
 		fmt.Printf("[BudgetTime] Sync Raw Body: %s\n", rawBodyLog)
 	}
 
-	// Diagnostic Balances & Update Balance
-	balanceURL := fmt.Sprintf("https://api.enablebanking.com/accounts/%s/balances?session_id=%s", bankAccount.RemoteAccountId, bankConnection.RequisitionId)
-	bReq, _ := http.NewRequest("GET", balanceURL, nil)
-	bReq.Header.Set("Authorization", "Bearer "+token)
-	bResp, errB := client.Do(bReq)
-	if errB == nil {
-		bBody, _ := io.ReadAll(bResp.Body)
-		fmt.Printf("[BudgetTime] Diagnostic Balances: %s (Status %v)\n", string(bBody), bResp.StatusCode)
-		bResp.Body.Close()
-
-		// Mise à jour du solde local
-		var bResult struct {
-			Balances []map[string]any `json:"balances"`
-		}
-		if json.Unmarshal(bBody, &bResult) == nil && len(bResult.Balances) > 0 {
-			finalBalance := ""
-			for _, b := range bResult.Balances {
-				if name, _ := b["name"].(string); name == "AccountingBalance" {
-					if am, ok := b["balance_amount"].(map[string]any); ok {
-						finalBalance, _ = am["amount"].(string)
-					}
-					break
-				}
-			}
-			// Fallback au premier solde
-			if finalBalance == "" {
-				if am, ok := bResult.Balances[0]["balance_amount"].(map[string]any); ok {
-					finalBalance, _ = am["amount"].(string)
-				}
-			}
-
-			if finalBalance != "" {
-				app.DB().NewQuery("UPDATE bank_accounts SET balance = {:bal} WHERE remote_account_id = {:id}").
-					Bind(dbx.Params{"bal": finalBalance, "id": bankAccount.RemoteAccountId}).
-					Execute()
-			}
-		}
-	} else {
-		fmt.Printf("[BudgetTime] Diagnostic Balances: Echec Appel\n")
-	}
-
+	// Diagnostic Balances & Update Balance has been removed for optimization.
 	if resp.StatusCode != 200 {
 		collectionLogs, _ := app.FindCollectionByNameOrId("bank_sync_logs")
 		if collectionLogs != nil {

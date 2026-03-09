@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 import '../../../core/start_app.dart';
 import '../../accounts/domain/account.dart';
 import '../../accounts/presentation/account_controller.dart';
@@ -7,6 +8,7 @@ import '../../settings/presentation/settings_controller.dart';
 import '../../transactions/domain/transaction_repository.dart';
 import '../../recurrences/presentation/recurrence_controller.dart';
 import '../../inbox/presentation/inbox_controller.dart';
+import '../../../services/open_banking_service.dart';
 
 class DashboardState {
   final List<dynamic> transactions;
@@ -20,6 +22,8 @@ class DashboardState {
   final String searchQuery;
   final bool isLoading;
   final String? error;
+  final Map<String, dynamic>? linkedBankAccount;
+  final bool isSyncingBalance;
 
   DashboardState({
     required this.transactions,
@@ -33,6 +37,8 @@ class DashboardState {
     this.searchQuery = '',
     this.isLoading = false,
     this.error,
+    this.linkedBankAccount,
+    this.isSyncingBalance = false,
   });
 
   DashboardState copyWith({
@@ -47,6 +53,8 @@ class DashboardState {
     String? searchQuery,
     bool? isLoading,
     String? error,
+    Map<String, dynamic>? linkedBankAccount,
+    bool? isSyncingBalance,
   }) {
     return DashboardState(
       transactions: transactions ?? this.transactions,
@@ -60,6 +68,8 @@ class DashboardState {
       searchQuery: searchQuery ?? this.searchQuery,
       isLoading: isLoading ?? this.isLoading,
       error: error ?? this.error,
+      linkedBankAccount: linkedBankAccount ?? this.linkedBankAccount,
+      isSyncingBalance: isSyncingBalance ?? this.isSyncingBalance,
     );
   }
 
@@ -87,6 +97,8 @@ class DashboardState {
       searchQuery: searchQuery ?? this.searchQuery,
       isLoading: isLoading ?? this.isLoading,
       error: error ?? this.error,
+      linkedBankAccount: null,
+      isSyncingBalance: false,
     );
   }
 }
@@ -208,6 +220,14 @@ class DashboardController extends StateNotifier<DashboardState> {
 
       final projectedBalance = effectiveBalance + projectedDelta;
 
+      // 5. Fetch linked bank account info if an account is selected
+      Map<String, dynamic>? linkedAccountInfo;
+      if (state.selectedAccount != null) {
+        linkedAccountInfo = await OpenBankingService().getLinkedBankAccount(
+          state.selectedAccount!.id,
+        );
+      }
+
       state = state.copyWith(
         transactions: allTransactions,
         start: start,
@@ -215,6 +235,7 @@ class DashboardController extends StateNotifier<DashboardState> {
         effectiveBalance: effectiveBalance,
         projectedBalance: projectedBalance,
         isLoading: false,
+        linkedBankAccount: linkedAccountInfo,
       );
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -264,6 +285,53 @@ class DashboardController extends StateNotifier<DashboardState> {
       return;
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  Future<void> syncExternalBalance() async {
+    if (state.selectedAccount == null ||
+        state.linkedBankAccount == null ||
+        state.isSyncingBalance) {
+      return;
+    }
+
+    try {
+      state = state.copyWith(isSyncingBalance: true);
+      final remoteAccountId =
+          state.linkedBankAccount!['remote_account_id'] as String;
+
+      final realBalance = await OpenBankingService().fetchExternalBalance(
+        remoteAccountId,
+      );
+
+      if (realBalance != null &&
+          (realBalance - state.effectiveBalance).abs() > 0.01) {
+        // Balances differ, create an adjustment transaction
+        final diff = realBalance - state.effectiveBalance;
+        final type = diff > 0 ? 'income' : 'expense';
+
+        final newTx = {
+          'user': state.selectedAccount!.userId,
+          'account': state.selectedAccount!.id,
+          'amount': diff.abs(),
+          'type': type,
+          'date': DateTime.now().toUtc().toIso8601String(),
+          'label': 'Ajustement solde (Banque)',
+          'notes':
+              'Ancien solde: ${state.effectiveBalance.toStringAsFixed(2)}, Nouveau solde réel: ${realBalance.toStringAsFixed(2)}',
+          'status': 'effective',
+        };
+
+        await _transactionRepo.addTransaction(newTx);
+
+        // Reload data to reflect the new balance
+        await _loadData(refreshAccounts: false);
+      }
+    } catch (e) {
+      // Ignore or show error in state
+      debugPrint('Erreur sync solde: $e');
+    } finally {
+      state = state.copyWith(isSyncingBalance: false);
     }
   }
 }

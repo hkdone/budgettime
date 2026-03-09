@@ -369,7 +369,7 @@ class DashboardPage extends ConsumerWidget {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: const Text(
-                                  'v2.3.1',
+                                  'v2.4.0',
                                   style: TextStyle(
                                     fontSize: 10,
                                     color: Colors.blueGrey,
@@ -402,18 +402,57 @@ class DashboardPage extends ConsumerWidget {
                                           fontWeight: FontWeight.w500,
                                         ),
                                   ),
+                                  if (state.linkedBankAccount != null) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Correspondance : ${state.linkedBankAccount!['iban']}',
+                                      style: const TextStyle(
+                                        color: Colors.blueGrey,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
                                   const SizedBox(height: 8),
-                                  Text(
-                                    formatCurrency(state.effectiveBalance),
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .displayMedium
-                                        ?.copyWith(
-                                          color: state.effectiveBalance >= 0
-                                              ? Colors.black
-                                              : Colors.red,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        formatCurrency(state.effectiveBalance),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .displayMedium
+                                            ?.copyWith(
+                                              color: state.effectiveBalance >= 0
+                                                  ? Colors.black
+                                                  : Colors.red,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                      ),
+                                      if (state.linkedBankAccount != null) ...[
+                                        const SizedBox(width: 8),
+                                        state.isSyncingBalance
+                                            ? const SizedBox(
+                                                width: 24,
+                                                height: 24,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                    ),
+                                              )
+                                            : IconButton(
+                                                icon: const Icon(
+                                                  Icons.sync,
+                                                  color: Colors.blue,
+                                                ),
+                                                tooltip: 'Actualiser le solde',
+                                                onPressed: () {
+                                                  controller
+                                                      .syncExternalBalance();
+                                                },
+                                              ),
+                                      ],
+                                    ],
                                   ),
                                   const SizedBox(height: 16),
                                   // Projected Balance
