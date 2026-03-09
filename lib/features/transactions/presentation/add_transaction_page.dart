@@ -138,6 +138,16 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
         return;
       }
 
+      final amount = widget.transactionToEdit!['amount'] != null
+          ? (widget.transactionToEdit!['amount'] as num).abs().toDouble()
+          : 0.0;
+      if (amount <= 0) {
+        setState(() {
+          _isLoadingReconciliations = false;
+        });
+        return;
+      }
+
       final inboxDate = widget.transactionToEdit!['date'] != null
           ? DateTime.parse(widget.transactionToEdit!['date'])
           : _date;
@@ -145,6 +155,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
       final results = await ref
           .read(transactionRepositoryProvider)
           .getTransactionsForReconciliation(
+            amount: amount,
             accountId: _selectedAccountId!,
             type: _type,
             inboxDate: inboxDate,
