@@ -301,6 +301,7 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
   }
 
   Future<void> _showSyncDialog() async {
+    final mainContext = context;
     final OpenBankingService bankingService = OpenBankingService();
     List<dynamic> accounts = [];
     bool isLoadingAccounts = true;
@@ -310,7 +311,7 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
 
     // 1. Fetch accounts
     showDialog(
-      context: context,
+      context: mainContext,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) {
           final currentRange = selectedDateRange;
@@ -416,10 +417,9 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
 
                     Navigator.pop(context); // Close dialog
 
-                    if (!context.mounted) return;
                     // Show global loading
                     showDialog(
-                      context: context,
+                      context: mainContext,
                       barrierDismissible: false,
                       builder: (context) =>
                           const Center(child: CircularProgressIndicator()),
@@ -442,8 +442,8 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
                           )
                           .timeout(const Duration(seconds: 5));
 
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                      if (mainContext.mounted) {
+                        ScaffoldMessenger.of(mainContext).showSnackBar(
                           SnackBar(
                             content: Text(
                               'Sync terminée: ${result['inserted'] ?? 0} transactions ajoutées.',
@@ -453,8 +453,8 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
                         );
                       }
                     } on TimeoutException {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                      if (mainContext.mounted) {
+                        ScaffoldMessenger.of(mainContext).showSnackBar(
                           const SnackBar(
                             content: Text(
                               'Requête envoyée. L\'actualisation se fera en arrière-plan.',
@@ -464,8 +464,8 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
                         );
                       }
                     } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                      if (mainContext.mounted) {
+                        ScaffoldMessenger.of(mainContext).showSnackBar(
                           SnackBar(
                             content: Text(
                               'Synchro échouée ou trop longue (mais peut-être en cours). Erreur: $e',
@@ -475,8 +475,11 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
                         );
                       }
                     } finally {
-                      if (context.mounted) {
-                        Navigator.of(context, rootNavigator: true).maybePop();
+                      if (mainContext.mounted) {
+                        Navigator.of(
+                          mainContext,
+                          rootNavigator: true,
+                        ).maybePop();
                         // Rafraîchissement forcé du provider
                         ref.read(inboxControllerProvider.notifier).refresh();
                       }
