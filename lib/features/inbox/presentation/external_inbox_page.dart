@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -425,17 +426,21 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
                     );
 
                     try {
-                      final result = await bankingService.syncTransactions(
-                        selectedAccountId!,
-                        dateStart: currentRange != null
-                            ? DateFormat(
-                                'yyyy-MM-dd',
-                              ).format(currentRange.start)
-                            : null,
-                        dateEnd: currentRange != null
-                            ? DateFormat('yyyy-MM-dd').format(currentRange.end)
-                            : null,
-                      );
+                      final result = await bankingService
+                          .syncTransactions(
+                            selectedAccountId!,
+                            dateStart: currentRange != null
+                                ? DateFormat(
+                                    'yyyy-MM-dd',
+                                  ).format(currentRange.start)
+                                : null,
+                            dateEnd: currentRange != null
+                                ? DateFormat(
+                                    'yyyy-MM-dd',
+                                  ).format(currentRange.end)
+                                : null,
+                          )
+                          .timeout(const Duration(seconds: 5));
 
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -444,6 +449,17 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
                               'Sync terminée: ${result['inserted'] ?? 0} transactions ajoutées.',
                             ),
                             backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                    } on TimeoutException {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Requête envoyée. L\'actualisation se fera en arrière-plan.',
+                            ),
+                            backgroundColor: Colors.blue,
                           ),
                         );
                       }
