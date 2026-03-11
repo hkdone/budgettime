@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -17,27 +18,20 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   final _emailFocusNode = FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-    // Demandons le focus après un léger délai pour "réveiller" le navigateur
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        _emailFocusNode.requestFocus();
-      }
-    });
-  }
+  final _passwordFocusNode = FocusNode();
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     _emailFocusNode.dispose();
+    _passwordFocusNode.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
+    // Notifie le gestionnaire de mots de passe que la session autofill est terminée
+    TextInput.finishAutofillContext(shouldSave: true);
     if (_formKey.currentState!.validate()) {
       await ref
           .read(authControllerProvider.notifier)
@@ -98,6 +92,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         AutofillHints.username,
                         AutofillHints.email,
                       ],
+                      onFieldSubmitted: (_) {
+                        FocusScope.of(context).requestFocus(_passwordFocusNode);
+                      },
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Veuillez entrer votre email';
@@ -108,6 +105,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _passwordController,
+                      focusNode: _passwordFocusNode,
                       decoration: const InputDecoration(
                         labelText: 'Mot de passe',
                         border: OutlineInputBorder(),
@@ -163,7 +161,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                     const SizedBox(height: 24),
                     const Text(
-                      'v2.4.6',
+                      'v2.4.7',
                       style: TextStyle(color: Colors.grey, fontSize: 12),
                       textAlign: TextAlign.center,
                     ),

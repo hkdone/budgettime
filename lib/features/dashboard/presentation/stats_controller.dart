@@ -115,6 +115,19 @@ class StatsController extends StateNotifier<StatsState> {
         categoryNames[cat.id] = cat.name;
       }
 
+      // 1b. Also add custom categories from DB so deleted ones still show their name
+      try {
+        final catRepo = _ref.read(categoryRepositoryProvider);
+        final customCats = await catRepo.getCategories();
+        for (final cat in customCats) {
+          categoryNames.putIfAbsent(cat.id, () => cat.name);
+        }
+      } catch (e) {
+        debugPrint(
+          'Warning: Could not fetch custom categories in StatsController: $e',
+        );
+      }
+
       // 2. Fetch all members to ensure complete mapping
       try {
         final memberRepo = _ref.read(memberRepositoryProvider);

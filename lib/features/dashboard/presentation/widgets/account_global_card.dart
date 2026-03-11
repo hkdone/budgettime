@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../accounts/domain/account.dart';
 import '../../../members/presentation/member_controller.dart';
 import '../../../accounts/presentation/account_controller.dart';
+import '../../../categories/presentation/category_controller.dart';
+import '../../../categories/domain/category.dart';
 import '../dashboard_controller.dart';
 import 'statistics_widgets.dart';
 import 'package:budgettime/core/utils/formatters.dart';
@@ -74,6 +76,12 @@ class AccountGlobalCard extends ConsumerWidget {
     final dashboardState = ref.watch(dashboardControllerProvider);
     final membersAsync = ref.watch(memberControllerProvider);
     final balanceAsync = ref.watch(accountBalanceProvider(account));
+    final List<Category> customCategories = ref
+        .watch(categoryControllerProvider)
+        .maybeWhen(
+          data: (cats) => cats.where((c) => !c.isSystem).toList(),
+          orElse: () => <Category>[],
+        );
 
     // Calculate month-to-date totals for THIS account from the global state
     final stats = _LocalStats();
@@ -242,6 +250,7 @@ class AccountGlobalCard extends ConsumerWidget {
                                   stats: stats.expenseStats,
                                   totalAmount: stats.totalExpense,
                                   showLegend: true,
+                                  customCategories: customCategories,
                                 ),
                               ),
                             if (stats.totalExpense > 0)
@@ -280,6 +289,7 @@ class AccountGlobalCard extends ConsumerWidget {
                                 stats: stats.expenseStats,
                                 totalAmount: stats.totalExpense,
                                 showLegend: true,
+                                customCategories: customCategories,
                               ),
                             if (stats.totalExpense > 0 ||
                                 stats.totalIncome > 0) ...[

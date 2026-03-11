@@ -8,7 +8,7 @@ migrate((app) => {
                 { "id": "accounts_name", "name": "name", "type": "text", "required": true, "presentable": true },
                 { "id": "accounts_curr", "name": "currency", "type": "text", "required": true },
                 { "id": "accounts_extid", "name": "external_id", "type": "text", "required": false },
-                { "id": "accounts_type", "name": "type", "type": "select", "required": true, "maxSelect": 1, "values": ["checking", "savings"] },
+                { "id": "accounts_type", "name": "type", "type": "select", "required": true, "maxSelect": 1, "values": ["checking", "savings", "cash"] },
                 { "id": "accounts_initial_balance", "name": "initial_balance", "type": "number", "required": false },
                 { "id": "accounts_user", "name": "user", "type": "relation", "required": true, "collectionId": "_pb_users_auth_", "cascadeDelete": true, "maxSelect": 1 }
             ],

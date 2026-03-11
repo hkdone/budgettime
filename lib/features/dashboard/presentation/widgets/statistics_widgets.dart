@@ -44,12 +44,14 @@ class CategoryPieChart extends StatelessWidget {
   final List<CategoryStats> stats;
   final double totalAmount;
   final bool showLegend;
+  final List<Category> customCategories;
 
   const CategoryPieChart({
     super.key,
     required this.stats,
     required this.totalAmount,
     this.showLegend = true,
+    this.customCategories = const [],
   });
 
   @override
@@ -67,12 +69,16 @@ class CategoryPieChart extends StatelessWidget {
               sectionsSpace: 2,
               centerSpaceRadius: 30,
               sections: stats.map((catStat) {
-                final category = kTransactionCategories.firstWhere(
+                final allCategories = [
+                  ...kTransactionCategories,
+                  ...customCategories,
+                ];
+                final category = allCategories.firstWhere(
                   (c) => c.id == catStat.categoryId,
                   orElse: () => const Category(
-                    id: 'unknown',
-                    name: 'Commun',
-                    icon: Icons.help,
+                    id: 'other',
+                    name: 'Autre',
+                    icon: Icons.label_outline,
                     color: Colors.grey,
                   ),
                 );
@@ -97,12 +103,16 @@ class CategoryPieChart extends StatelessWidget {
             spacing: 8,
             runSpacing: 4,
             children: stats.map((catStat) {
-              final category = kTransactionCategories.firstWhere(
+              final allCategories = [
+                ...kTransactionCategories,
+                ...customCategories,
+              ];
+              final category = allCategories.firstWhere(
                 (c) => c.id == catStat.categoryId,
                 orElse: () => const Category(
-                  id: 'unknown',
-                  name: 'Commun',
-                  icon: Icons.help,
+                  id: 'other',
+                  name: 'Autre',
+                  icon: Icons.label_outline,
                   color: Colors.grey,
                 ),
               );

@@ -1,18 +1,6 @@
 import 'package:flutter/material.dart';
-
-class Category {
-  final String id;
-  final String name;
-  final IconData icon;
-  final Color color;
-
-  const Category({
-    required this.id,
-    required this.name,
-    required this.icon,
-    required this.color,
-  });
-}
+export '../../categories/domain/category.dart';
+import '../../categories/domain/category.dart';
 
 const List<Category> kTransactionCategories = [
   // Housing
