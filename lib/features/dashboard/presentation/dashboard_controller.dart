@@ -306,23 +306,24 @@ class DashboardController extends StateNotifier<DashboardState> {
 
       if (realBalance != null &&
           (realBalance - state.effectiveBalance).abs() > 0.01) {
-        // Balances differ, create an adjustment transaction
-        final diff = realBalance - state.effectiveBalance;
-        final type = diff > 0 ? 'income' : 'expense';
-
-        final newTx = {
+        // Balances differ: create a new anchor transaction instead of an
+        // ordinary adjustment. This resets the calculation starting point
+        // to today's real balance and avoids drift accumulation over time.
+        final newAnchor = {
           'user': state.selectedAccount!.userId,
           'account': state.selectedAccount!.id,
-          'amount': diff.abs(),
-          'type': type,
+          'amount': 0,
+          'type': 'income', // irrelevant when amount = 0
           'date': DateTime.now().toUtc().toIso8601String(),
           'label': 'Ajustement solde (Banque)',
           'notes':
-              'Ancien solde: ${state.effectiveBalance.toStringAsFixed(2)}, Nouveau solde réel: ${realBalance.toStringAsFixed(2)}',
+              'Solde calculé: ${state.effectiveBalance.toStringAsFixed(2)}, Solde réel banque: ${realBalance.toStringAsFixed(2)}',
           'status': 'effective',
+          'is_automatic': true,
+          'bank_balance': realBalance,
         };
 
-        await _transactionRepo.addTransaction(newTx);
+        await _transactionRepo.addTransaction(newAnchor);
 
         // Reload data to reflect the new balance
         await _loadData(refreshAccounts: false);
