@@ -256,7 +256,11 @@ class DashboardController extends StateNotifier<DashboardState> {
         showAllTransactions: false,
       );
     } else {
-      state = state.copyWith(selectedAccount: account, isLoading: true);
+      // Two-step update: copyWithClearAccount resets linkedBankAccount to null
+      // immediately so the sync button never shows for an unlinked account,
+      // even during the async _loadData that follows.
+      state = state.copyWithClearAccount(isLoading: true);
+      state = state.copyWith(selectedAccount: account);
     }
     _loadData(refreshAccounts: false);
   }
@@ -292,6 +296,13 @@ class DashboardController extends StateNotifier<DashboardState> {
     if (state.selectedAccount == null ||
         state.linkedBankAccount == null ||
         state.isSyncingBalance) {
+      return;
+    }
+
+    // Defensive check: ensure the linked bank account actually belongs
+    // to the currently selected account (guards against stale state).
+    final linkedLocalId = state.linkedBankAccount!['local_account_id'];
+    if (linkedLocalId != null && linkedLocalId != state.selectedAccount!.id) {
       return;
     }
 
