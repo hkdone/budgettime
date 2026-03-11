@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/open_banking_service.dart';
+import '../../features/accounts/presentation/account_controller.dart';
+import '../../features/dashboard/presentation/dashboard_controller.dart';
 
-class OpenBankingAccountsPage extends StatefulWidget {
+class OpenBankingAccountsPage extends ConsumerStatefulWidget {
   const OpenBankingAccountsPage({super.key});
 
   @override
-  State<OpenBankingAccountsPage> createState() =>
+  ConsumerState<OpenBankingAccountsPage> createState() =>
       _OpenBankingAccountsPageState();
 }
 
-class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
+class _OpenBankingAccountsPageState extends ConsumerState<OpenBankingAccountsPage> {
   final OpenBankingService _bankingService = OpenBankingService();
   List<dynamic> _aspsps = [];
   bool _isLoading = true;
@@ -536,6 +539,8 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
                                         iban,
                                       );
                                       _fetchConnectedData();
+                                      ref.invalidate(accountControllerProvider);
+                                      ref.invalidate(dashboardControllerProvider);
                                     } catch (e) {
                                       if (context.mounted) {
                                         ScaffoldMessenger.of(
