@@ -521,4 +521,67 @@ class TransactionRepositoryImpl implements TransactionRepository {
     }
     return counts;
   }
+
+  @override
+  Future<({List<Map<String, dynamic>> items, bool hasMore})>
+  getTransactionsPaged({
+    DateTime? start,
+    DateTime? end,
+    String? accountId,
+    int page = 1,
+    int perPage = 30,
+  }) async {
+    final user = _dbService.pb.authStore.record;
+    if (user == null) return (items: <Map<String, dynamic>>[], hasMore: false);
+
+    String filter = 'user = "${user.id}"';
+
+    if (start != null && end != null) {
+      final startStr =
+          '${start.year}-${start.month.toString().padLeft(2, '0')}-${start.day.toString().padLeft(2, '0')} 00:00:00';
+      final endStr =
+          '${end.year}-${end.month.toString().padLeft(2, '0')}-${end.day.toString().padLeft(2, '0')} 23:59:59';
+      filter += ' && date >= "$startStr" && date <= "$endStr"';
+    }
+
+    if (accountId != null) {
+      filter += ' && (account = "$accountId" || target_account = "$accountId")';
+    }
+
+    final result = await _dbService.pb
+        .collection('transactions')
+        .getList(
+          page: page,
+          perPage: perPage,
+          filter: filter,
+          sort: '-date',
+          expand: 'account,target_account,recurrence,member,category',
+        );
+
+    const expandKeys = [
+      'account',
+      'target_account',
+      'recurrence',
+      'member',
+      'category',
+    ];
+
+    final items = result.items.map((e) {
+      final json = e.toJson();
+      final Map<String, dynamic> expandMap = {};
+      for (final key in expandKeys) {
+        try {
+          final expanded = e.get<List<dynamic>>('expand.$key');
+          if (expanded.isNotEmpty) {
+            expandMap[key] = expanded[0].toJson();
+          }
+        } catch (_) {}
+      }
+      if (expandMap.isNotEmpty) json['expand'] = expandMap;
+      return json;
+    }).toList();
+
+    final hasMore = (page * perPage) < result.totalItems;
+    return (items: items, hasMore: hasMore);
+  }
 }

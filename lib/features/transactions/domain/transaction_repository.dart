@@ -65,4 +65,16 @@ abstract class TransactionRepository {
     Map<String, dynamic> data,
   );
   Future<Map<String, int>> getRecurrenceProjectionsCount();
+
+  /// Fetch transactions with pagination for dashboard display.
+  /// Returns [items] for the requested page and [hasMore] indicating
+  /// whether additional pages are available.
+  Future<({List<Map<String, dynamic>> items, bool hasMore})>
+  getTransactionsPaged({
+    DateTime? start,
+    DateTime? end,
+    String? accountId,
+    int page = 1,
+    int perPage = 30,
+  });
 }

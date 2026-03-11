@@ -24,6 +24,9 @@ class DashboardState {
   final String? error;
   final Map<String, dynamic>? linkedBankAccount;
   final bool isSyncingBalance;
+  final int currentPage;
+  final bool hasMore;
+  final bool isLoadingMore;
 
   DashboardState({
     required this.transactions,
@@ -39,6 +42,9 @@ class DashboardState {
     this.error,
     this.linkedBankAccount,
     this.isSyncingBalance = false,
+    this.currentPage = 1,
+    this.hasMore = false,
+    this.isLoadingMore = false,
   });
 
   DashboardState copyWith({
@@ -55,6 +61,9 @@ class DashboardState {
     String? error,
     Map<String, dynamic>? linkedBankAccount,
     bool? isSyncingBalance,
+    int? currentPage,
+    bool? hasMore,
+    bool? isLoadingMore,
   }) {
     return DashboardState(
       transactions: transactions ?? this.transactions,
@@ -70,6 +79,9 @@ class DashboardState {
       error: error ?? this.error,
       linkedBankAccount: linkedBankAccount ?? this.linkedBankAccount,
       isSyncingBalance: isSyncingBalance ?? this.isSyncingBalance,
+      currentPage: currentPage ?? this.currentPage,
+      hasMore: hasMore ?? this.hasMore,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
     );
   }
 
@@ -99,6 +111,9 @@ class DashboardState {
       error: error ?? this.error,
       linkedBankAccount: null,
       isSyncingBalance: false,
+      currentPage: 1,
+      hasMore: false,
+      isLoadingMore: false,
     );
   }
 }
@@ -158,12 +173,14 @@ class DashboardController extends StateNotifier<DashboardState> {
       start = DateTime(start.year, start.month, start.day, 0, 0, 0);
       end = DateTime(end.year, end.month, end.day, 23, 59, 59);
 
-      // 3. Fetch Transactions (for the list view, current month or ALL)
-      final transactions = await _transactionRepo.getTransactions(
+      // 3. Fetch Transactions (paginated, page 1 — 30 most recent)
+      final pagedResult = await _transactionRepo.getTransactionsPaged(
         start: state.showAllTransactions ? null : start,
         end: state.showAllTransactions ? null : end,
         accountId: state.selectedAccount?.id,
+        page: 1,
       );
+      final transactions = pagedResult.items;
 
       // 3b. Fetch Overdue Projected Transactions (Projected but date is BEFORE start)
       final overdueTransactions = await _transactionRepo
@@ -236,6 +253,9 @@ class DashboardController extends StateNotifier<DashboardState> {
         projectedBalance: projectedBalance,
         isLoading: false,
         linkedBankAccount: linkedAccountInfo,
+        currentPage: 1,
+        hasMore: pagedResult.hasMore,
+        isLoadingMore: false,
       );
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -247,6 +267,28 @@ class DashboardController extends StateNotifier<DashboardState> {
     await _loadData(refreshAccounts: true);
     // Also refresh inbox to update the notification badge
     _ref.read(inboxControllerProvider.notifier).refresh();
+  }
+
+  Future<void> loadMoreTransactions() async {
+    if (!state.hasMore || state.isLoadingMore) return;
+    try {
+      state = state.copyWith(isLoadingMore: true);
+      final nextPage = state.currentPage + 1;
+      final result = await _transactionRepo.getTransactionsPaged(
+        start: state.showAllTransactions ? null : state.start,
+        end: state.showAllTransactions ? null : state.end,
+        accountId: state.selectedAccount?.id,
+        page: nextPage,
+      );
+      state = state.copyWith(
+        transactions: [...state.transactions, ...result.items],
+        currentPage: nextPage,
+        hasMore: result.hasMore,
+        isLoadingMore: false,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoadingMore: false);
+    }
   }
 
   void selectAccount(Account? account) {

@@ -2,15 +2,19 @@ import '../../../../core/utils/formatters.dart';
 import '../inbox_processing_strategy.dart';
 
 class CreditMutuelSmsParser implements InboxProcessingStrategy {
-  // Example 1 (Purchase): "CM: Achat CB 25,00 EUR le 21/02 a RESTO LYON"
-  // Example 2 (Statement): " 23/02 Cpt: XXX90101 Solde=+1 646,41 EUR - Opération créditrice 100,00 EUR (VIR INST WERO MME FABIENNE BRIAN)."
-  final RegExp _patternAchat = RegExp(
-    r'CM:.*?Achat CB.*?(\d+[.,]\d{2})\s?EUR.*?le.*?a\s?(.*)',
+  // Format 1: "Votre paiement de 12,50 € pour STARBUCKS a bien été effectué"
+  // Format 2: "Votre paiement de 12,50 EUR pour STARBUCKS a bien été effectué"
+  // Format 3: "Paiement de 12,50€ chez STARBUCKS effectué"
+  // Format 4: "CM: Achat CB 25,00 EUR le 21/02 a RESTO LYON"
+  // Format 5 (SMS solde): " 23/02 Cpt: XXX90101 Solde=+1 646,41 EUR - Opération créditrice 100,00 EUR (...)."
+  final RegExp _patternCMPay = RegExp(
+    r'(?:Votre\s+)?paiement\s+de\s+([\d.,]+)\s*(?:€|EUR|euros?)\s*(?:pour|chez|à|a)\s+(.+?)(?:\s+(?:a\s+bien\s+|a\s+)?été|\s+effectué|\s+accepté|\s+validé|[.!\n]|$)',
     caseSensitive: false,
+    unicode: true,
   );
 
-  final RegExp _patternCMPay = RegExp(
-    r'Votre paiement de\s+([\d+.,]+)\s?.?\s+pour\s+(.*?)\s+(?:a bien été|effectué)',
+  final RegExp _patternAchat = RegExp(
+    r'CM:.*?Achat CB.*?(\d+[.,]\d{2})\s?EUR.*?le.*?a\s?(.*)',
     caseSensitive: false,
   );
 
@@ -28,8 +32,9 @@ class CreditMutuelSmsParser implements InboxProcessingStrategy {
     final isCM =
         payload.contains('CM:') ||
         payload.contains('Crédit Mutuel') ||
-        payload.contains('Votre paiement de') ||
+        payload.contains('paiement de') || // plus large que 'Votre paiement de'
         package.contains('payment.app.cm') ||
+        package.contains('creditm') ||
         (payload.contains('Cpt:') && payload.contains('Solde='));
 
     final hasKeywords =
@@ -49,18 +54,20 @@ class CreditMutuelSmsParser implements InboxProcessingStrategy {
     // 1. Try CMPay (Notification App)
     final cmPayMatch = _patternCMPay.firstMatch(payload);
     if (cmPayMatch != null) {
-      final amountStr = cmPayMatch.group(1)?.replaceAll(',', '.') ?? '0.0';
-      final label = cmPayMatch.group(2)?.trim() ?? 'CM Pay';
-
-      return {
-        'amount': -(double.tryParse(amountStr) ?? 0.0),
-        'label': label,
-        'type': 'expense',
-        'date': DateTime.now().toIso8601String(),
-        'category': 'Autre',
-        'status': 'projected', // Use 'projected' to match AddTransactionPage
-        'is_automatic': true,
-      };
+      final amountStr = cmPayMatch.group(1)?.replaceAll(',', '.') ?? '';
+      final amount = double.tryParse(amountStr);
+      if (amount != null && amount > 0) {
+        final label = cmPayMatch.group(2)?.trim() ?? 'CM Pay';
+        return {
+          'amount': amount,
+          'label': label,
+          'type': 'expense',
+          'date': DateTime.now().toIso8601String(),
+          'category': 'Autre',
+          'status': 'projected',
+          'is_automatic': true,
+        };
+      }
     }
 
     // 2. Try Statement pattern (SMS rich)

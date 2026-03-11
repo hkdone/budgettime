@@ -369,7 +369,7 @@ class DashboardPage extends ConsumerWidget {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: const Text(
-                                  'v2.4.8',
+                                  'v2.4.9',
                                   style: TextStyle(
                                     fontSize: 10,
                                     color: Colors.blueGrey,
@@ -592,6 +592,29 @@ class DashboardPage extends ConsumerWidget {
                   else
                     // DETAIL VIEW: Show transaction list for the selected account
                     TransactionList(transactions: filteredTransactions),
+                  // Load more button (only in detail view when more pages are available)
+                  if (state.selectedAccount != null &&
+                      (state.hasMore || state.isLoadingMore))
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Center(
+                          child: state.isLoadingMore
+                              ? const SizedBox(
+                                  width: 28,
+                                  height: 28,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : OutlinedButton.icon(
+                                  onPressed: controller.loadMoreTransactions,
+                                  icon: const Icon(Icons.expand_more),
+                                  label: const Text('Charger plus'),
+                                ),
+                        ),
+                      ),
+                    ),
                   const SliverToBoxAdapter(child: SizedBox(height: 80)),
                 ],
               ),
