@@ -103,18 +103,24 @@ class OpenBankingService {
   Future<void> linkAccount(
     String bankAccountId,
     String localAccountId,
-    String iban,
+    String ibanField,
   ) async {
     try {
       await pb
           .collection('bank_accounts')
           .update(bankAccountId, body: {'local_account_id': localAccountId});
 
+      // Extract raw IBAN if it contains ' - ' (BankName - IBAN)
+      String rawIban = ibanField;
+      if (rawIban.contains(' - ')) {
+        rawIban = rawIban.split(' - ').last.trim();
+      }
+
       // Sauvegarde l'IBAN dans le compte interne pour l'auto-liaison future
-      if (localAccountId.isNotEmpty && iban.isNotEmpty && iban != 'Inconnu') {
+      if (localAccountId.isNotEmpty && rawIban.isNotEmpty && rawIban != 'Inconnu') {
         await pb
             .collection('accounts')
-            .update(localAccountId, body: {'external_id': iban});
+            .update(localAccountId, body: {'external_id': rawIban});
       }
     } catch (e) {
       throw Exception('Impossible de lier le compte: $e');
