@@ -533,6 +533,7 @@ class _OpenBankingAccountsPageState extends State<OpenBankingAccountsPage> {
                                       await _bankingService.linkAccount(
                                         acc['id'],
                                         val ?? '',
+                                        iban,
                                       );
                                       _fetchConnectedData();
                                     } catch (e) {

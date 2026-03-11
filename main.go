@@ -616,6 +616,24 @@ func main() {
 
 					// On ne tronque plus, on garde le label complet (Nom + IBAN)
 
+					// --- AUTO-LIAISON ---
+					if ibanValue != "" {
+						var matchedAccount struct {
+							Id string `db:"id"`
+						}
+						errFind := app.DB().Select("id").
+							From("accounts").
+							Where(dbx.HashExp{"external_id": ibanValue}).
+							Limit(1).
+							One(&matchedAccount)
+
+						if errFind == nil && matchedAccount.Id != "" {
+							fmt.Printf("[BudgetTime] Auto-liaison trouvée: IBAN %s correspond au compte local %s\n", ibanValue, matchedAccount.Id)
+							recordAcc.Set("local_account_id", matchedAccount.Id)
+						}
+					}
+					// --------------------
+
 					recordAcc.Set("iban", displayLabel)
 					if err := app.Save(recordAcc); err == nil {
 						compteCount++

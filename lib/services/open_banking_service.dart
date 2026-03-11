@@ -100,11 +100,22 @@ class OpenBankingService {
   }
 
   /// 5. Lie un compte bancaire distant à un compte BudgetTime local
-  Future<void> linkAccount(String bankAccountId, String localAccountId) async {
+  Future<void> linkAccount(
+    String bankAccountId,
+    String localAccountId,
+    String iban,
+  ) async {
     try {
       await pb
           .collection('bank_accounts')
           .update(bankAccountId, body: {'local_account_id': localAccountId});
+
+      // Sauvegarde l'IBAN dans le compte interne pour l'auto-liaison future
+      if (localAccountId.isNotEmpty && iban.isNotEmpty && iban != 'Inconnu') {
+        await pb
+            .collection('accounts')
+            .update(localAccountId, body: {'external_id': iban});
+      }
     } catch (e) {
       throw Exception('Impossible de lier le compte: $e');
     }
