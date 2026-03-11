@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -30,8 +29,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   Future<void> _submit() async {
-    // Notifie le gestionnaire de mots de passe que la session autofill est terminée
-    TextInput.finishAutofillContext(shouldSave: true);
     if (_formKey.currentState!.validate()) {
       await ref
           .read(authControllerProvider.notifier)
@@ -65,108 +62,104 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             constraints: const BoxConstraints(maxWidth: 400),
             child: Form(
               key: _formKey,
-              child: AutofillGroup(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Image.asset('assets/logo.png', height: 100),
-                    const SizedBox(height: 16),
-                    Text(
-                      'BudgetTime',
-                      style: Theme.of(context).textTheme.headlineMedium,
-                      textAlign: TextAlign.center,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Image.asset('assets/logo.png', height: 100),
+                  const SizedBox(height: 16),
+                  Text(
+                    'BudgetTime',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                  TextFormField(
+                    controller: _emailController,
+                    focusNode: _emailFocusNode,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.email),
                     ),
-                    const SizedBox(height: 32),
-                    TextFormField(
-                      controller: _emailController,
-                      focusNode: _emailFocusNode,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.email),
-                      ),
-                      keyboardType: TextInputType.emailAddress,
-                      textInputAction: TextInputAction.next,
-                      autofillHints: const [
-                        AutofillHints.username,
-                        AutofillHints.email,
-                      ],
-                      onFieldSubmitted: (_) {
-                        FocusScope.of(context).requestFocus(_passwordFocusNode);
-                      },
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Veuillez entrer votre email';
-                        }
-                        return null;
-                      },
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    autofillHints: const [
+                      AutofillHints.username,
+                      AutofillHints.email,
+                    ],
+                    onFieldSubmitted: (_) {
+                      FocusScope.of(context).requestFocus(_passwordFocusNode);
+                    },
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Veuillez entrer votre email';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _passwordController,
+                    focusNode: _passwordFocusNode,
+                    decoration: const InputDecoration(
+                      labelText: 'Mot de passe',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.lock),
                     ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _passwordController,
-                      focusNode: _passwordFocusNode,
-                      decoration: const InputDecoration(
-                        labelText: 'Mot de passe',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.lock),
-                      ),
-                      obscureText: true,
-                      textInputAction: TextInputAction.done,
-                      autofillHints: const [AutofillHints.password],
-                      onFieldSubmitted: (_) => _submit(),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Veuillez entrer votre mot de passe';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    FilledButton(
-                      onPressed: isLoading ? null : _submit,
-                      child: isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Se connecter'),
-                    ),
-                    const SizedBox(height: 16),
-                    TextButton(
-                      onPressed: () async {
-                        final dbService = ref.read(databaseServiceProvider);
-                        final baseUrl = dbService.pb.baseURL;
-                        final adminUrl = baseUrl.endsWith('/')
-                            ? '${baseUrl}_/'
-                            : '$baseUrl/_/';
+                    obscureText: true,
+                    textInputAction: TextInputAction.done,
+                    autofillHints: const [AutofillHints.password],
+                    onFieldSubmitted: (_) => _submit(),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Veuillez entrer votre mot de passe';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton(
+                    onPressed: isLoading ? null : _submit,
+                    child: isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Se connecter'),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () async {
+                      final dbService = ref.read(databaseServiceProvider);
+                      final baseUrl = dbService.pb.baseURL;
+                      final adminUrl = baseUrl.endsWith('/')
+                          ? '${baseUrl}_/'
+                          : '$baseUrl/_/';
 
-                        try {
-                          // ignore: deprecated_member_use
-                          await launchUrl(Uri.parse(adminUrl));
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Impossible d\'ouvrir le lien: $e',
-                                ),
-                              ),
-                            );
-                          }
+                      try {
+                        // ignore: deprecated_member_use
+                        await launchUrl(Uri.parse(adminUrl));
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Impossible d\'ouvrir le lien: $e'),
+                            ),
+                          );
                         }
-                      },
-                      child: const Text('Interface Admin (PocketBase)'),
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'v2.4.7',
-                      style: TextStyle(color: Colors.grey, fontSize: 12),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
+                      }
+                    },
+                    child: const Text('Interface Admin (PocketBase)'),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'v2.4.8',
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
             ),
           ),

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/auth/presentation/signup_page.dart';
@@ -12,17 +13,27 @@ import '../../features/dashboard/presentation/stats_page.dart';
 import '../../features/dashboard/presentation/stats_trend_page.dart';
 import '../services/database_service.dart';
 
-final router = GoRouter(
-  initialLocation: '/',
-  redirect: (context, state) {
+/// Notifie GoRouter à chaque changement d'état d'authentification PocketBase.
+class RouterNotifier extends ChangeNotifier {
+  RouterNotifier() {
+    DatabaseService().pb.authStore.onChange.listen((_) => notifyListeners());
+  }
+
+  String? redirect(BuildContext context, GoRouterState state) {
     final isLoggedIn = DatabaseService().isValid;
     final isLoggingIn = state.uri.toString() == '/login';
-
     if (!isLoggedIn && !isLoggingIn) return '/login';
     if (isLoggedIn && isLoggingIn) return '/';
-
     return null;
-  },
+  }
+}
+
+final _routerNotifier = RouterNotifier();
+
+final router = GoRouter(
+  initialLocation: '/',
+  refreshListenable: _routerNotifier,
+  redirect: _routerNotifier.redirect,
   routes: [
     GoRoute(path: '/', builder: (context, state) => const DashboardPage()),
     GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
