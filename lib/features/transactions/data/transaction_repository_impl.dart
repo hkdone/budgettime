@@ -36,20 +36,14 @@ class TransactionRepositoryImpl implements TransactionRepository {
         .getFullList(
           filter: filter,
           sort: '-date',
-          expand: 'account,target_account,recurrence,member,category',
+          expand: 'account,target_account,recurrence,member',
         );
 
     return records.map((e) {
       final json = e.toJson();
       final Map<String, dynamic> expandMap = {};
 
-      const expandKeys = [
-        'account',
-        'target_account',
-        'recurrence',
-        'member',
-        'category',
-      ];
+      const expandKeys = ['account', 'target_account', 'recurrence', 'member'];
       for (final key in expandKeys) {
         try {
           final expanded = e.get<List<dynamic>>('expand.$key');
@@ -92,13 +86,13 @@ class TransactionRepositoryImpl implements TransactionRepository {
         .getFullList(
           filter: filter,
           sort: '-date',
-          expand: 'account,recurrence,member,category',
+          expand: 'account,recurrence,member',
         );
 
     return records.map((e) {
       final json = e.toJson();
       final Map<String, dynamic> expandMap = {};
-      const expandKeys = ['account', 'recurrence', 'member', 'category'];
+      const expandKeys = ['account', 'recurrence', 'member'];
 
       for (final key in expandKeys) {
         try {
@@ -136,13 +130,13 @@ class TransactionRepositoryImpl implements TransactionRepository {
         .getFullList(
           filter: filter,
           sort: 'date',
-          expand: 'account,recurrence,member,category',
+          expand: 'account,recurrence,member',
         );
 
     return records.map((e) {
       final json = e.toJson();
       final Map<String, dynamic> expandMap = {};
-      const expandKeys = ['account', 'recurrence', 'member', 'category'];
+      const expandKeys = ['account', 'recurrence', 'member'];
 
       for (final key in expandKeys) {
         try {
@@ -186,13 +180,13 @@ class TransactionRepositoryImpl implements TransactionRepository {
         .getFullList(
           filter: filter,
           sort: 'date',
-          expand: 'account,recurrence,member,category',
+          expand: 'account,recurrence,member',
         );
 
     return records.map((e) {
       final json = e.toJson();
       final Map<String, dynamic> expandMap = {};
-      const expandKeys = ['account', 'recurrence', 'member', 'category'];
+      const expandKeys = ['account', 'recurrence', 'member'];
 
       for (final key in expandKeys) {
         try {
@@ -555,16 +549,10 @@ class TransactionRepositoryImpl implements TransactionRepository {
           perPage: perPage,
           filter: filter,
           sort: '-date',
-          expand: 'account,target_account,recurrence,member,category',
+          expand: 'account,target_account,recurrence,member',
         );
 
-    const expandKeys = [
-      'account',
-      'target_account',
-      'recurrence',
-      'member',
-      'category',
-    ];
+    const expandKeys = ['account', 'target_account', 'recurrence', 'member'];
 
     final items = result.items.map((e) {
       final json = e.toJson();
