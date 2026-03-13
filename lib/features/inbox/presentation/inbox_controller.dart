@@ -3,6 +3,7 @@ import '../domain/inbox_item.dart';
 import '../domain/inbox_repository.dart';
 import '../application/inbox_service.dart';
 import '../../../core/start_app.dart';
+import '../../../core/services/pwa_service.dart';
 
 class InboxState {
   final List<InboxItem> items;
@@ -27,9 +28,32 @@ class InboxState {
 class InboxController extends StateNotifier<InboxState> {
   final InboxRepository _repository;
   final InboxService _service;
+  final PwaService _pwaService;
 
-  InboxController(this._repository, this._service) : super(InboxState()) {
+  InboxController(this._repository, this._service, this._pwaService)
+    : super(InboxState()) {
     refresh();
+    _setupRealtime();
+  }
+
+  Future<void> _setupRealtime() async {
+    _pwaService.requestNotificationPermission();
+    await _repository.subscribe(_onNewItem);
+  }
+
+  void _onNewItem(Map<String, dynamic> itemData) {
+    final item = InboxItem.fromMap(itemData);
+    // Éviter les doublons si refresh() et realtime arrivent en même temps
+    if (state.items.any((i) => i.id == item.id)) return;
+    state = state.copyWith(items: [item, ...state.items]);
+    final label = item.label.isNotEmpty ? item.label : 'Nouveau message';
+    _pwaService.showNotification('BudgetTime — Boîte de réception', label);
+  }
+
+  @override
+  void dispose() {
+    _repository.unsubscribe();
+    super.dispose();
   }
 
   Future<void> refresh() async {
@@ -82,5 +106,6 @@ final inboxControllerProvider =
     StateNotifierProvider<InboxController, InboxState>((ref) {
       final repo = ref.watch(inboxRepositoryProvider);
       final service = ref.watch(inboxServiceProvider);
-      return InboxController(repo, service);
+      final pwaService = ref.watch(pwaServiceProvider);
+      return InboxController(repo, service, pwaService);
     });

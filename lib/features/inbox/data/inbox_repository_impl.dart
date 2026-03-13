@@ -64,4 +64,31 @@ class InboxRepositoryImpl implements InboxRepository {
       await _dbService.pb.collection('raw_inbox').delete(record.id);
     }
   }
+
+  @override
+  Future<void> subscribe(void Function(Map<String, dynamic>) onNew) async {
+    final userId = _dbService.pb.authStore.record?.id;
+    if (userId == null) return;
+
+    await _dbService.pb.collection('raw_inbox').subscribe('*', (e) {
+      if (e.action != 'create' || e.record == null) return;
+      final record = e.record!;
+      // Filtre côté client : uniquement les items de cet utilisateur non traités
+      if (record.data['user'] != userId) return;
+      if (record.data['is_processed'] == true) return;
+
+      final data = {
+        ...record.data,
+        'id': record.id,
+        'created': record.get<String>('created'),
+        'updated': record.get<String>('updated'),
+      };
+      onNew(data);
+    });
+  }
+
+  @override
+  Future<void> unsubscribe() async {
+    await _dbService.pb.collection('raw_inbox').unsubscribe();
+  }
 }
