@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:budgettime/core/utils/formatters.dart';
+import 'package:budgettime/core/utils/app_theme.dart';
 import '../../dashboard/presentation/dashboard_controller.dart';
 import '../../recurrences/presentation/recurrence_controller.dart';
 
@@ -126,7 +127,7 @@ class _TransactionListState extends ConsumerState<TransactionList> {
                     shadowColor: isProjected ? null : Colors.black12,
                     color: isProjected
                         ? Colors.grey[50]
-                        : const Color(0xFFE1F5FE), // Light sky blue
+                        : AppColors.effectiveCard,
                     margin: EdgeInsets.symmetric(
                       horizontal: 8,
                       vertical: isProjected ? 4 : 6,
@@ -136,7 +137,7 @@ class _TransactionListState extends ConsumerState<TransactionList> {
                       side: BorderSide(
                         color: isProjected
                             ? Colors.grey.shade200
-                            : Colors.blue.shade300,
+                            : AppColors.effectiveBorder,
                         width: isProjected ? 0.5 : 1.5,
                       ),
                     ),
@@ -169,8 +170,8 @@ class _TransactionListState extends ConsumerState<TransactionList> {
                         final IconData iconData;
 
                         if (effectivelyTransfer) {
-                          avatarBg = Colors.blue.withValues(alpha: 0.2);
-                          iconColor = Colors.blue;
+                          avatarBg = AppColors.transfer.withValues(alpha: 0.15);
+                          iconColor = AppColors.transfer;
                           iconData = Icons.swap_horiz;
                         } else if (effectivelyIncome) {
                           avatarBg = Colors.green.withValues(alpha: 0.2);
@@ -187,7 +188,7 @@ class _TransactionListState extends ConsumerState<TransactionList> {
                         if (isProjected) {
                           amountColor = Colors.grey;
                         } else if (effectivelyTransfer) {
-                          amountColor = Colors.blue;
+                          amountColor = AppColors.transfer;
                         } else if (effectivelyIncome) {
                           amountColor = Colors.green;
                         } else {

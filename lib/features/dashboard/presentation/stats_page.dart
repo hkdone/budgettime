@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'stats_controller.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/app_theme.dart';
 import '../../transactions/domain/categories.dart';
 
 import 'package:fl_chart/fl_chart.dart';
@@ -84,9 +85,11 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                               padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
                               child: Row(
                                 children: [
-                                  const Icon(
+                                  Icon(
                                     Icons.account_balance,
-                                    color: Colors.blue,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
@@ -96,7 +99,9 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                                         .titleLarge
                                         ?.copyWith(
                                           fontWeight: FontWeight.bold,
-                                          color: Colors.blue[800],
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.primary,
                                         ),
                                   ),
                                 ],
@@ -110,7 +115,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                               realData: stats.realExpenseByCategory,
                               projectedData: stats.projectedExpenseByCategory,
                               viewMode: _viewMode,
-                              baseColor: Colors.redAccent,
+                              baseColor: AppColors.chartExpense,
                             ),
 
                             // Dual View: Member Income (Real vs Projected)
@@ -119,7 +124,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                               realData: stats.realIncomeByMember,
                               projectedData: stats.projectedIncomeByMember,
                               viewMode: _viewMode,
-                              baseColor: Colors.teal,
+                              baseColor: AppColors.chartIncome,
                             ),
 
                             // Single View: Member Expenses (Projected)
@@ -133,7 +138,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                                 ),
                                 child: _buildPieChart(
                                   stats.projectedExpenseByMember,
-                                  Colors.orangeAccent,
+                                  AppColors.chartMemberExpense,
                                 ),
                               ),
                             ),
@@ -222,7 +227,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                     realBalance,
                     totalRealIncome,
                     totalRealExpense,
-                    Colors.blueGrey,
+                    AppColors.textSecondary,
                   ),
                 ),
                 Container(
@@ -236,7 +241,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                     projectedBalance,
                     totalProjectedIncome,
                     totalProjectedExpense,
-                    Colors.blueAccent,
+                    Theme.of(context).colorScheme.primary,
                   ),
                 ),
               ],
@@ -385,7 +390,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
       baseColor.withValues(alpha: 0.6),
       baseColor.withValues(alpha: 0.4),
       baseColor.withValues(alpha: 0.2),
-      ...Colors.primaries.map((c) => c.withValues(alpha: 0.5)),
+      ...AppColors.chartPalette.map((c) => c.withValues(alpha: 0.5)),
     ];
 
     return Column(

@@ -11,6 +11,7 @@ import '../../transactions/presentation/transaction_list.dart';
 import 'widgets/account_global_card.dart';
 import 'widgets/pwa_install_banner.dart';
 import 'package:budgettime/core/utils/formatters.dart';
+import 'package:budgettime/core/utils/app_theme.dart';
 
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
@@ -253,7 +254,10 @@ class DashboardPage extends ConsumerWidget {
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.home_outlined, color: Colors.blue),
+              icon: Icon(
+                Icons.home_outlined,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               tooltip: 'Tous les comptes',
               onPressed: () {
                 ref
@@ -266,7 +270,9 @@ class DashboardPage extends ConsumerWidget {
                 state.showAllTransactions
                     ? Icons.visibility_outlined
                     : Icons.visibility_off_outlined,
-                color: state.showAllTransactions ? Colors.orange : Colors.blue,
+                color: state.showAllTransactions
+                    ? AppColors.warning
+                    : Theme.of(context).colorScheme.primary,
               ),
               tooltip: state.showAllTransactions
                   ? 'Voir mois en cours'
@@ -287,9 +293,9 @@ class DashboardPage extends ConsumerWidget {
                 icon: Badge.count(
                   count: count,
                   isLabelVisible: count > 0,
-                  child: const Icon(
+                  child: Icon(
                     Icons.move_to_inbox_rounded,
-                    color: Colors.blue,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
                 tooltip: 'Réceptions externes',
@@ -308,9 +314,9 @@ class DashboardPage extends ConsumerWidget {
           ),
           if (state.selectedAccount == null)
             IconButton(
-              icon: const Icon(
+              icon: Icon(
                 Icons.bar_chart_rounded,
-                color: Colors.blueAccent,
+                color: Theme.of(context).colorScheme.primary,
               ),
               tooltip: 'Statistiques Annuelles',
               onPressed: () {
@@ -409,10 +415,10 @@ class DashboardPage extends ConsumerWidget {
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: const Text(
-                                    'v2.4.11',
+                                    'v2.4.12',
                                     style: TextStyle(
                                       fontSize: 10,
-                                      color: Colors.blueGrey,
+                                      color: AppColors.textSecondary,
                                     ),
                                   ),
                                 ),
@@ -447,7 +453,7 @@ class DashboardPage extends ConsumerWidget {
                                       Text(
                                         'Correspondance : ${state.linkedBankAccount!['iban']}',
                                         style: const TextStyle(
-                                          color: Colors.blueGrey,
+                                          color: AppColors.textSecondary,
                                           fontSize: 12,
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -486,9 +492,11 @@ class DashboardPage extends ConsumerWidget {
                                                       ),
                                                 )
                                               : IconButton(
-                                                  icon: const Icon(
+                                                  icon: Icon(
                                                     Icons.sync,
-                                                    color: Colors.blue,
+                                                    color: Theme.of(
+                                                      context,
+                                                    ).colorScheme.primary,
                                                   ),
                                                   tooltip:
                                                       'Actualiser le solde',
@@ -508,24 +516,29 @@ class DashboardPage extends ConsumerWidget {
                                         vertical: 8,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.blue.withValues(
-                                          alpha: 0.1,
-                                        ),
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primaryContainer
+                                            .withValues(alpha: 0.6),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          const Icon(
+                                          Icon(
                                             Icons.trending_up,
                                             size: 16,
-                                            color: Colors.blue,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
                                           ),
                                           const SizedBox(width: 8),
                                           Text(
                                             'Prévisionnel (fin de mois) : ',
                                             style: TextStyle(
-                                              color: Colors.blue[800],
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.primary,
                                               fontWeight: FontWeight.w500,
                                             ),
                                           ),
@@ -534,7 +547,9 @@ class DashboardPage extends ConsumerWidget {
                                               state.projectedBalance,
                                             ),
                                             style: TextStyle(
-                                              color: Colors.blue[800],
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.primary,
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
@@ -554,7 +569,8 @@ class DashboardPage extends ConsumerWidget {
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.bold,
-                                                  color: Colors.blueGrey,
+                                                  color:
+                                                      AppColors.textSecondary,
                                                 ),
                                               ),
                                               const SizedBox(height: 4),
@@ -595,7 +611,8 @@ class DashboardPage extends ConsumerWidget {
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.bold,
-                                                  color: Colors.blueGrey,
+                                                  color:
+                                                      AppColors.textSecondary,
                                                 ),
                                               ),
                                               const SizedBox(height: 4),

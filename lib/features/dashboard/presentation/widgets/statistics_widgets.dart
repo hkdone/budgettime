@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../../transactions/domain/categories.dart';
 import '../../../members/domain/member.dart';
 import 'package:budgettime/core/utils/formatters.dart';
+import 'package:budgettime/core/utils/app_theme.dart';
 
 class CategoryStats {
   final String categoryId;
@@ -181,8 +182,8 @@ class MemberPieChart extends StatelessWidget {
                     ),
                   );
                   memberColor =
-                      Colors.primaries[member.name.hashCode %
-                          Colors.primaries.length];
+                      AppColors.memberPalette[member.name.hashCode.abs() %
+                          AppColors.memberPalette.length];
                 }
                 return PieChartSectionData(
                   color: memberColor,
@@ -217,8 +218,9 @@ class MemberPieChart extends StatelessWidget {
                   ),
                 );
                 memberName = member.name;
-                memberColor = Colors
-                    .primaries[member.name.hashCode % Colors.primaries.length];
+                memberColor =
+                    AppColors.memberPalette[member.name.hashCode.abs() %
+                        AppColors.memberPalette.length];
               }
               return Row(
                 mainAxisSize: MainAxisSize.min,
