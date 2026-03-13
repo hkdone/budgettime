@@ -114,7 +114,7 @@ class ManageMembersPage extends ConsumerWidget {
                             onTap: () =>
                                 setState(() => selectedIcon = icon.codePoint),
                             child: Container(
-                              padding: const EdgeInsets.all(8),
+                              padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
                                 color: selectedIcon == icon.codePoint
                                     ? Colors.blue.withValues(alpha: 0.2)

@@ -134,7 +134,11 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
               ),
               if (_showDebug) _buildDebugPanel(item),
               Padding(
-                padding: const EdgeInsets.only(right: 8.0, bottom: 8.0),
+                padding: const EdgeInsets.only(
+                  right: 12.0,
+                  bottom: 12.0,
+                  left: 12.0,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -144,7 +148,7 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
                       label: const Text('Ignorer'),
                       style: TextButton.styleFrom(foregroundColor: Colors.grey),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 12),
                     ElevatedButton.icon(
                       onPressed: () => _processItem(item),
                       icon: const Icon(Icons.add, size: 18),
@@ -254,7 +258,9 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
         'type': item.amount >= 0 ? 'income' : 'expense',
       },
       // Ensure we don't have an ID that would trigger an "Edit"
-      'status': 'effective',
+      // Le parser peut avoir défini 'status' (ex: 'projected' pour CM Pay) — on ne l'écrase que si absent
+      if (previewData == null || !previewData.containsKey('status'))
+        'status': 'effective',
       'id': null,
       'fromInbox': true,
       // Auto-Mapping du compte

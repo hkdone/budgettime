@@ -15,10 +15,42 @@ import 'package:budgettime/core/utils/formatters.dart';
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
 
+  void _swipeAccount(
+    BuildContext context,
+    WidgetRef ref,
+    DragEndDetails details,
+  ) {
+    final state = ref.read(dashboardControllerProvider);
+    final controller = ref.read(dashboardControllerProvider.notifier);
+    if (details.primaryVelocity == null ||
+        details.primaryVelocity!.abs() < 200) {
+      return;
+    }
+
+    // Construire la liste ordonnée : [null = tous, compte1, compte2, ...]
+    final allAccounts = <dynamic>[null, ...state.accounts];
+    final currentIndex = state.selectedAccount == null
+        ? 0
+        : allAccounts.indexWhere(
+            (a) => a != null && a.id == state.selectedAccount!.id,
+          );
+
+    final int nextIndex;
+    if (details.primaryVelocity! < 0) {
+      // Swipe gauche → compte suivant
+      nextIndex = (currentIndex + 1) % allAccounts.length;
+    } else {
+      // Swipe droite → compte précédent
+      nextIndex = (currentIndex - 1 + allAccounts.length) % allAccounts.length;
+    }
+    controller.selectAccount(allAccounts[nextIndex]);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(dashboardControllerProvider);
     final controller = ref.read(dashboardControllerProvider.notifier);
+    final isMobile = MediaQuery.of(context).size.width < 600;
 
     // Calculate totals including initial balances
     double realIncome = 0;
@@ -141,79 +173,83 @@ class DashboardPage extends ConsumerWidget {
           padding: const EdgeInsets.all(8.0),
           child: Image.asset('assets/logo.png'),
         ),
-        title: PopupMenuButton<String>(
-          tooltip: 'Sélectionner un compte',
-          initialValue: state.selectedAccount?.id ?? 'all',
-          onSelected: (String accountId) {
-            if (accountId == 'all') {
-              ref
-                  .read(dashboardControllerProvider.notifier)
-                  .selectAccount(null);
-            } else {
-              final account = state.accounts.firstWhere(
-                (a) => a.id == accountId,
-                orElse: () => state.accounts.first, // Fallback safety
-              );
-              controller.selectAccount(account);
-            }
-          },
-          itemBuilder: (context) {
-            return [
-              const PopupMenuItem<String>(
-                value: 'all',
-                child: Text('Tous les comptes'),
-              ),
-              ...state.accounts.map(
-                (account) => PopupMenuItem<String>(
-                  value: account.id,
-                  child: Text(account.name),
+        title: isMobile
+            ? _buildMobileAccountIndicator(context, ref, state, controller)
+            : PopupMenuButton<String>(
+                tooltip: 'Sélectionner un compte',
+                initialValue: state.selectedAccount?.id ?? 'all',
+                onSelected: (String accountId) {
+                  if (accountId == 'all') {
+                    ref
+                        .read(dashboardControllerProvider.notifier)
+                        .selectAccount(null);
+                  } else {
+                    final account = state.accounts.firstWhere(
+                      (a) => a.id == accountId,
+                      orElse: () => state.accounts.first,
+                    );
+                    controller.selectAccount(account);
+                  }
+                },
+                itemBuilder: (context) {
+                  return [
+                    const PopupMenuItem<String>(
+                      value: 'all',
+                      child: Text('Tous les comptes'),
+                    ),
+                    ...state.accounts.map(
+                      (account) => PopupMenuItem<String>(
+                        value: account.id,
+                        child: Text(account.name),
+                      ),
+                    ),
+                  ];
+                },
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        state.selectedAccount?.name ?? 'Tous les comptes',
+                        style: const TextStyle(color: Colors.black),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const Icon(Icons.arrow_drop_down, color: Colors.black),
+                  ],
                 ),
               ),
-            ];
-          },
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: Text(
-                  state.selectedAccount?.name ?? 'Tous les comptes',
-                  style: const TextStyle(color: Colors.black),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const Icon(Icons.arrow_drop_down, color: Colors.black),
-            ],
-          ),
-        ),
         actions: [
           if (state.selectedAccount != null) ...[
             // Search Bar Component
-            SizedBox(
-              width: 180,
-              height: 40,
-              child: TextField(
-                onChanged: (value) => controller.setSearchQuery(value),
-                decoration: InputDecoration(
-                  hintText: 'Rechercher...',
-                  hintStyle: const TextStyle(fontSize: 14),
-                  prefixIcon: const Icon(Icons.search, size: 20),
-                  suffixIcon: state.searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, size: 16),
-                          onPressed: () {
-                            controller.setSearchQuery('');
-                          },
-                        )
-                      : null,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide.none,
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 180),
+              child: SizedBox(
+                height: 40,
+                child: TextField(
+                  onChanged: (value) => controller.setSearchQuery(value),
+                  decoration: InputDecoration(
+                    hintText: 'Rechercher...',
+                    hintStyle: const TextStyle(fontSize: 14),
+                    prefixIcon: const Icon(Icons.search, size: 20),
+                    suffixIcon: state.searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 16),
+                            onPressed: () {
+                              controller.setSearchQuery('');
+                            },
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[200],
+                    contentPadding: EdgeInsets.zero,
                   ),
-                  filled: true,
-                  fillColor: Colors.grey[200],
-                  contentPadding: EdgeInsets.zero,
+                  style: const TextStyle(fontSize: 14),
                 ),
-                style: const TextStyle(fontSize: 14),
               ),
             ),
             IconButton(
@@ -331,297 +367,310 @@ class DashboardPage extends ConsumerWidget {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: controller.refresh,
-        child: Column(
-          children: [
-            const PwaInstallBanner(),
-            Expanded(
-              child: CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                DateFormat(
-                                  'EEEE d MMMM yyyy',
-                                  'fr_FR',
-                                ).format(DateTime.now()),
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(
-                                      color: Colors.grey[600],
-                                      fontStyle: FontStyle.italic,
-                                    ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[200],
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Text(
-                                  'v2.4.10',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.blueGrey,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Card(
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            color: Colors.white,
-                            surfaceTintColor: Colors.white,
-                            child: Padding(
-                              padding: const EdgeInsets.all(24.0),
-                              child: Column(
-                                children: [
-                                  Text(
-                                    state.selectedAccount != null
-                                        ? 'Solde actuel (${state.selectedAccount!.name})'
-                                        : 'Solde actuel',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(
-                                          color: Colors.grey[600],
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                  ),
-                                  if (state.linkedBankAccount != null) ...[
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Correspondance : ${state.linkedBankAccount!['iban']}',
-                                      style: const TextStyle(
-                                        color: Colors.blueGrey,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        formatCurrency(state.effectiveBalance),
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .displayMedium
-                                            ?.copyWith(
-                                              color: state.effectiveBalance >= 0
-                                                  ? Colors.black
-                                                  : Colors.red,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                      ),
-                                      if (state.linkedBankAccount != null) ...[
-                                        const SizedBox(width: 8),
-                                        state.isSyncingBalance
-                                            ? const SizedBox(
-                                                width: 24,
-                                                height: 24,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                    ),
-                                              )
-                                            : IconButton(
-                                                icon: const Icon(
-                                                  Icons.sync,
-                                                  color: Colors.blue,
-                                                ),
-                                                tooltip: 'Actualiser le solde',
-                                                onPressed: () {
-                                                  controller
-                                                      .syncExternalBalance();
-                                                },
-                                              ),
-                                      ],
-                                    ],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  // Projected Balance
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.blue.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          Icons.trending_up,
-                                          size: 16,
-                                          color: Colors.blue,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'Prévisionnel (fin de mois) : ',
-                                          style: TextStyle(
-                                            color: Colors.blue[800],
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        Text(
-                                          formatCurrency(
-                                            state.projectedBalance,
-                                          ),
-                                          style: TextStyle(
-                                            color: Colors.blue[800],
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 24),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            const Text(
-                                              'Réel (Mois)',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.blueGrey,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              '+${formatCurrency(realIncome)}',
-                                              style: const TextStyle(
-                                                color: Colors.green,
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                            Text(
-                                              '-${formatCurrency(realExpense)}',
-                                              style: const TextStyle(
-                                                color: Colors.red,
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Container(
-                                        width: 1,
-                                        height: 40,
-                                        color: Colors.grey[300],
-                                        margin: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            const Text(
-                                              'Prévu (Mois)',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.blueGrey,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              '+${formatCurrency(projectedIncome)}',
-                                              style: TextStyle(
-                                                color: Colors.green[700],
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                            Text(
-                                              '-${formatCurrency(projectedExpense)}',
-                                              style: TextStyle(
-                                                color: Colors.red[700],
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // 5. Success State: Transactions or Account Cards
-                  if (state.selectedAccount == null)
-                    // GLOBAL VIEW: Show per-account cards
-                    SliverList(
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        final account = state.accounts[index];
-                        return AccountGlobalCard(account: account);
-                      }, childCount: state.accounts.length),
-                    )
-                  else
-                    // DETAIL VIEW: Show transaction list for the selected account
-                    TransactionList(transactions: filteredTransactions),
-                  // Load more button (only in detail view when more pages are available)
-                  if (state.selectedAccount != null &&
-                      (state.hasMore || state.isLoadingMore))
+      body: GestureDetector(
+        onHorizontalDragEnd: isMobile
+            ? (details) => _swipeAccount(context, ref, details)
+            : null,
+        child: RefreshIndicator(
+          onRefresh: controller.refresh,
+          child: Column(
+            children: [
+              const PwaInstallBanner(),
+              Expanded(
+                child: CustomScrollView(
+                  slivers: [
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Center(
-                          child: state.isLoadingMore
-                              ? const SizedBox(
-                                  width: 28,
-                                  height: 28,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : OutlinedButton.icon(
-                                  onPressed: controller.loadMoreTransactions,
-                                  icon: const Icon(Icons.expand_more),
-                                  label: const Text('Charger plus'),
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  DateFormat(
+                                    'EEEE d MMMM yyyy',
+                                    'fr_FR',
+                                  ).format(DateTime.now()),
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        color: Colors.grey[600],
+                                        fontStyle: FontStyle.italic,
+                                      ),
                                 ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[200],
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Text(
+                                    'v2.4.11',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.blueGrey,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Card(
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              color: Colors.white,
+                              surfaceTintColor: Colors.white,
+                              child: Padding(
+                                padding: const EdgeInsets.all(24.0),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      state.selectedAccount != null
+                                          ? 'Solde actuel (${state.selectedAccount!.name})'
+                                          : 'Solde actuel',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            color: Colors.grey[600],
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                    ),
+                                    if (state.linkedBankAccount != null) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Correspondance : ${state.linkedBankAccount!['iban']}',
+                                        style: const TextStyle(
+                                          color: Colors.blueGrey,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          formatCurrency(
+                                            state.effectiveBalance,
+                                          ),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .displayMedium
+                                              ?.copyWith(
+                                                color:
+                                                    state.effectiveBalance >= 0
+                                                    ? Colors.black
+                                                    : Colors.red,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                        ),
+                                        if (state.linkedBankAccount !=
+                                            null) ...[
+                                          const SizedBox(width: 8),
+                                          state.isSyncingBalance
+                                              ? const SizedBox(
+                                                  width: 24,
+                                                  height: 24,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                      ),
+                                                )
+                                              : IconButton(
+                                                  icon: const Icon(
+                                                    Icons.sync,
+                                                    color: Colors.blue,
+                                                  ),
+                                                  tooltip:
+                                                      'Actualiser le solde',
+                                                  onPressed: () {
+                                                    controller
+                                                        .syncExternalBalance();
+                                                  },
+                                                ),
+                                        ],
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    // Projected Balance
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.trending_up,
+                                            size: 16,
+                                            color: Colors.blue,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Prévisionnel (fin de mois) : ',
+                                            style: TextStyle(
+                                              color: Colors.blue[800],
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          Text(
+                                            formatCurrency(
+                                              state.projectedBalance,
+                                            ),
+                                            style: TextStyle(
+                                              color: Colors.blue[800],
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 24),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'Réel (Mois)',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.blueGrey,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                '+${formatCurrency(realIncome)}',
+                                                style: const TextStyle(
+                                                  color: Colors.green,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                              Text(
+                                                '-${formatCurrency(realExpense)}',
+                                                style: const TextStyle(
+                                                  color: Colors.red,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Container(
+                                          width: 1,
+                                          height: 40,
+                                          color: Colors.grey[300],
+                                          margin: const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'Prévu (Mois)',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.blueGrey,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                '+${formatCurrency(projectedIncome)}',
+                                                style: TextStyle(
+                                                  color: Colors.green[700],
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              Text(
+                                                '-${formatCurrency(projectedExpense)}',
+                                                style: TextStyle(
+                                                  color: Colors.red[700],
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 80)),
-                ],
+                    // 5. Success State: Transactions or Account Cards
+                    if (state.selectedAccount == null)
+                      // GLOBAL VIEW: Show per-account cards
+                      SliverList(
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          final account = state.accounts[index];
+                          return AccountGlobalCard(account: account);
+                        }, childCount: state.accounts.length),
+                      )
+                    else
+                      // DETAIL VIEW: Show transaction list for the selected account
+                      TransactionList(transactions: filteredTransactions),
+                    // Load more button (only in detail view when more pages are available)
+                    if (state.selectedAccount != null &&
+                        (state.hasMore || state.isLoadingMore))
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Center(
+                            child: state.isLoadingMore
+                                ? const SizedBox(
+                                    width: 28,
+                                    height: 28,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : OutlinedButton.icon(
+                                    onPressed: controller.loadMoreTransactions,
+                                    icon: const Icon(Icons.expand_more),
+                                    label: const Text('Charger plus'),
+                                  ),
+                          ),
+                        ),
+                      ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 80)),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
+      ), // GestureDetector
       floatingActionButton: state.selectedAccount != null
           ? FloatingActionButton(
               onPressed: () {
@@ -633,6 +682,56 @@ class DashboardPage extends ConsumerWidget {
               child: const Icon(Icons.add),
             )
           : null,
+    );
+  }
+
+  Widget _buildMobileAccountIndicator(
+    BuildContext context,
+    WidgetRef ref,
+    dynamic state,
+    dynamic controller,
+  ) {
+    final allAccounts = <dynamic>[null, ...state.accounts];
+    final currentIndex = state.selectedAccount == null
+        ? 0
+        : allAccounts.indexWhere(
+            (a) => a != null && a.id == state.selectedAccount!.id,
+          );
+    final hasPrev = currentIndex > 0;
+    final hasNext = currentIndex < allAccounts.length - 1;
+    final label = state.selectedAccount?.name ?? 'Tous les comptes';
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTap: hasPrev
+              ? () => controller.selectAccount(allAccounts[currentIndex - 1])
+              : null,
+          child: Icon(
+            Icons.chevron_left,
+            color: hasPrev ? Colors.black : Colors.grey[300],
+            size: 20,
+          ),
+        ),
+        Flexible(
+          child: Text(
+            label,
+            style: const TextStyle(color: Colors.black, fontSize: 15),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        GestureDetector(
+          onTap: hasNext
+              ? () => controller.selectAccount(allAccounts[currentIndex + 1])
+              : null,
+          child: Icon(
+            Icons.chevron_right,
+            color: hasNext ? Colors.black : Colors.grey[300],
+            size: 20,
+          ),
+        ),
+      ],
     );
   }
 }

@@ -29,52 +29,54 @@ class _ManageAccountsPageState extends ConsumerState<ManageAccountsPage> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: Text(isEditing ? 'Modifier le compte' : 'Ajouter un compte'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Nom du compte'),
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                key: ValueKey(selectedType),
-                initialValue: selectedType,
-                decoration: const InputDecoration(labelText: 'Type'),
-                items: const [
-                  DropdownMenuItem(
-                    value: 'checking',
-                    child: Text('Compte Courant'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Nom du compte'),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  key: ValueKey(selectedType),
+                  initialValue: selectedType,
+                  decoration: const InputDecoration(labelText: 'Type'),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'checking',
+                      child: Text('Compte Courant'),
+                    ),
+                    DropdownMenuItem(value: 'savings', child: Text('Épargne')),
+                    DropdownMenuItem(value: 'cash', child: Text('Espèces')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setDialogState(() => selectedType = value);
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: balanceController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
                   ),
-                  DropdownMenuItem(value: 'savings', child: Text('Épargne')),
-                  DropdownMenuItem(value: 'cash', child: Text('Espèces')),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    setDialogState(() => selectedType = value);
-                  }
-                },
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: balanceController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Solde actuel',
+                    helperText: 'Valeur de référence pour le calcul du solde',
+                  ),
                 ),
-                decoration: const InputDecoration(
-                  labelText: 'Solde actuel',
-                  helperText: 'Valeur de référence pour le calcul du solde',
+                const SizedBox(height: 16),
+                TextField(
+                  controller: externalIdController,
+                  decoration: const InputDecoration(
+                    labelText: 'ID Externe (ex: XXX90101)',
+                    helperText: 'Utilisé pour le matching auto des SMS',
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: externalIdController,
-                decoration: const InputDecoration(
-                  labelText: 'ID Externe (ex: XXX90101)',
-                  helperText: 'Utilisé pour le matching auto des SMS',
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
           actions: [
             TextButton(

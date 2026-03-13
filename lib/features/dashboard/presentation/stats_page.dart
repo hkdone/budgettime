@@ -127,8 +127,10 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                               'Dépenses par Membre (Prévisionnel)',
                             ),
                             Center(
-                              child: SizedBox(
-                                width: 500,
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 500,
+                                ),
                                 child: _buildPieChart(
                                   stats.projectedExpenseByMember,
                                   Colors.orangeAccent,
@@ -329,8 +331,8 @@ class _StatsPageState extends ConsumerState<StatsPage> {
           );
         } else {
           return Center(
-            child: SizedBox(
-              width: 500,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 500),
               child: _buildPieChart(
                 viewMode == 'real' ? realData : projectedData,
                 baseColor,

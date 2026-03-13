@@ -55,8 +55,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final isLoading = authState.isLoading;
 
     return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 400),
@@ -155,7 +156,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   ),
                   const SizedBox(height: 24),
                   const Text(
-                    'v2.4.10',
+                    'v2.4.11',
                     style: TextStyle(color: Colors.grey, fontSize: 12),
                     textAlign: TextAlign.center,
                   ),
@@ -165,6 +166,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           ),
         ),
       ),
+    )
     );
   }
 }
