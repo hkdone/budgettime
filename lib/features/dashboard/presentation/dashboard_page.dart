@@ -13,14 +13,18 @@ import 'widgets/pwa_install_banner.dart';
 import 'package:budgettime/core/utils/formatters.dart';
 import 'package:budgettime/core/utils/app_theme.dart';
 
-class DashboardPage extends ConsumerWidget {
+class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
 
-  void _swipeAccount(
-    BuildContext context,
-    WidgetRef ref,
-    DragEndDetails details,
-  ) {
+  @override
+  ConsumerState<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends ConsumerState<DashboardPage> {
+  // 1 = swipe gauche (compte suivant), -1 = swipe droite (compte précédent)
+  int _swipeDirection = 1;
+
+  void _swipeAccount(DragEndDetails details) {
     final state = ref.read(dashboardControllerProvider);
     final controller = ref.read(dashboardControllerProvider.notifier);
     if (details.primaryVelocity == null ||
@@ -40,15 +44,17 @@ class DashboardPage extends ConsumerWidget {
     if (details.primaryVelocity! < 0) {
       // Swipe gauche → compte suivant
       nextIndex = (currentIndex + 1) % allAccounts.length;
+      setState(() => _swipeDirection = 1);
     } else {
       // Swipe droite → compte précédent
       nextIndex = (currentIndex - 1 + allAccounts.length) % allAccounts.length;
+      setState(() => _swipeDirection = -1);
     }
     controller.selectAccount(allAccounts[nextIndex]);
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final state = ref.watch(dashboardControllerProvider);
     final controller = ref.read(dashboardControllerProvider.notifier);
     final isMobile = MediaQuery.of(context).size.width < 600;
@@ -375,7 +381,7 @@ class DashboardPage extends ConsumerWidget {
       ),
       body: GestureDetector(
         onHorizontalDragEnd: isMobile
-            ? (details) => _swipeAccount(context, ref, details)
+            ? (details) => _swipeAccount(details)
             : null,
         child: RefreshIndicator(
           onRefresh: controller.refresh,
@@ -383,306 +389,340 @@ class DashboardPage extends ConsumerWidget {
             children: [
               const PwaInstallBanner(),
               Expanded(
-                child: CustomScrollView(
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  DateFormat(
-                                    'EEEE d MMMM yyyy',
-                                    'fr_FR',
-                                  ).format(DateTime.now()),
-                                  style: Theme.of(context).textTheme.bodyMedium
-                                      ?.copyWith(
-                                        color: Colors.grey[600],
-                                        fontStyle: FontStyle.italic,
-                                      ),
-                                ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[200],
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Text(
-                                    'v2.4.14',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Card(
-                              elevation: 2,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              color: Colors.white,
-                              surfaceTintColor: Colors.white,
-                              child: Padding(
-                                padding: const EdgeInsets.all(24.0),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      state.selectedAccount != null
-                                          ? 'Solde actuel (${state.selectedAccount!.name})'
-                                          : 'Solde actuel',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium
-                                          ?.copyWith(
-                                            color: Colors.grey[600],
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                    ),
-                                    if (state.linkedBankAccount != null) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Correspondance : ${state.linkedBankAccount!['iban']}',
-                                        style: const TextStyle(
-                                          color: AppColors.textSecondary,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          formatCurrency(
-                                            state.effectiveBalance,
-                                          ),
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .displayMedium
-                                              ?.copyWith(
-                                                color:
-                                                    state.effectiveBalance >= 0
-                                                    ? Colors.black
-                                                    : Colors.red,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                        ),
-                                        if (state.linkedBankAccount !=
-                                            null) ...[
-                                          const SizedBox(width: 8),
-                                          state.isSyncingBalance
-                                              ? const SizedBox(
-                                                  width: 24,
-                                                  height: 24,
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                        strokeWidth: 2,
-                                                      ),
-                                                )
-                                              : IconButton(
-                                                  icon: Icon(
-                                                    Icons.sync,
-                                                    color: Theme.of(
-                                                      context,
-                                                    ).colorScheme.primary,
-                                                  ),
-                                                  tooltip:
-                                                      'Actualiser le solde',
-                                                  onPressed: () {
-                                                    controller
-                                                        .syncExternalBalance();
-                                                  },
-                                                ),
-                                        ],
-                                      ],
-                                    ),
-                                    const SizedBox(height: 16),
-                                    // Projected Balance
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 8,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .primaryContainer
-                                            .withValues(alpha: 0.6),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.trending_up,
-                                            size: 16,
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.primary,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            'Prévisionnel (fin de mois) : ',
-                                            style: TextStyle(
-                                              color: Theme.of(
-                                                context,
-                                              ).colorScheme.primary,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                          Text(
-                                            formatCurrency(
-                                              state.projectedBalance,
-                                            ),
-                                            style: TextStyle(
-                                              color: Theme.of(
-                                                context,
-                                              ).colorScheme.primary,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 24),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              const Text(
-                                                'Réel (Mois)',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.bold,
-                                                  color:
-                                                      AppColors.textSecondary,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                '+${formatCurrency(realIncome)}',
-                                                style: const TextStyle(
-                                                  color: Colors.green,
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                              Text(
-                                                '-${formatCurrency(realExpense)}',
-                                                style: const TextStyle(
-                                                  color: Colors.red,
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        Container(
-                                          width: 1,
-                                          height: 40,
-                                          color: Colors.grey[300],
-                                          margin: const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                          ),
-                                        ),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              const Text(
-                                                'Prévu (Mois)',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.bold,
-                                                  color:
-                                                      AppColors.textSecondary,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                '+${formatCurrency(projectedIncome)}',
-                                                style: TextStyle(
-                                                  color: Colors.green[700],
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                              Text(
-                                                '-${formatCurrency(projectedExpense)}',
-                                                style: TextStyle(
-                                                  color: Colors.red[700],
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  transitionBuilder: (child, animation) {
+                    final slideIn =
+                        Tween<Offset>(
+                          begin: Offset(_swipeDirection.toDouble(), 0),
+                          end: Offset.zero,
+                        ).animate(
+                          CurveTween(
+                            curve: Curves.easeOutCubic,
+                          ).animate(animation),
+                        );
+                    return SlideTransition(
+                      position: slideIn,
+                      child: FadeTransition(opacity: animation, child: child),
+                    );
+                  },
+                  child: CustomScrollView(
+                    key: ValueKey(
+                      ref
+                              .watch(dashboardControllerProvider)
+                              .selectedAccount
+                              ?.id ??
+                          '__all__',
                     ),
-                    // 5. Success State: Transactions or Account Cards
-                    if (state.selectedAccount == null)
-                      // GLOBAL VIEW: Show per-account cards
-                      SliverList(
-                        delegate: SliverChildBuilderDelegate((context, index) {
-                          final account = state.accounts[index];
-                          return AccountGlobalCard(account: account);
-                        }, childCount: state.accounts.length),
-                      )
-                    else
-                      // DETAIL VIEW: Show transaction list for the selected account
-                      TransactionList(transactions: filteredTransactions),
-                    // Load more button (only in detail view when more pages are available)
-                    if (state.selectedAccount != null &&
-                        (state.hasMore || state.isLoadingMore))
+                    slivers: [
                       SliverToBoxAdapter(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: Center(
-                            child: state.isLoadingMore
-                                ? const SizedBox(
-                                    width: 28,
-                                    height: 28,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : OutlinedButton.icon(
-                                    onPressed: controller.loadMoreTransactions,
-                                    icon: const Icon(Icons.expand_more),
-                                    label: const Text('Charger plus'),
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    DateFormat(
+                                      'EEEE d MMMM yyyy',
+                                      'fr_FR',
+                                    ).format(DateTime.now()),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: Colors.grey[600],
+                                          fontStyle: FontStyle.italic,
+                                        ),
                                   ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[200],
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Text(
+                                      'v2.4.15',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Card(
+                                elevation: 2,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                color: Colors.white,
+                                surfaceTintColor: Colors.white,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(24.0),
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        state.selectedAccount != null
+                                            ? 'Solde actuel (${state.selectedAccount!.name})'
+                                            : 'Solde actuel',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
+                                              color: Colors.grey[600],
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                      ),
+                                      if (state.linkedBankAccount != null) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Correspondance : ${state.linkedBankAccount!['iban']}',
+                                          style: const TextStyle(
+                                            color: AppColors.textSecondary,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            formatCurrency(
+                                              state.effectiveBalance,
+                                            ),
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .displayMedium
+                                                ?.copyWith(
+                                                  color:
+                                                      state.effectiveBalance >=
+                                                          0
+                                                      ? Colors.black
+                                                      : Colors.red,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                          ),
+                                          if (state.linkedBankAccount !=
+                                              null) ...[
+                                            const SizedBox(width: 8),
+                                            state.isSyncingBalance
+                                                ? const SizedBox(
+                                                    width: 24,
+                                                    height: 24,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                        ),
+                                                  )
+                                                : IconButton(
+                                                    icon: Icon(
+                                                      Icons.sync,
+                                                      color: Theme.of(
+                                                        context,
+                                                      ).colorScheme.primary,
+                                                    ),
+                                                    tooltip:
+                                                        'Actualiser le solde',
+                                                    onPressed: () {
+                                                      controller
+                                                          .syncExternalBalance();
+                                                    },
+                                                  ),
+                                          ],
+                                        ],
+                                      ),
+                                      const SizedBox(height: 16),
+                                      // Projected Balance
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .primaryContainer
+                                              .withValues(alpha: 0.6),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.trending_up,
+                                              size: 16,
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.primary,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              'Prévisionnel (fin de mois) : ',
+                                              style: TextStyle(
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.primary,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            Text(
+                                              formatCurrency(
+                                                state.projectedBalance,
+                                              ),
+                                              style: TextStyle(
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.primary,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 24),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                const Text(
+                                                  'Réel (Mois)',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.bold,
+                                                    color:
+                                                        AppColors.textSecondary,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  '+${formatCurrency(realIncome)}',
+                                                  style: const TextStyle(
+                                                    color: Colors.green,
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  '-${formatCurrency(realExpense)}',
+                                                  style: const TextStyle(
+                                                    color: Colors.red,
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Container(
+                                            width: 1,
+                                            height: 40,
+                                            color: Colors.grey[300],
+                                            margin: const EdgeInsets.symmetric(
+                                              horizontal: 16,
+                                            ),
+                                          ),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                const Text(
+                                                  'Prévu (Mois)',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.bold,
+                                                    color:
+                                                        AppColors.textSecondary,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  '+${formatCurrency(projectedIncome)}',
+                                                  style: TextStyle(
+                                                    color: Colors.green[700],
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  '-${formatCurrency(projectedExpense)}',
+                                                  style: TextStyle(
+                                                    color: Colors.red[700],
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 80)),
-                  ],
-                ),
+                      // 5. Success State: Transactions or Account Cards
+                      if (state.selectedAccount == null)
+                        // GLOBAL VIEW: Show per-account cards
+                        SliverList(
+                          delegate: SliverChildBuilderDelegate((
+                            context,
+                            index,
+                          ) {
+                            final account = state.accounts[index];
+                            return AccountGlobalCard(account: account);
+                          }, childCount: state.accounts.length),
+                        )
+                      else
+                        // DETAIL VIEW: Show transaction list for the selected account
+                        TransactionList(transactions: filteredTransactions),
+                      // Load more button (only in detail view when more pages are available)
+                      if (state.selectedAccount != null &&
+                          (state.hasMore || state.isLoadingMore))
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Center(
+                              child: state.isLoadingMore
+                                  ? const SizedBox(
+                                      width: 28,
+                                      height: 28,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : OutlinedButton.icon(
+                                      onPressed:
+                                          controller.loadMoreTransactions,
+                                      icon: const Icon(Icons.expand_more),
+                                      label: const Text('Charger plus'),
+                                    ),
+                            ),
+                          ),
+                        ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 80)),
+                    ],
+                  ),
+                ), // AnimatedSwitcher
               ),
             ],
           ),
@@ -723,7 +763,10 @@ class DashboardPage extends ConsumerWidget {
       children: [
         GestureDetector(
           onTap: hasPrev
-              ? () => controller.selectAccount(allAccounts[currentIndex - 1])
+              ? () {
+                  setState(() => _swipeDirection = -1);
+                  controller.selectAccount(allAccounts[currentIndex - 1]);
+                }
               : null,
           child: Icon(
             Icons.chevron_left,
@@ -740,7 +783,10 @@ class DashboardPage extends ConsumerWidget {
         ),
         GestureDetector(
           onTap: hasNext
-              ? () => controller.selectAccount(allAccounts[currentIndex + 1])
+              ? () {
+                  setState(() => _swipeDirection = 1);
+                  controller.selectAccount(allAccounts[currentIndex + 1]);
+                }
               : null,
           child: Icon(
             Icons.chevron_right,
