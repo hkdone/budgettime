@@ -30,47 +30,88 @@ class RouterNotifier extends ChangeNotifier {
 
 final _routerNotifier = RouterNotifier();
 
+/// Transition par défaut : fade + glissement vers le haut (150 ms).
+Page<void> _buildPage(GoRouterState state, Widget child) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 200),
+    reverseTransitionDuration: const Duration(milliseconds: 150),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(
+        opacity: CurveTween(curve: Curves.easeOut).animate(animation),
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.03),
+            end: Offset.zero,
+          ).animate(CurveTween(curve: Curves.easeOut).animate(animation)),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
 final router = GoRouter(
   initialLocation: '/',
   refreshListenable: _routerNotifier,
   redirect: _routerNotifier.redirect,
   routes: [
-    GoRoute(path: '/', builder: (context, state) => const DashboardPage()),
-    GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
-    GoRoute(path: '/signup', builder: (context, state) => const SignupPage()),
+    GoRoute(
+      path: '/',
+      pageBuilder: (context, state) => _buildPage(state, const DashboardPage()),
+    ),
+    GoRoute(
+      path: '/login',
+      pageBuilder: (context, state) => _buildPage(state, const LoginPage()),
+    ),
+    GoRoute(
+      path: '/signup',
+      pageBuilder: (context, state) => _buildPage(state, const SignupPage()),
+    ),
     GoRoute(
       path: '/accounts',
-      builder: (context, state) => const ManageAccountsPage(),
+      pageBuilder: (context, state) =>
+          _buildPage(state, const ManageAccountsPage()),
     ),
     GoRoute(
       path: '/add-transaction',
-      builder: (context, state) => AddTransactionPage(
-        transactionToEdit: state.extra as Map<String, dynamic>?,
+      pageBuilder: (context, state) => _buildPage(
+        state,
+        AddTransactionPage(
+          transactionToEdit: state.extra as Map<String, dynamic>?,
+        ),
       ),
     ),
     GoRoute(
       path: '/recurrences',
-      builder: (context, state) => const ManageRecurrencesPage(),
+      pageBuilder: (context, state) =>
+          _buildPage(state, const ManageRecurrencesPage()),
     ),
     GoRoute(
       path: '/settings',
-      builder: (context, state) => const SettingsPage(),
+      pageBuilder: (context, state) => _buildPage(state, const SettingsPage()),
     ),
     GoRoute(
       path: '/account-recurrences',
-      builder: (context, state) {
+      pageBuilder: (context, state) {
         final accountId = state.extra as String;
-        return RecurrencesListPage(accountId: accountId);
+        return _buildPage(state, RecurrencesListPage(accountId: accountId));
       },
     ),
     GoRoute(
       path: '/members',
-      builder: (context, state) => const ManageMembersPage(),
+      pageBuilder: (context, state) =>
+          _buildPage(state, const ManageMembersPage()),
     ),
-    GoRoute(path: '/stats', builder: (context, state) => const StatsPage()),
+    GoRoute(
+      path: '/stats',
+      pageBuilder: (context, state) => _buildPage(state, const StatsPage()),
+    ),
     GoRoute(
       path: '/stats-trend',
-      builder: (context, state) => const StatsTrendPage(),
+      pageBuilder: (context, state) =>
+          _buildPage(state, const StatsTrendPage()),
     ),
   ],
 );
