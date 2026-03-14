@@ -38,7 +38,18 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         !_isSyncing) {
       setState(() => _isSyncing = true);
       try {
-        await OpenBankingService().syncTransactions(state.selectedAccount!.id);
+        // Limiter à hier + aujourd'hui, comme le cron quotidien
+        final now = DateTime.now();
+        final dateStart = now
+            .subtract(const Duration(days: 1))
+            .toIso8601String()
+            .substring(0, 10);
+        final dateEnd = now.toIso8601String().substring(0, 10);
+        await OpenBankingService().syncTransactions(
+          state.selectedAccount!.id,
+          dateStart: dateStart,
+          dateEnd: dateEnd,
+        );
         // Actualise aussi la boîte de réception et le solde
         ref.read(inboxControllerProvider.notifier).refresh();
         await controller.syncExternalBalance();
@@ -485,7 +496,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: const Text(
-                                      'v2.4.16',
+                                      'v2.4.17',
                                       style: TextStyle(
                                         fontSize: 10,
                                         color: AppColors.textSecondary,
