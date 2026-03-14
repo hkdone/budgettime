@@ -81,6 +81,55 @@ class SettingsPage extends ConsumerWidget {
               ),
             ),
           ),
+          const Divider(),
+          // ── Section Synchronisation Bancaire ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Text(
+              'Synchronisation bancaire',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          Consumer(
+            builder: (context, ref, _) {
+              final state = ref.watch(settingsControllerProvider);
+              return state.maybeWhen(
+                data: (settings) => Column(
+                  children: [
+                    SwitchListTile(
+                      secondary: const Icon(Icons.schedule),
+                      title: const Text('Synchronisation automatique à 8h'),
+                      subtitle: const Text(
+                        'Récupère automatiquement les nouvelles transactions bancaires chaque matin.',
+                      ),
+                      value: settings.autoSync,
+                      onChanged: (v) => ref
+                          .read(settingsControllerProvider.notifier)
+                          .updateAutoSync(v),
+                    ),
+                    SwitchListTile(
+                      secondary: const Icon(Icons.sync),
+                      title: const Text(
+                        'Actualisation bancaire sur swipe vers le bas',
+                      ),
+                      subtitle: const Text(
+                        'En vue détail d\'un compte, tirer vers le bas synchronise aussi les transactions bancaires (1 fois/heure max).',
+                      ),
+                      value: settings.pullToSync,
+                      onChanged: (v) => ref
+                          .read(settingsControllerProvider.notifier)
+                          .updatePullToSync(v),
+                    ),
+                  ],
+                ),
+                orElse: () => const SizedBox.shrink(),
+              );
+            },
+          ),
+          const Divider(),
           ListTile(
             leading: const Icon(Icons.admin_panel_settings),
             title: const Text('Administration (PocketBase)'),

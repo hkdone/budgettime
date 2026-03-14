@@ -173,7 +173,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
         '${dateEnd.year}-${dateEnd.month.toString().padLeft(2, '0')}-${dateEnd.day.toString().padLeft(2, '0')} 23:59:59';
 
     final filter =
-        'user = "${user.id}" && account = "$accountId" && type = "$type" && amount = $amount && date >= "$startStr" && date <= "$endStr"';
+        'user = "${user.id}" && account = "$accountId" && type = "$type" && status = "projected" && amount = $amount && date >= "$startStr" && date <= "$endStr"';
 
     final records = await _dbService.pb
         .collection('transactions')

@@ -96,8 +96,31 @@ func main() {
 
 		// Initialiser le système Cron
 		scheduler := cron.New()
-		errCron := scheduler.Add("daily_sync", "0 8 * * *", func() {
-			fmt.Println("[BudgetTime] Lancement CRON de synchronisation quotidienne (08:00)")
+		errCron := scheduler.Add("daily_sync", "0 7 * * *", func() {
+			fmt.Println("[BudgetTime] Lancement CRON de synchronisation quotidienne (07:00)")
+
+			// Vérifier le flag auto_sync dans settings.active_parsers
+			type settingsRow struct {
+				ActiveParsers string `db:"active_parsers"`
+			}
+			var allSettings []settingsRow
+			app.DB().Select("active_parsers").From("settings").All(&allSettings)
+			autoSyncEnabled := true // défaut : activé
+			for _, s := range allSettings {
+				var parsed map[string]any
+				if err := json.Unmarshal([]byte(s.ActiveParsers), &parsed); err == nil {
+					if v, ok := parsed["auto_sync"]; ok {
+						if b, ok2 := v.(bool); ok2 && !b {
+							autoSyncEnabled = false
+						}
+					}
+				}
+			}
+			if !autoSyncEnabled {
+				fmt.Println("[BudgetTime] CRON ignoré : auto_sync désactivé dans les paramètres.")
+				return
+			}
+
 			now := time.Now()
 			dateStart := now.AddDate(0, 0, -1).Format("2006-01-02") // Hier
 			dateEnd := now.Format("2006-01-02")                     // Aujourd'hui

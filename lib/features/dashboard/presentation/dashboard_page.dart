@@ -12,6 +12,8 @@ import 'widgets/account_global_card.dart';
 import 'widgets/pwa_install_banner.dart';
 import 'package:budgettime/core/utils/formatters.dart';
 import 'package:budgettime/core/utils/app_theme.dart';
+import '../../../services/open_banking_service.dart';
+import '../../settings/presentation/settings_controller.dart';
 
 class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
@@ -23,6 +25,42 @@ class DashboardPage extends ConsumerStatefulWidget {
 class _DashboardPageState extends ConsumerState<DashboardPage> {
   // 1 = swipe gauche (compte suivant), -1 = swipe droite (compte précédent)
   int _swipeDirection = 1;
+  bool _isSyncing = false;
+
+  Future<void> _onRefresh() async {
+    final controller = ref.read(dashboardControllerProvider.notifier);
+    final state = ref.read(dashboardControllerProvider);
+    final settings = ref.read(settingsControllerProvider).asData?.value;
+
+    // Pull-to-sync : uniquement en vue détail + option activée
+    if (settings?.pullToSync == true &&
+        state.selectedAccount != null &&
+        !_isSyncing) {
+      setState(() => _isSyncing = true);
+      try {
+        await OpenBankingService().syncTransactions(state.selectedAccount!.id);
+        // Actualise aussi la boîte de réception et le solde
+        ref.read(inboxControllerProvider.notifier).refresh();
+        await controller.syncExternalBalance();
+      } catch (e) {
+        if (mounted) {
+          final msg =
+              e.toString().contains('Rate limit') ||
+                  e.toString().contains('429') ||
+                  e.toString().contains('heure')
+              ? 'Synchro bancaire déjà effectuée. Merci de patienter (1 fois/heure maximum).'
+              : 'Impossible de synchroniser : ${e.toString().replaceAll("Exception: ", "")}';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(msg), duration: const Duration(seconds: 4)),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isSyncing = false);
+      }
+    }
+
+    await controller.refresh();
+  }
 
   void _swipeAccount(DragEndDetails details) {
     final state = ref.read(dashboardControllerProvider);
@@ -384,7 +422,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             ? (details) => _swipeAccount(details)
             : null,
         child: RefreshIndicator(
-          onRefresh: controller.refresh,
+          onRefresh: _onRefresh,
           child: Column(
             children: [
               const PwaInstallBanner(),
@@ -447,7 +485,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: const Text(
-                                      'v2.4.15',
+                                      'v2.4.16',
                                       style: TextStyle(
                                         fontSize: 10,
                                         color: AppColors.textSecondary,

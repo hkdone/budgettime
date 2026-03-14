@@ -36,6 +36,16 @@ class SettingsController extends StateNotifier<AsyncValue<AppSettings>> {
     await _saveSettings(newSettings);
   }
 
+  Future<void> updateAutoSync(bool value) async {
+    final currentSettings = state.asData?.value ?? AppSettings();
+    await _saveSettings(currentSettings.copyWith(autoSync: value));
+  }
+
+  Future<void> updatePullToSync(bool value) async {
+    final currentSettings = state.asData?.value ?? AppSettings();
+    await _saveSettings(currentSettings.copyWith(pullToSync: value));
+  }
+
   Future<void> _saveSettings(AppSettings settings) async {
     try {
       await _repository.saveSettings(settings);
