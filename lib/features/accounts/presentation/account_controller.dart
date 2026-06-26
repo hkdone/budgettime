@@ -5,6 +5,7 @@ import '../../../../core/start_app.dart';
 import '../domain/account.dart';
 import '../domain/account_repository.dart';
 import '../data/account_repository_impl.dart';
+import '../../transactions/domain/transaction_origin.dart';
 import '../../transactions/domain/transaction_repository.dart';
 
 class AccountController extends StateNotifier<AsyncValue<List<Account>>> {
@@ -52,6 +53,7 @@ class AccountController extends StateNotifier<AsyncValue<List<Account>>> {
         'status': 'effective',
         'is_automatic': true,
         'bank_balance': initialBalance,
+        'origin': TransactionOrigin.anchor,
         'category': 'Ajustement',
       });
 
@@ -85,6 +87,7 @@ class AccountController extends StateNotifier<AsyncValue<List<Account>>> {
         'status': 'effective',
         'is_automatic': true,
         'bank_balance': initialBalance,
+        'origin': TransactionOrigin.anchor,
         'category': 'Ajustement',
       });
 

@@ -1,5 +1,7 @@
 import '../../../core/services/database_service.dart';
 import '../../../core/utils/formatters.dart';
+import '../application/balance_calculator.dart';
+import '../domain/transaction_origin.dart';
 import '../domain/transaction_repository.dart';
 
 class TransactionRepositoryImpl implements TransactionRepository {
@@ -241,7 +243,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
         .getFullList(
           filter: filter,
           fields:
-              'id,amount,type,date,bank_balance,status,account,target_account,created,is_automatic',
+              'id,amount,type,date,bank_balance,status,account,target_account,created,is_automatic,origin,label',
           sort: '-date,-created',
         );
 
@@ -268,80 +270,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
 
     for (final targetAccId in targetAccountIds) {
       final group = accountGroups[targetAccId] ?? [];
-
-      // 1. Find the latest anchor (bank_balance) for THIS account
-      Map<String, dynamic>? anchor;
-      for (final r in group) {
-        // An anchor MUST be an automatic bank balance update FOR THIS account
-        if (r['bank_balance'] != null &&
-            r['account'] == targetAccId &&
-            (r['is_automatic'] == true || r['is_automatic'] == 1)) {
-          anchor = r;
-          break;
-        }
-      }
-
-      double accTotal = 0.0;
-      DateTime? anchorDate;
-      DateTime? anchorCreated;
-
-      if (anchor != null) {
-        accTotal = (anchor['bank_balance'] as num).toDouble();
-        anchorDate = DateTime.parse(anchor['date']);
-        anchorCreated = DateTime.parse(anchor['created']);
-      }
-
-      // 2. Sum up all other records relative to the anchor
-      for (final r in group) {
-        if (anchor != null && r['id'] == anchor['id']) continue;
-
-        final rStatus = r['status'];
-        final rDate = DateTime.parse(r['date']);
-        final rCreated = DateTime.parse(r['created']);
-        final isProjected = rStatus == 'projected';
-
-        bool shouldCount = false;
-        if (isProjected) {
-          // Projected items are always counted (they represent missing money from bank balance)
-          shouldCount = true;
-        } else if (anchor != null) {
-          // Effective items: only count if after anchor
-          if (rDate.isAfter(anchorDate!)) {
-            shouldCount = true;
-          } else if (rDate.isAtSameMomentAs(anchorDate)) {
-            // Created AFTER the anchor on the same day? Then it's not in the bank balance yet.
-            if (rCreated.isAfter(anchorCreated!)) {
-              shouldCount = true;
-            }
-          }
-        } else {
-          // No anchor ever: sum everything effective
-          shouldCount = true;
-        }
-
-        if (shouldCount) {
-          final amount = (r['amount'] as num).toDouble();
-          final String? tSource = r['account'];
-          final String? tTarget = r['target_account'];
-
-          if (tTarget != null && tTarget.isNotEmpty) {
-            // Bidirectional Transfer
-            if (tSource == targetAccId) {
-              accTotal -= amount;
-            } else if (tTarget == targetAccId) {
-              accTotal += amount;
-            }
-          } else {
-            // Standard Transaction
-            if (r['type'] == 'income') {
-              accTotal += amount;
-            } else {
-              accTotal -= amount;
-            }
-          }
-        }
-      }
-      grandTotal += accTotal;
+      grandTotal += BalanceCalculator.computeForAccount(group, targetAccId);
     }
 
     return grandTotal;
@@ -359,6 +288,10 @@ class TransactionRepositoryImpl implements TransactionRepository {
 
     if (!data.containsKey('status')) {
       data['status'] = 'effective';
+    }
+
+    if (!data.containsKey('origin')) {
+      data['origin'] = TransactionOrigin.manual;
     }
 
     await _dbService.pb

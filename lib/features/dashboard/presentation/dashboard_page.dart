@@ -50,9 +50,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           dateStart: dateStart,
           dateEnd: dateEnd,
         );
-        // Actualise aussi la boîte de réception et le solde
         ref.read(inboxControllerProvider.notifier).refresh();
-        await controller.syncExternalBalance();
+        // Le recalage solde (syncExternalBalance) reste sur le bouton dédié.
       } catch (e) {
         if (mounted) {
           final msg =

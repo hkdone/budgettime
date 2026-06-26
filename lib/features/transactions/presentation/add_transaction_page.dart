@@ -11,6 +11,7 @@ import '../../recurrences/domain/recurrence.dart';
 import '../../accounts/presentation/account_controller.dart';
 import '../../members/presentation/member_controller.dart';
 import '../domain/reconciliation_match.dart';
+import '../domain/transaction_origin.dart';
 
 class AddTransactionPage extends ConsumerStatefulWidget {
   final Map<String, dynamic>? transactionToEdit;
@@ -261,6 +262,9 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
           'member': _selectedMemberId,
           'status': _status,
           'is_automatic': false,
+          'origin': widget.transactionToEdit?['fromInbox'] == true
+              ? TransactionOrigin.bank
+              : TransactionOrigin.manual,
         };
 
         final bool isActualEdit =
@@ -450,6 +454,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                 'account': _selectedAccountId,
                 'status': 'effective',
                 'is_automatic': true,
+                'origin': TransactionOrigin.anchor,
                 'bank_balance': bankBalance,
               };
               await ref

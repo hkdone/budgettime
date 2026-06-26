@@ -8,6 +8,7 @@ import '../../settings/presentation/settings_controller.dart';
 import '../../transactions/domain/transaction_repository.dart';
 import '../../recurrences/presentation/recurrence_controller.dart';
 import '../../inbox/presentation/inbox_controller.dart';
+import '../../transactions/domain/transaction_origin.dart';
 import '../../../services/open_banking_service.dart';
 
 class DashboardState {
@@ -373,6 +374,7 @@ class DashboardController extends StateNotifier<DashboardState> {
               'Solde calculé: ${state.effectiveBalance.toStringAsFixed(2)}, Solde réel banque: ${realBalance.toStringAsFixed(2)}',
           'status': 'effective',
           'is_automatic': true,
+          'origin': TransactionOrigin.anchor,
           'bank_balance': realBalance,
         };
 

@@ -4,9 +4,9 @@
 
 | Sprint | Statut | Contenu |
 |--------|--------|---------|
-| **Sprint 1** | ✅ Code prêt, tests Synology en attente | Rapprochement souple (tolérance variable, fenêtre -30j/+7j, scoring, UI écart) |
-| **Sprint 2** | À faire | Fix solde double comptage (`origin: bank/manual`), sync solde moins agressive |
-| **Sprint 3** | À faire | UX inbox (tri par match, badge, confirmation si match ignoré) |
+| **Sprint 1** | ✅ Déployé (tests inbox en attente sync banque) | Rapprochement souple |
+| **Sprint 2** | ✅ Code prêt | Fix solde double comptage (`origin`), sync solde découplée |
+| **Sprint 3** | À faire | UX inbox (tri, badge, confirmation) |
 | **Sprint 4** | À faire | Auto-liaison IBAN persistante après changement clé API |
 
 ## Phase additionnelle (demandée)
