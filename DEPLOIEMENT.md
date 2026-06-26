@@ -327,7 +327,7 @@ flutter run -d chrome
 
 ## Gestionnaires de mots de passe (Bitwarden, Proton Pass)
 
-BudgetTime expose un formulaire de login compatible autofill (Flutter + formulaire HTML de secours dans `web/index.html`).
+BudgetTime utilise des **champs HTML natifs** sur la page de login (Web) : les extensions comme Proton Pass et Bitwarden injectent les identifiants dans de vrais `<input>`, pas dans les champs Flutter internes (limitation connue du framework).
 
 ### Enregistrer l'entrée dans le coffre
 
@@ -343,14 +343,14 @@ L'URL enregistrée doit correspondre **exactement** à celle utilisée au quotid
 ### Utilisation
 
 1. Ouvrir la page de login BudgetTime.
-2. Cliquer dans le champ **Email** — l'extension propose le remplissage.
-3. Si rien n'apparaît : utiliser le raccourci de l'extension (icône Bitwarden / Proton Pass → « Remplir »).
-4. Après une connexion réussie, le navigateur ou l'extension peut proposer d'**enregistrer** le mot de passe.
+2. Cliquer dans le champ **Email** (champ HTML natif, style gris arrondi).
+3. Utiliser Proton Pass → **Remplir** (ou raccourci extension). Les deux champs doivent se remplir visuellement.
+4. Cliquer **Se connecter**.
 
 ### Limites connues
 
 - **Certificat auto-signé** : certaines extensions refusent l'autofill tant que le certificat n'est pas accepté / ajouté aux exceptions.
-- **Flutter Web** : l'autofill dépend du navigateur et de l'extension ; le formulaire HTML caché améliore la détection mais ne garantit pas 100 % des cas.
+- **Flutter Web** : contourné via champs HTML natifs sur le login ; l'inscription utilise encore les champs Flutter classiques.
 - **PWA vs onglet** : traiter comme deux « sites » distincts pour le coffre si l'autofill ne fonctionne que dans l'un des deux.
 
 ---

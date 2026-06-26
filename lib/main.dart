@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'core/platform/web_login_setup.dart';
 import 'core/start_app.dart';
 import 'core/services/database_service.dart';
 import 'core/utils/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  registerWebLoginPlatformView();
   await initializeDateFormatting('fr_FR', null);
   await DatabaseService().init();
   runApp(const ProviderScope(child: BudgetTimeApp()));
