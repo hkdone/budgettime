@@ -163,15 +163,19 @@ Pas de commit, pas de changement de version — idéal entre deux tests sur le N
 #### Étape C — Déploiement sur le NAS
 
 1. **Sauvegarder** `pb_data/` sur le Synology (File Station → copier le dossier, ou snapshot Btrfs si disponible).
-2. Copier depuis le PC vers le dossier Docker du NAS **uniquement** ce qui a changé :
-   - `pb_public/` ← frontend (presque toujours)
-   - `pocketbase` ← backend Go (si `main.go` modifié)
-   - `pb_migrations/` ← seulement si nouvelles migrations
-   - `run.sh`, `Dockerfile` ← rarement
-3. **Ne jamais écraser** : `pb_data/`, `secrets/`
-4. Container Manager → Projet `budget-app` → **Redémarrer** le conteneur  
-   (ou **Rebuild** si `Dockerfile` / `run.sh` ont changé)
-5. Ouvrir `https://IP_NAS:8097` — vérifier la version affichée sur l'écran de login.
+2. Copier depuis le PC (`budgettime/` après `release.ps1`) :
+
+| Élément | Copier ? | Rôle |
+|---------|:--------:|------|
+| **`pb_public/`** | ✅ Presque toujours | Frontend Flutter compilé |
+| **`pocketbase`** | ✅ Si backend Go modifié | Binaire serveur Linux |
+| **`pb_migrations/`** | ✅ Si nouvelle migration | Schéma base (ex. champ `origin`) |
+| `run.sh`, `Dockerfile` | Parfois | Config conteneur |
+| **`pb_data/`** | ❌ **Jamais écraser** | Vos données |
+| **`secrets/`** | ❌ **Jamais écraser** | Clés Enable Banking |
+
+3. Container Manager → **Redémarrer** le conteneur (rebuild seulement si `Dockerfile` changé).
+4. Ouvrir `https://IP_NAS:8097` — vérifier la version sur l'écran de login.
 
 ### Instance de staging (optionnel, recommandé pour migrations risquées)
 

@@ -6,7 +6,7 @@
 |--------|--------|---------|
 | **Sprint 1** | ✅ Déployé (tests inbox en attente sync banque) | Rapprochement souple |
 | **Sprint 2** | ✅ Code prêt | Fix solde double comptage (`origin`), sync solde découplée |
-| **Sprint 3** | À faire | UX inbox (tri, badge, confirmation) |
+| **Sprint 3** | ✅ Code prêt | UX inbox (tri par match, badge, confirmation) |
 | **Sprint 4** | À faire | Auto-liaison IBAN persistante après changement clé API |
 
 ## Phase additionnelle (demandée)

@@ -241,8 +241,47 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
     }
   }
 
+  Future<bool> _confirmSkipReconciliation() async {
+    final count = _matchingReconciliations.length;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Aucun rapprochement sélectionné'),
+        content: Text(
+          count == 1
+              ? 'Une transaction prévisionnelle correspond à cette opération. '
+                    'Créer quand même une nouvelle ligne ?'
+              : '$count transactions prévisionnelles correspondent. '
+                    'Créer quand même une nouvelle ligne ?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Créer sans rapprocher',
+              style: TextStyle(color: Colors.orange),
+            ),
+          ),
+        ],
+      ),
+    );
+    return result == true;
+  }
+
   Future<void> _submit({required bool stayOnPage}) async {
     if (_formKey.currentState!.validate()) {
+      if (widget.transactionToEdit?['fromInbox'] == true &&
+          !_isLoadingReconciliations &&
+          _matchingReconciliations.isNotEmpty &&
+          _selectedReconciliationId == null) {
+        final skip = await _confirmSkipReconciliation();
+        if (!skip || !mounted) return;
+      }
+
       setState(() {
         _isLoading = true;
       });

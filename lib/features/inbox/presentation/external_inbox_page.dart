@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../domain/inbox_item.dart';
+import '../domain/inbox_match_preview.dart';
 import 'inbox_controller.dart';
 import '../../transactions/presentation/add_transaction_page.dart';
 import 'package:budgettime/core/utils/formatters.dart';
@@ -73,6 +74,16 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
     );
   }
 
+  String _matchSubtitle(InboxMatchPreview match) {
+    final delta = match.amountDelta.abs() < 0.01
+        ? 'montant identique'
+        : match.amountDelta > 0
+        ? 'écart ${formatCurrency(-match.amountDelta.abs())}'
+        : 'écart +${formatCurrency(match.amountDelta.abs())}';
+    final extra = match.matchCount > 1 ? ' (+${match.matchCount - 1})' : '';
+    return 'Match : ${match.projectedLabel} (${formatCurrency(match.projectedAmount)}) — $delta$extra';
+  }
+
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -96,29 +107,53 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
   }
 
   Widget _buildInboxList(List<InboxItem> items) {
+    final matchPreviews = ref.watch(inboxControllerProvider).matchPreviews;
+
     return ListView.builder(
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
+        final match = matchPreviews[item.id];
         return Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           clipBehavior: Clip.antiAlias,
+          color: match != null
+              ? Colors.orange.withValues(alpha: 0.06)
+              : null,
           child: Column(
             children: [
               ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: Colors.blue.withValues(alpha: 0.1),
-                  child: const Icon(
-                    Icons.account_balance_wallet,
-                    color: Colors.blue,
+                  backgroundColor: match != null
+                      ? Colors.orange.withValues(alpha: 0.15)
+                      : Colors.blue.withValues(alpha: 0.1),
+                  child: Icon(
+                    match != null ? Icons.link : Icons.account_balance_wallet,
+                    color: match != null ? Colors.orange : Colors.blue,
                   ),
                 ),
                 title: Text(
                   item.label,
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                subtitle: Text(
-                  DateFormat('dd/MM/yyyy HH:mm').format(item.date),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      DateFormat('dd/MM/yyyy HH:mm').format(item.date),
+                    ),
+                    if (match != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        _matchSubtitle(match),
+                        style: TextStyle(
+                          color: Colors.orange[800],
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 trailing: item.amount != 0
                     ? Text(
