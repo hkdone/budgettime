@@ -33,15 +33,25 @@ class AccountStats {
   final Map<String, double> projectedExpenseByMember;
 
   AccountStats({
-    this.realIncomeByCategory = const {},
-    this.projectedIncomeByCategory = const {},
-    this.realExpenseByCategory = const {},
-    this.projectedExpenseByCategory = const {},
-    this.realIncomeByMember = const {},
-    this.projectedIncomeByMember = const {},
-    this.realExpenseByMember = const {},
-    this.projectedExpenseByMember = const {},
-  });
+    Map<String, double>? realIncomeByCategory,
+    Map<String, double>? projectedIncomeByCategory,
+    Map<String, double>? realExpenseByCategory,
+    Map<String, double>? projectedExpenseByCategory,
+    Map<String, double>? realIncomeByMember,
+    Map<String, double>? projectedIncomeByMember,
+    Map<String, double>? realExpenseByMember,
+    Map<String, double>? projectedExpenseByMember,
+  }) : realIncomeByCategory = realIncomeByCategory ?? <String, double>{},
+       projectedIncomeByCategory =
+           projectedIncomeByCategory ?? <String, double>{},
+       realExpenseByCategory = realExpenseByCategory ?? <String, double>{},
+       projectedExpenseByCategory =
+           projectedExpenseByCategory ?? <String, double>{},
+       realIncomeByMember = realIncomeByMember ?? <String, double>{},
+       projectedIncomeByMember = projectedIncomeByMember ?? <String, double>{},
+       realExpenseByMember = realExpenseByMember ?? <String, double>{},
+       projectedExpenseByMember =
+           projectedExpenseByMember ?? <String, double>{};
 }
 
 class StatsState {

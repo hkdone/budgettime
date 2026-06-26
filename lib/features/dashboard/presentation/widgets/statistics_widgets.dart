@@ -421,6 +421,10 @@ class HistoryBarChart extends StatelessWidget {
       return peak > max ? peak : max;
     });
 
+    final isWide = MediaQuery.sizeOf(context).width > 600;
+    final chartHeight = isWide ? 220.0 : 160.0;
+    final barWidth = isWide ? 16.0 : 10.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -433,12 +437,37 @@ class HistoryBarChart extends StatelessWidget {
             ),
           ),
         SizedBox(
-          height: 140,
+          height: chartHeight,
           child: BarChart(
             BarChartData(
               alignment: BarChartAlignment.spaceAround,
               maxY: maxVal * 1.25,
-              barTouchData: const BarTouchData(enabled: true),
+              barTouchData: BarTouchData(
+                enabled: true,
+                touchTooltipData: BarTouchTooltipData(
+                  getTooltipColor: (_) => Colors.transparent,
+                  tooltipPadding: EdgeInsets.zero,
+                  tooltipMargin: 6,
+                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                    final label = rodIndex == 0 ? 'Revenus' : 'Dépenses';
+                    final color = rodIndex == 0
+                        ? AppColors.chartIncome
+                        : AppColors.chartExpense;
+                    return BarTooltipItem(
+                      '$label\n${formatCurrency(rod.toY)}',
+                      TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.bold,
+                        fontSize: isWide ? 13 : 11,
+                        shadows: const [
+                          Shadow(color: Colors.white, blurRadius: 6),
+                          Shadow(color: Colors.white, blurRadius: 6),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
               titlesData: FlTitlesData(
                 show: showTitles,
                 bottomTitles: AxisTitles(
@@ -452,7 +481,7 @@ class HistoryBarChart extends StatelessWidget {
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
                             '${date.month}/${date.year.toString().substring(2)}',
-                            style: const TextStyle(fontSize: 9),
+                            style: TextStyle(fontSize: isWide ? 11 : 9),
                           ),
                         );
                       }
@@ -481,14 +510,14 @@ class HistoryBarChart extends StatelessWidget {
                     BarChartRodData(
                       toY: stats.income,
                       color: AppColors.chartIncome,
-                      width: 10,
-                      borderRadius: BorderRadius.circular(2),
+                      width: barWidth,
+                      borderRadius: BorderRadius.circular(3),
                     ),
                     BarChartRodData(
                       toY: stats.expense,
                       color: AppColors.chartExpense,
-                      width: 10,
-                      borderRadius: BorderRadius.circular(2),
+                      width: barWidth,
+                      borderRadius: BorderRadius.circular(3),
                     ),
                   ],
                 );

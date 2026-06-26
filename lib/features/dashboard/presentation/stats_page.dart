@@ -25,11 +25,10 @@ class _StatsPageState extends ConsumerState<StatsPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.initialAccountId != null) {
-        ref
-            .read(statsControllerProvider.notifier)
-            .setFilterAccount(widget.initialAccountId);
-      }
+      // Réinitialise le filtre compte (sinon un filtre précédent persiste via Riverpod)
+      ref
+          .read(statsControllerProvider.notifier)
+          .setFilterAccount(widget.initialAccountId);
     });
   }
 
