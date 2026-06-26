@@ -20,10 +20,11 @@ abstract class TransactionRepository {
   });
 
   Future<List<Map<String, dynamic>>> getTransactionsForReconciliation({
-    required double amount,
     required String accountId,
     required String type,
     required DateTime inboxDate,
+    int daysBefore = 30,
+    int daysAfter = 7,
   });
 
   Future<double> getBalance({

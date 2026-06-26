@@ -11,6 +11,29 @@ if (-not $Version) {
 
 Write-Host "=== BudgetTime Release Process v$Version ===" -ForegroundColor Cyan
 
+# Flutter : PATH ou emplacement standard Windows
+if (-not (Get-Command flutter -ErrorAction SilentlyContinue)) {
+    $flutterCandidates = @(
+        "C:\src\flutter\bin",
+        "$env:LOCALAPPDATA\flutter\bin",
+        "$env:USERPROFILE\flutter\bin"
+    )
+    foreach ($dir in $flutterCandidates) {
+        if (Test-Path "$dir\flutter.bat") {
+            $env:Path = "$dir;$env:Path"
+            break
+        }
+    }
+}
+if (-not (Get-Command flutter -ErrorAction SilentlyContinue)) {
+    Write-Error @"
+Flutter introuvable. Installez-le puis relancez ce script :
+  powershell -ExecutionPolicy Bypass -File .\scripts\install_flutter_windows.ps1
+Fermez et rouvrez PowerShell après l'installation.
+"@
+    exit 1
+}
+
 # 1. Update flutter pubspec.yaml version
 Write-Host "1. Updating pubspec.yaml..."
 (Get-Content pubspec.yaml) -replace "version: .*", "version: $Version" | Set-Content pubspec.yaml

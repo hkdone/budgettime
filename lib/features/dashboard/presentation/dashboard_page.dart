@@ -496,7 +496,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: const Text(
-                                      'v2.4.17',
+                                      'v2.4.18-test1',
                                       style: TextStyle(
                                         fontSize: 10,
                                         color: AppColors.textSecondary,

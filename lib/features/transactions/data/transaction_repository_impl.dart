@@ -156,30 +156,32 @@ class TransactionRepositoryImpl implements TransactionRepository {
 
   @override
   Future<List<Map<String, dynamic>>> getTransactionsForReconciliation({
-    required double amount,
     required String accountId,
     required String type,
     required DateTime inboxDate,
+    int daysBefore = 30,
+    int daysAfter = 7,
   }) async {
     final user = _dbService.pb.authStore.record;
     if (user == null) return [];
 
-    final dateStart = inboxDate.subtract(const Duration(days: 10));
-    final dateEnd = inboxDate.add(const Duration(days: 3));
+    final dateStart = inboxDate.subtract(Duration(days: daysBefore));
+    final dateEnd = inboxDate.add(Duration(days: daysAfter));
 
     final startStr =
         '${dateStart.year}-${dateStart.month.toString().padLeft(2, '0')}-${dateStart.day.toString().padLeft(2, '0')} 00:00:00';
     final endStr =
         '${dateEnd.year}-${dateEnd.month.toString().padLeft(2, '0')}-${dateEnd.day.toString().padLeft(2, '0')} 23:59:59';
 
+    // Pas de filtre sur le montant : le rapprochement souple est fait côté app.
     final filter =
-        'user = "${user.id}" && account = "$accountId" && type = "$type" && status = "projected" && amount = $amount && date >= "$startStr" && date <= "$endStr"';
+        'user = "${user.id}" && account = "$accountId" && type = "$type" && status = "projected" && date >= "$startStr" && date <= "$endStr"';
 
     final records = await _dbService.pb
         .collection('transactions')
         .getFullList(
           filter: filter,
-          sort: 'date',
+          sort: '-date',
           expand: 'account,recurrence,member',
         );
 

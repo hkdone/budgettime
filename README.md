@@ -65,6 +65,11 @@ Pour installer en tant qu'Add-on Home Assistant :
 - `local_dev_setup.ps1` : Initialisation rapide pour le dev local.
 - `release.ps1` : Workflow complet de release (Build Web -> Update Version -> Git Commit -> Git Tag).
 
+## Guides
+
+- **[DEPLOIEMENT.md](DEPLOIEMENT.md)** — prérequis PC, test Synology (`n`/`n`), publication production
+- **[ROADMAP.md](ROADMAP.md)** — sprints planifiés (rapprochement, solde, inbox, banking, mots de passe)
+
 ## Architecture
 - **Frontend**: Flutter Web (Clean Architecture, Riverpod, GoRouter).
 - **Backend**: PocketBase (Binaire Go inclus dans l'image Docker).

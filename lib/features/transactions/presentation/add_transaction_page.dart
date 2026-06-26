@@ -10,6 +10,7 @@ import '../../categories/presentation/category_controller.dart';
 import '../../recurrences/domain/recurrence.dart';
 import '../../accounts/presentation/account_controller.dart';
 import '../../members/presentation/member_controller.dart';
+import '../domain/reconciliation_match.dart';
 
 class AddTransactionPage extends ConsumerStatefulWidget {
   final Map<String, dynamic>? transactionToEdit;
@@ -36,9 +37,10 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
   String _recurrenceFrequency = 'monthly';
   String _status = 'projected';
 
-  List<Map<String, dynamic>> _matchingReconciliations = [];
+  List<ReconciliationMatch> _matchingReconciliations = [];
   String? _selectedReconciliationId;
   bool _isLoadingReconciliations = false;
+  bool _pendingInboxReconciliation = false;
 
   @override
   void initState() {
@@ -115,8 +117,20 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
       }
 
       if (t['fromInbox'] == true) {
-        _loadMatchingReconciliations();
+        _pendingInboxReconciliation = true;
+        _status = 'effective';
       }
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_pendingInboxReconciliation) {
+      _pendingInboxReconciliation = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadMatchingReconciliations();
+      });
     }
   }
 
@@ -126,25 +140,35 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
       return;
     }
 
+    if (!mounted) return;
+
     setState(() {
       _isLoadingReconciliations = true;
     });
 
     try {
       if (_selectedAccountId == null) {
-        setState(() {
-          _isLoadingReconciliations = false;
-        });
+        if (mounted) {
+          setState(() {
+            _matchingReconciliations = [];
+            _selectedReconciliationId = null;
+            _isLoadingReconciliations = false;
+          });
+        }
         return;
       }
 
       final amount = widget.transactionToEdit!['amount'] != null
           ? (widget.transactionToEdit!['amount'] as num).abs().toDouble()
-          : 0.0;
+          : parseAmount(_amountController.text);
       if (amount <= 0) {
-        setState(() {
-          _isLoadingReconciliations = false;
-        });
+        if (mounted) {
+          setState(() {
+            _matchingReconciliations = [];
+            _selectedReconciliationId = null;
+            _isLoadingReconciliations = false;
+          });
+        }
         return;
       }
 
@@ -152,24 +176,37 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
           ? DateTime.parse(widget.transactionToEdit!['date'])
           : _date;
 
-      final results = await ref
+      final candidates = await ref
           .read(transactionRepositoryProvider)
           .getTransactionsForReconciliation(
-            amount: amount,
             accountId: _selectedAccountId!,
             type: _type,
             inboxDate: inboxDate,
           );
 
+      final ranked = ref
+          .read(reconciliationServiceProvider)
+          .rankMatches(
+            candidates: candidates,
+            actualAmount: amount,
+            actualDate: inboxDate,
+          );
+
       if (mounted) {
         setState(() {
-          _matchingReconciliations = results;
-          if (results.isNotEmpty) {
-            _selectedReconciliationId = results.first['id'] as String;
-          }
+          _matchingReconciliations = ranked;
+          _selectedReconciliationId = ranked.isNotEmpty
+              ? ranked.first.transactionId
+              : null;
         });
       }
     } catch (_) {
+      if (mounted) {
+        setState(() {
+          _matchingReconciliations = [];
+          _selectedReconciliationId = null;
+        });
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -606,16 +643,23 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                         style: TextStyle(fontSize: 12),
                       ),
                       const SizedBox(height: 8),
-                      ..._matchingReconciliations.map((proj) {
-                        final String projId = proj['id'] as String;
+                      ..._matchingReconciliations.map((match) {
+                        final proj = match.transaction;
+                        final String projId = match.transactionId;
+                        final deltaLabel = match.amountDelta.abs() < 0.01
+                            ? 'montant identique'
+                            : match.amountDelta > 0
+                            ? 'écart ${formatCurrency(-match.amountDelta.abs())}'
+                            : 'écart +${formatCurrency(match.amountDelta.abs())}';
+                        final envelopeHint = match.isVariableEnvelope
+                            ? ' · enveloppe variable'
+                            : '';
                         return CheckboxListTile(
                           title: Text(
-                            '${proj['label']} (${formatCurrency((proj['amount'] as num).toDouble())})',
+                            '${proj['label']} (${formatCurrency(match.projectedAmount)})',
                           ),
                           subtitle: Text(
-                            DateFormat(
-                              'dd/MM/yyyy',
-                            ).format(DateTime.parse(proj['date'])),
+                            '${DateFormat('dd/MM/yyyy').format(DateTime.parse(proj['date']))} — $deltaLabel$envelopeHint',
                           ),
                           value: _selectedReconciliationId == projId,
                           onChanged: (bool? checked) {
@@ -902,6 +946,9 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                               _selectedAccountId =
                                   matchedId ?? accounts.first.id;
                             });
+                            if (widget.transactionToEdit?['fromInbox'] == true) {
+                              _loadMatchingReconciliations();
+                            }
                           }
                         });
                       }
@@ -922,6 +969,9 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                           setState(() {
                             _selectedAccountId = value;
                           });
+                          if (widget.transactionToEdit?['fromInbox'] == true) {
+                            _loadMatchingReconciliations();
+                          }
                         },
                         validator: (value) => value == null
                             ? 'Veuillez sélectionner un compte'

@@ -10,6 +10,7 @@ import '../features/settings/data/settings_repository_impl.dart';
 import '../features/settings/domain/settings_repository.dart';
 import '../features/transactions/data/transaction_repository_impl.dart';
 import '../features/transactions/domain/transaction_repository.dart';
+import '../features/transactions/application/reconciliation_service.dart';
 import '../features/categories/data/category_repository_impl.dart';
 import '../features/categories/domain/category_repository.dart';
 import '../features/members/data/member_repository_impl.dart';
@@ -57,6 +58,10 @@ final inboxServiceProvider = Provider<InboxService>((ref) {
     ref.watch(transactionRepositoryProvider),
   );
 });
+
+final reconciliationServiceProvider = Provider<ReconciliationService>(
+  (ref) => ReconciliationService(),
+);
 
 // Router
 final routerProvider = Provider((ref) {
