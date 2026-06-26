@@ -152,7 +152,7 @@ class _AccountGlobalCardState extends ConsumerState<AccountGlobalCard> {
                 ),
                 LayoutBuilder(
                   builder: (context, constraints) {
-                    final isWide = constraints.maxWidth >= Breakpoints.compact;
+                    final isWide = constraints.maxWidth >= Breakpoints.expanded;
                     if (isWide) {
                       return Row(
                         crossAxisAlignment: CrossAxisAlignment.start,

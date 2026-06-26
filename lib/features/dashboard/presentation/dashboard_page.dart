@@ -647,22 +647,26 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                       8,
                                       8,
                                     ),
-                                    child: GridView.builder(
-                                      shrinkWrap: true,
-                                      physics:
-                                          const NeverScrollableScrollPhysics(),
-                                      gridDelegate:
-                                          const SliverGridDelegateWithFixedCrossAxisCount(
-                                        crossAxisCount: 2,
-                                        mainAxisExtent: 460,
-                                        crossAxisSpacing: 8,
-                                        mainAxisSpacing: 8,
-                                      ),
-                                      itemCount: state.accounts.length,
-                                      itemBuilder: (context, index) =>
-                                          AccountGlobalCard(
-                                        account: state.accounts[index],
-                                      ),
+                                    child: LayoutBuilder(
+                                      builder: (context, constraints) {
+                                        const spacing = 8.0;
+                                        final cardWidth =
+                                            (constraints.maxWidth - spacing) / 2;
+                                        return Wrap(
+                                          spacing: spacing,
+                                          runSpacing: spacing,
+                                          children: [
+                                            for (final account
+                                                in state.accounts)
+                                              SizedBox(
+                                                width: cardWidth,
+                                                child: AccountGlobalCard(
+                                                  account: account,
+                                                ),
+                                              ),
+                                          ],
+                                        );
+                                      },
                                     ),
                                   ),
                                 ),
@@ -742,6 +746,18 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
     if (state.selectedAccount != null) {
       if (isCompact) {
+        actions.add(
+          IconButton(
+            icon: Icon(
+              Icons.home_outlined,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            tooltip: 'Tous les comptes',
+            onPressed: () {
+              ref.read(dashboardControllerProvider.notifier).selectAccount(null);
+            },
+          ),
+        );
         actions.add(
           IconButton(
             icon: const Icon(Icons.search),
