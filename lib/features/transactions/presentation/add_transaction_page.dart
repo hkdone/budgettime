@@ -196,9 +196,12 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
       if (mounted) {
         setState(() {
           _matchingReconciliations = ranked;
-          _selectedReconciliationId = ranked.isNotEmpty
-              ? ranked.first.transactionId
-              : null;
+          if (ranked.isNotEmpty) {
+            _selectedReconciliationId = ranked.first.transactionId;
+            _applyReconciliationMatch(ranked.first);
+          } else {
+            _selectedReconciliationId = null;
+          }
         });
       }
     } catch (_) {
@@ -214,6 +217,33 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
           _isLoadingReconciliations = false;
         });
       }
+    }
+  }
+
+  String? _categoryIdFromTransaction(Map<String, dynamic> transaction) {
+    final rawCategory = transaction['category'];
+    if (rawCategory != null && rawCategory.toString().isNotEmpty) {
+      return rawCategory.toString();
+    }
+    final expand = transaction['expand'];
+    if (expand is Map && expand['category'] != null) {
+      final cat = expand['category'];
+      if (cat is Map) return cat['id']?.toString();
+      if (cat is List && cat.isNotEmpty) {
+        return cat[0]['id']?.toString();
+      }
+    }
+    return null;
+  }
+
+  void _applyReconciliationMatch(ReconciliationMatch match) {
+    final categoryId = _categoryIdFromTransaction(match.transaction);
+    if (categoryId != null && categoryId.isNotEmpty) {
+      _categoryController.text = categoryId;
+    }
+    final memberId = match.transaction['member']?.toString();
+    if (memberId != null && memberId.isNotEmpty) {
+      _selectedMemberId = memberId;
     }
   }
 
@@ -710,6 +740,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                             setState(() {
                               if (checked == true) {
                                 _selectedReconciliationId = projId;
+                                _applyReconciliationMatch(match);
                               } else {
                                 _selectedReconciliationId = null;
                               }
