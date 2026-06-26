@@ -325,6 +325,36 @@ flutter run -d chrome
 
 ---
 
+## Gestionnaires de mots de passe (Bitwarden, Proton Pass)
+
+BudgetTime expose un formulaire de login compatible autofill (Flutter + formulaire HTML de secours dans `web/index.html`).
+
+### Enregistrer l'entrée dans le coffre
+
+L'URL enregistrée doit correspondre **exactement** à celle utilisée au quotidien :
+
+| Accès | URL à enregistrer |
+|-------|-------------------|
+| Navigateur Synology | `https://192.168.x.x:8097` (votre IP + port) |
+| PWA installée | L'URL affichée lors de l'installation (souvent la même, mais origine distincte) |
+
+> **Piège fréquent** : une entrée enregistrée pour `https://mon-nas.local:8097` ne remplit pas `https://192.168.1.50:8097` (et inversement). Créez une entrée par URL réellement utilisée.
+
+### Utilisation
+
+1. Ouvrir la page de login BudgetTime.
+2. Cliquer dans le champ **Email** — l'extension propose le remplissage.
+3. Si rien n'apparaît : utiliser le raccourci de l'extension (icône Bitwarden / Proton Pass → « Remplir »).
+4. Après une connexion réussie, le navigateur ou l'extension peut proposer d'**enregistrer** le mot de passe.
+
+### Limites connues
+
+- **Certificat auto-signé** : certaines extensions refusent l'autofill tant que le certificat n'est pas accepté / ajouté aux exceptions.
+- **Flutter Web** : l'autofill dépend du navigateur et de l'extension ; le formulaire HTML caché améliore la détection mais ne garantit pas 100 % des cas.
+- **PWA vs onglet** : traiter comme deux « sites » distincts pour le coffre si l'autofill ne fonctionne que dans l'un des deux.
+
+---
+
 ## Dépannage courant
 
 | Problème | Cause probable | Solution |

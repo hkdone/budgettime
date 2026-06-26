@@ -12,7 +12,7 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
     state = await AsyncValue.guard(() async {
       await _ref.read(authRepositoryProvider).signIn(email, password);
       // Let the OS know that autofill is complete so it can save the credentials
-      TextInput.finishAutofillContext();
+      TextInput.finishAutofillContext(shouldSave: true);
     });
   }
 
@@ -27,7 +27,7 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
           .read(authRepositoryProvider)
           .signUp(email, password, confirmPassword);
       // Let the OS know that autofill is complete so it can save the credentials
-      TextInput.finishAutofillContext();
+      TextInput.finishAutofillContext(shouldSave: true);
     });
   }
 

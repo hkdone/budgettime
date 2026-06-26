@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/platform/autofill_bridge.dart';
 import '../../../core/services/database_service.dart';
 import 'auth_controller.dart';
 
@@ -18,6 +20,40 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailFocusNode = FocusNode();
   final _passwordFocusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _applyNativeAutofillBridge();
+      if (kIsWeb) {
+        _emailFocusNode.requestFocus();
+      }
+    });
+  }
+
+  /// Les extensions (Bitwarden, Proton Pass) remplissent parfois le formulaire
+  /// HTML caché avant que Flutter ne monte ses champs.
+  Future<void> _applyNativeAutofillBridge() async {
+    for (var attempt = 0; attempt < 12; attempt++) {
+      if (!mounted) return;
+      final creds = AutofillBridge.peek();
+      if (creds != null) {
+        if (creds.username.isNotEmpty) {
+          _emailController.text = creds.username;
+        }
+        if (creds.password.isNotEmpty) {
+          _passwordController.text = creds.password;
+        }
+        if (_emailController.text.isNotEmpty &&
+            _passwordController.text.isNotEmpty) {
+          AutofillBridge.clear();
+          return;
+        }
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    }
+  }
 
   @override
   void dispose() {
@@ -63,10 +99,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               constraints: const BoxConstraints(maxWidth: 400),
               child: Form(
                 key: _formKey,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
+                child: AutofillGroup(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                     Image.asset('assets/logo.png', height: 100),
                     const SizedBox(height: 16),
                     Text(
@@ -109,6 +146,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         prefixIcon: Icon(Icons.lock),
                       ),
                       obscureText: true,
+                      enableSuggestions: false,
+                      autocorrect: false,
                       textInputAction: TextInputAction.done,
                       autofillHints: const [AutofillHints.password],
                       onFieldSubmitted: (_) => _submit(),
@@ -162,7 +201,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       style: TextStyle(color: Colors.grey, fontSize: 12),
                       textAlign: TextAlign.center,
                     ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

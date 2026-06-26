@@ -118,7 +118,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                       ),
                       obscureText: true,
                       textInputAction: TextInputAction.done,
-                      autofillHints: const [AutofillHints.password],
+                      autofillHints: const [AutofillHints.newPassword],
                       onFieldSubmitted: (_) => _submit(),
                       validator: (value) {
                         if (value != _passwordController.text) {

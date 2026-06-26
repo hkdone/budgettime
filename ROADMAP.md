@@ -13,7 +13,7 @@
 
 | Sprint | Statut | Contenu |
 |--------|--------|---------|
-| **Sprint 5** | À faire | **Gestionnaires de mots de passe** (Bitwarden / Proton Pass) — autofill login |
+| **Sprint 5** | ✅ Code prêt | Gestionnaires de mots de passe (Bitwarden / Proton Pass) — autofill login |
 
 ### Sprint 5 — détail du problème
 
