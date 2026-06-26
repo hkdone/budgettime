@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:budgettime/core/utils/formatters.dart';
+import 'package:budgettime/core/utils/responsive_breakpoints.dart';
+import 'package:budgettime/core/widgets/responsive_content.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/start_app.dart';
@@ -586,29 +588,30 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
       body: SingleChildScrollView(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(
-                    value: 'expense',
-                    label: Text('Dépense'),
-                    icon: Icon(Icons.money_off),
-                  ),
-                  ButtonSegment(
-                    value: 'income',
-                    label: Text('Revenu'),
-                    icon: Icon(Icons.attach_money),
-                  ),
-                  ButtonSegment(
-                    value: 'transfer',
-                    label: Text('Virement'),
-                    icon: Icon(Icons.swap_horiz),
-                  ),
-                ],
+        child: ResponsiveContent.form(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SegmentedButton<String>(
+                  segments: [
+                    ButtonSegment(
+                      value: 'expense',
+                      label: Text(context.isCompact ? 'Dép.' : 'Dépense'),
+                      icon: const Icon(Icons.money_off),
+                    ),
+                    ButtonSegment(
+                      value: 'income',
+                      label: Text(context.isCompact ? 'Rev.' : 'Revenu'),
+                      icon: const Icon(Icons.attach_money),
+                    ),
+                    ButtonSegment(
+                      value: 'transfer',
+                      label: Text(context.isCompact ? 'Vir.' : 'Virement'),
+                      icon: const Icon(Icons.swap_horiz),
+                    ),
+                  ],
                 selected: {_type},
                 onSelectionChanged: (Set<String> newSelection) {
                   setState(() {
@@ -1144,6 +1147,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

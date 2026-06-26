@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../domain/inbox_item.dart';
 import '../domain/inbox_match_preview.dart';
 import 'inbox_controller.dart';
-import '../../transactions/presentation/add_transaction_page.dart';
 import 'package:budgettime/core/utils/formatters.dart';
+import 'package:budgettime/core/utils/responsive_breakpoints.dart';
 import '../../../services/open_banking_service.dart';
 
 class ExternalInboxPage extends ConsumerStatefulWidget {
@@ -18,11 +19,36 @@ class ExternalInboxPage extends ConsumerStatefulWidget {
 
 class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
   bool _showDebug = false;
+  String? _selectedItemId;
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(inboxControllerProvider);
     final controller = ref.read(inboxControllerProvider.notifier);
+    final useSplitView = context.isWideLayout && state.items.isNotEmpty;
+
+    if (_selectedItemId != null &&
+        !state.items.any((i) => i.id == _selectedItemId)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _selectedItemId = null);
+      });
+    }
+
+    InboxItem? selectedItem;
+    if (_selectedItemId != null) {
+      for (final item in state.items) {
+        if (item.id == _selectedItemId) {
+          selectedItem = item;
+          break;
+        }
+      }
+    } else if (useSplitView) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && state.items.isNotEmpty) {
+          setState(() => _selectedItemId = state.items.first.id);
+        }
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -70,6 +96,33 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
           ? const Center(child: CircularProgressIndicator())
           : state.items.isEmpty
           ? _buildEmptyState()
+          : useSplitView
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  width: 360,
+                  child: _buildInboxList(
+                    state.items,
+                    compact: true,
+                    selectedId: _selectedItemId,
+                    onSelect: (item) =>
+                        setState(() => _selectedItemId = item.id),
+                  ),
+                ),
+                const VerticalDivider(width: 1, thickness: 1),
+                Expanded(
+                  child: selectedItem != null
+                      ? _buildItemDetail(selectedItem)
+                      : Center(
+                          child: Text(
+                            'Sélectionnez une réception',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                        ),
+                ),
+              ],
+            )
           : _buildInboxList(state.items),
     );
   }
@@ -106,7 +159,12 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
     );
   }
 
-  Widget _buildInboxList(List<InboxItem> items) {
+  Widget _buildInboxList(
+    List<InboxItem> items, {
+    bool compact = false,
+    String? selectedId,
+    void Function(InboxItem item)? onSelect,
+  }) {
     final matchPreviews = ref.watch(inboxControllerProvider).matchPreviews;
 
     return ListView.builder(
@@ -114,6 +172,49 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
       itemBuilder: (context, index) {
         final item = items[index];
         final match = matchPreviews[item.id];
+        final isSelected = selectedId == item.id;
+
+        if (compact) {
+          return Material(
+            color: isSelected
+                ? Theme.of(context).colorScheme.primaryContainer
+                : match != null
+                ? Colors.orange.withValues(alpha: 0.06)
+                : null,
+            child: ListTile(
+              selected: isSelected,
+              leading: CircleAvatar(
+                backgroundColor: match != null
+                    ? Colors.orange.withValues(alpha: 0.15)
+                    : Colors.blue.withValues(alpha: 0.1),
+                child: Icon(
+                  match != null ? Icons.link : Icons.account_balance_wallet,
+                  color: match != null ? Colors.orange : Colors.blue,
+                ),
+              ),
+              title: Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(
+                DateFormat('dd/MM/yyyy HH:mm').format(item.date),
+              ),
+              trailing: item.amount != 0
+                  ? Text(
+                      formatCurrency(item.amount),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: item.amount >= 0 ? Colors.green : Colors.red,
+                      ),
+                    )
+                  : null,
+              onTap: () => onSelect?.call(item),
+            ),
+          );
+        }
+
         return Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           clipBehavior: Clip.antiAlias,
@@ -196,6 +297,73 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildItemDetail(InboxItem item) {
+    final match = ref.watch(inboxControllerProvider).matchPreviews[item.id];
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            item.label,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Text(DateFormat('dd/MM/yyyy HH:mm').format(item.date)),
+          if (item.amount != 0) ...[
+            const SizedBox(height: 16),
+            Text(
+              formatCurrency(item.amount),
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: item.amount >= 0 ? Colors.green : Colors.red,
+              ),
+            ),
+          ],
+          if (match != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                _matchSubtitle(match),
+                style: TextStyle(color: Colors.orange[800]),
+              ),
+            ),
+          ],
+          if (_showDebug) ...[
+            const SizedBox(height: 16),
+            _buildDebugPanel(item),
+          ],
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => _confirmDelete(item),
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('Ignorer'),
+              ),
+              const SizedBox(width: 12),
+              FilledButton.icon(
+                onPressed: () => _processItem(item),
+                icon: const Icon(Icons.add),
+                label: const Text('Valider'),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -304,16 +472,10 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
     };
 
     // 3. Navigate
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-            AddTransactionPage(transactionToEdit: transactionData),
-      ),
-    ).then((success) {
+    context.push('/add-transaction', extra: transactionData).then((success) {
       if (success == true) {
-        // If the transaction was added, mark the inbox item as processed
         ref.read(inboxControllerProvider.notifier).deleteItem(item.id);
+        if (mounted) setState(() => _selectedItemId = null);
       }
     });
   }

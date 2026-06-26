@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/services/database_service.dart';
+import '../../../core/widgets/responsive_content.dart';
 import 'settings_controller.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../members/presentation/manage_members_page.dart';
@@ -13,8 +15,9 @@ class SettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(title: const Text('Paramètres')),
-      body: ListView(
-        children: [
+      body: ResponsiveContent.settings(
+        child: ListView(
+          children: [
           ListTile(
             leading: const Icon(Icons.date_range),
             title: const Text('Début du mois fiscal'),
@@ -206,6 +209,7 @@ class SettingsPage extends ConsumerWidget {
             },
           ),
         ],
+        ),
       ),
     );
   }

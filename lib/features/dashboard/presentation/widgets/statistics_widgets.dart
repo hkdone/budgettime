@@ -4,6 +4,8 @@ import '../../../transactions/domain/categories.dart';
 import '../../../members/domain/member.dart';
 import 'package:budgettime/core/utils/formatters.dart';
 import 'package:budgettime/core/utils/app_theme.dart';
+import 'package:budgettime/core/utils/responsive_breakpoints.dart';
+import 'package:budgettime/core/widgets/responsive_content.dart';
 import '../../application/month_stats_service.dart';
 
 class CategoryStats {
@@ -421,119 +423,129 @@ class HistoryBarChart extends StatelessWidget {
       return peak > max ? peak : max;
     });
 
-    final isWide = MediaQuery.sizeOf(context).width > 600;
-    final chartHeight = isWide ? 220.0 : 160.0;
-    final barWidth = isWide ? 16.0 : 10.0;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
+        final chartHeight = chartHeightForWidth(width);
+        final barWidth = chartBarWidthForWidth(width);
+        final isWide = width >= Breakpoints.compact;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (title != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              title!,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-            ),
-          ),
-        SizedBox(
-          height: chartHeight,
-          child: BarChart(
-            BarChartData(
-              alignment: BarChartAlignment.spaceAround,
-              maxY: maxVal * 1.25,
-              barTouchData: BarTouchData(
-                enabled: true,
-                touchTooltipData: BarTouchTooltipData(
-                  getTooltipColor: (_) => Colors.transparent,
-                  tooltipPadding: EdgeInsets.zero,
-                  tooltipMargin: 6,
-                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                    final label = rodIndex == 0 ? 'Revenus' : 'Dépenses';
-                    final color = rodIndex == 0
-                        ? AppColors.chartIncome
-                        : AppColors.chartExpense;
-                    return BarTooltipItem(
-                      '$label\n${formatCurrency(rod.toY)}',
-                      TextStyle(
-                        color: color,
-                        fontWeight: FontWeight.bold,
-                        fontSize: isWide ? 13 : 11,
-                        shadows: const [
-                          Shadow(color: Colors.white, blurRadius: 6),
-                          Shadow(color: Colors.white, blurRadius: 6),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-              titlesData: FlTitlesData(
-                show: showTitles,
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: showTitles,
-                    getTitlesWidget: (double value, TitleMeta meta) {
-                      final index = value.toInt();
-                      if (index >= 0 && index < history.length) {
-                        final date = history[index].month;
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text(
-                            '${date.month}/${date.year.toString().substring(2)}',
-                            style: TextStyle(fontSize: isWide ? 11 : 9),
-                          ),
-                        );
-                      }
-                      return const Text('');
-                    },
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (title != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  title!,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                leftTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                topTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                rightTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
+              ),
+            SizedBox(
+              height: chartHeight,
+              child: BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  maxY: maxVal * 1.25,
+                  barTouchData: BarTouchData(
+                    enabled: true,
+                    touchTooltipData: BarTouchTooltipData(
+                      getTooltipColor: (_) => Colors.transparent,
+                      tooltipPadding: EdgeInsets.zero,
+                      tooltipMargin: 6,
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        final label = rodIndex == 0 ? 'Revenus' : 'Dépenses';
+                        final color = rodIndex == 0
+                            ? AppColors.chartIncome
+                            : AppColors.chartExpense;
+                        return BarTooltipItem(
+                          '$label\n${formatCurrency(rod.toY)}',
+                          TextStyle(
+                            color: color,
+                            fontWeight: FontWeight.bold,
+                            fontSize: isWide ? 13 : 11,
+                            shadows: const [
+                              Shadow(color: Colors.white, blurRadius: 6),
+                              Shadow(color: Colors.white, blurRadius: 6),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  titlesData: FlTitlesData(
+                    show: showTitles,
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: showTitles,
+                        getTitlesWidget: (double value, TitleMeta meta) {
+                          final index = value.toInt();
+                          if (index >= 0 && index < history.length) {
+                            final date = history[index].month;
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                '${date.month}/${date.year.toString().substring(2)}',
+                                style: TextStyle(fontSize: isWide ? 11 : 9),
+                              ),
+                            );
+                          }
+                          return const Text('');
+                        },
+                      ),
+                    ),
+                    leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  gridData: const FlGridData(show: false),
+                  barGroups: history.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final stats = entry.value;
+                    return BarChartGroupData(
+                      x: index,
+                      barRods: [
+                        BarChartRodData(
+                          toY: stats.income,
+                          color: AppColors.chartIncome,
+                          width: barWidth,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                        BarChartRodData(
+                          toY: stats.expense,
+                          color: AppColors.chartExpense,
+                          width: barWidth,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ],
+                    );
+                  }).toList(),
                 ),
               ),
-              borderData: FlBorderData(show: false),
-              gridData: const FlGridData(show: false),
-              barGroups: history.asMap().entries.map((entry) {
-                final index = entry.key;
-                final stats = entry.value;
-                return BarChartGroupData(
-                  x: index,
-                  barRods: [
-                    BarChartRodData(
-                      toY: stats.income,
-                      color: AppColors.chartIncome,
-                      width: barWidth,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    BarChartRodData(
-                      toY: stats.expense,
-                      color: AppColors.chartExpense,
-                      width: barWidth,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ],
-                );
-              }).toList(),
             ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            _legendDot(AppColors.chartIncome, 'Revenus'),
-            const SizedBox(width: 12),
-            _legendDot(AppColors.chartExpense, 'Dépenses'),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                _legendDot(AppColors.chartIncome, 'Revenus'),
+                const SizedBox(width: 12),
+                _legendDot(AppColors.chartExpense, 'Dépenses'),
+              ],
+            ),
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -569,25 +581,35 @@ class SignedYearlyBarChart extends StatelessWidget {
     });
     final chartMax = maxAbs == 0 ? 100.0 : maxAbs * 1.2;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (title != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              title!,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-            ),
-          ),
-        SizedBox(
-          height: 220,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final chartHeight = constraints.maxHeight - 24;
-              final zeroY = chartHeight / 2;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
+        final chartHeight = chartHeightForWidth(width);
 
-              return Row(
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (title != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  title!,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            SizedBox(
+              height: chartHeight,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final chartAreaHeight = constraints.maxHeight - 24;
+                  final zeroY = chartAreaHeight / 2;
+
+                  return Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: trends.map((trend) {
                   final heightFactor = (trend.balance.abs() / chartMax).clamp(
@@ -675,11 +697,13 @@ class SignedYearlyBarChart extends StatelessWidget {
                     ),
                   );
                 }).toList(),
-              );
-            },
-          ),
-        ),
-      ],
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

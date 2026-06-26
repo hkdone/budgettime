@@ -11,7 +11,9 @@ import '../../features/settings/presentation/settings_page.dart';
 import '../../features/members/presentation/manage_members_page.dart';
 import '../../features/dashboard/presentation/stats_page.dart';
 import '../../features/dashboard/presentation/stats_trend_page.dart';
+import '../../features/inbox/presentation/external_inbox_page.dart';
 import '../services/database_service.dart';
+import '../widgets/app_shell.dart';
 
 /// Notifie GoRouter à chaque changement d'état d'authentification PocketBase.
 class RouterNotifier extends ChangeNotifier {
@@ -30,7 +32,6 @@ class RouterNotifier extends ChangeNotifier {
 
 final _routerNotifier = RouterNotifier();
 
-/// Transition par défaut : fade + glissement vers le haut (150 ms).
 Page<void> _buildPage(GoRouterState state, Widget child) {
   return CustomTransitionPage<void>(
     key: state.pageKey,
@@ -58,10 +59,6 @@ final router = GoRouter(
   redirect: _routerNotifier.redirect,
   routes: [
     GoRoute(
-      path: '/',
-      pageBuilder: (context, state) => _buildPage(state, const DashboardPage()),
-    ),
-    GoRoute(
       path: '/login',
       pageBuilder: (context, state) => _buildPage(state, const LoginPage()),
     ),
@@ -69,55 +66,71 @@ final router = GoRouter(
       path: '/signup',
       pageBuilder: (context, state) => _buildPage(state, const SignupPage()),
     ),
-    GoRoute(
-      path: '/accounts',
-      pageBuilder: (context, state) =>
-          _buildPage(state, const ManageAccountsPage()),
-    ),
-    GoRoute(
-      path: '/add-transaction',
-      pageBuilder: (context, state) => _buildPage(
-        state,
-        AddTransactionPage(
-          transactionToEdit: state.extra as Map<String, dynamic>?,
+    ShellRoute(
+      builder: (context, state, child) => AppShell(child: child),
+      routes: [
+        GoRoute(
+          path: '/',
+          pageBuilder: (context, state) =>
+              _buildPage(state, const DashboardPage()),
         ),
-      ),
-    ),
-    GoRoute(
-      path: '/recurrences',
-      pageBuilder: (context, state) =>
-          _buildPage(state, const ManageRecurrencesPage()),
-    ),
-    GoRoute(
-      path: '/settings',
-      pageBuilder: (context, state) => _buildPage(state, const SettingsPage()),
-    ),
-    GoRoute(
-      path: '/account-recurrences',
-      pageBuilder: (context, state) {
-        final accountId = state.extra as String;
-        return _buildPage(state, RecurrencesListPage(accountId: accountId));
-      },
-    ),
-    GoRoute(
-      path: '/members',
-      pageBuilder: (context, state) =>
-          _buildPage(state, const ManageMembersPage()),
-    ),
-    GoRoute(
-      path: '/stats',
-      pageBuilder: (context, state) {
-        final accountId = state.uri.queryParameters['account'];
-        return _buildPage(
-          state,
-          StatsPage(initialAccountId: accountId),
-        );
-      },
-    ),
-    GoRoute(
-      path: '/stats-trend',
-      pageBuilder: (context, state) =>
-          _buildPage(state, const StatsTrendPage()),
+        GoRoute(
+          path: '/accounts',
+          pageBuilder: (context, state) =>
+              _buildPage(state, const ManageAccountsPage()),
+        ),
+        GoRoute(
+          path: '/add-transaction',
+          pageBuilder: (context, state) => _buildPage(
+            state,
+            AddTransactionPage(
+              transactionToEdit: state.extra as Map<String, dynamic>?,
+            ),
+          ),
+        ),
+        GoRoute(
+          path: '/recurrences',
+          pageBuilder: (context, state) =>
+              _buildPage(state, const ManageRecurrencesPage()),
+        ),
+        GoRoute(
+          path: '/settings',
+          pageBuilder: (context, state) =>
+              _buildPage(state, const SettingsPage()),
+        ),
+        GoRoute(
+          path: '/inbox',
+          pageBuilder: (context, state) =>
+              _buildPage(state, const ExternalInboxPage()),
+        ),
+        GoRoute(
+          path: '/account-recurrences',
+          pageBuilder: (context, state) {
+            final accountId = state.extra as String;
+            return _buildPage(state, RecurrencesListPage(accountId: accountId));
+          },
+        ),
+        GoRoute(
+          path: '/members',
+          pageBuilder: (context, state) =>
+              _buildPage(state, const ManageMembersPage()),
+        ),
+        GoRoute(
+          path: '/stats',
+          pageBuilder: (context, state) {
+            final accountId = state.uri.queryParameters['account'];
+            return _buildPage(
+              state,
+              StatsPage(initialAccountId: accountId),
+            );
+          },
+        ),
+        GoRoute(
+          path: '/stats-trend',
+          pageBuilder: (context, state) =>
+              _buildPage(state, const StatsTrendPage()),
+        ),
+      ],
     ),
   ],
 );

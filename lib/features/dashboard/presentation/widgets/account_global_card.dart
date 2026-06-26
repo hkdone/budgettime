@@ -10,6 +10,7 @@ import '../dashboard_controller.dart';
 import '../../application/month_stats_service.dart';
 import 'statistics_widgets.dart';
 import 'package:budgettime/core/utils/formatters.dart';
+import 'package:budgettime/core/utils/responsive_breakpoints.dart';
 
 class AccountGlobalCard extends ConsumerStatefulWidget {
   final Account account;
@@ -151,7 +152,7 @@ class _AccountGlobalCardState extends ConsumerState<AccountGlobalCard> {
                 ),
                 LayoutBuilder(
                   builder: (context, constraints) {
-                    final isWide = constraints.maxWidth > 500;
+                    final isWide = constraints.maxWidth >= Breakpoints.compact;
                     if (isWide) {
                       return Row(
                         crossAxisAlignment: CrossAxisAlignment.start,

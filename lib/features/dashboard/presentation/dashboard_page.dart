@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../inbox/presentation/inbox_controller.dart';
-import '../../inbox/presentation/external_inbox_page.dart';
 import 'package:intl/intl.dart';
 
 import '../../auth/presentation/auth_controller.dart';
@@ -15,6 +14,8 @@ import 'widgets/statistics_widgets.dart';
 import 'dashboard_stats_providers.dart';
 import 'package:budgettime/core/utils/formatters.dart';
 import 'package:budgettime/core/utils/app_theme.dart';
+import 'package:budgettime/core/utils/responsive_breakpoints.dart';
+import 'package:budgettime/core/widgets/responsive_content.dart';
 import '../../../services/open_banking_service.dart';
 import '../../settings/presentation/settings_controller.dart';
 
@@ -108,7 +109,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   Widget build(BuildContext context) {
     final state = ref.watch(dashboardControllerProvider);
     final controller = ref.read(dashboardControllerProvider.notifier);
-    final isMobile = MediaQuery.of(context).size.width < 600;
+    final isCompact = context.isCompact;
+    final showRail = context.isWideLayout;
+    final useSplitLayout = context.isExpanded && state.selectedAccount != null;
 
     // Calculate totals including initial balances
     double realIncome = 0;
@@ -231,7 +234,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           padding: const EdgeInsets.all(8.0),
           child: Image.asset('assets/logo.png'),
         ),
-        title: isMobile
+        title: isCompact
             ? _buildMobileAccountIndicator(context, ref, state, controller)
             : PopupMenuButton<String>(
                 tooltip: 'Sélectionner un compte',
@@ -277,170 +280,31 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   ],
                 ),
               ),
-        actions: [
-          if (state.selectedAccount != null) ...[
-            // Search Bar Component
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 180),
-              child: SizedBox(
-                height: 40,
-                child: TextField(
-                  onChanged: (value) => controller.setSearchQuery(value),
-                  decoration: InputDecoration(
-                    hintText: 'Rechercher...',
-                    hintStyle: const TextStyle(fontSize: 14),
-                    prefixIcon: const Icon(Icons.search, size: 20),
-                    suffixIcon: state.searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, size: 16),
-                            onPressed: () {
-                              controller.setSearchQuery('');
-                            },
-                          )
-                        : null,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      borderSide: BorderSide.none,
-                    ),
-                    filled: true,
-                    fillColor: Colors.grey[200],
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                  style: const TextStyle(fontSize: 14),
-                ),
-              ),
-            ),
-            IconButton(
-              icon: Icon(
-                Icons.home_outlined,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              tooltip: 'Tous les comptes',
-              onPressed: () {
-                ref
-                    .read(dashboardControllerProvider.notifier)
-                    .selectAccount(null);
-              },
-            ),
-            IconButton(
-              icon: Icon(
-                state.showAllTransactions
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
-                color: state.showAllTransactions
-                    ? AppColors.warning
-                    : Theme.of(context).colorScheme.primary,
-              ),
-              tooltip: state.showAllTransactions
-                  ? 'Voir mois en cours'
-                  : 'Voir tout l\'historique',
-              onPressed: () {
-                ref
-                    .read(dashboardControllerProvider.notifier)
-                    .toggleShowAllTransactions();
-              },
-            ),
-          ],
-
-          Consumer(
-            builder: (context, ref, child) {
-              final inboxState = ref.watch(inboxControllerProvider);
-              final count = inboxState.items.length;
-              return IconButton(
-                icon: Badge.count(
-                  count: count,
-                  isLabelVisible: count > 0,
-                  child: Icon(
-                    Icons.move_to_inbox_rounded,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                tooltip: 'Réceptions externes',
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ExternalInboxPage(),
-                    ),
-                  ).then((_) {
-                    ref.read(inboxControllerProvider.notifier).refresh();
-                  });
-                },
-              );
-            },
-          ),
-          IconButton(
-            icon: Icon(
-              Icons.bar_chart_rounded,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            tooltip: 'Statistiques',
-            onPressed: () {
-              final accountId = state.selectedAccount?.id;
-              if (accountId != null) {
-                context.push('/stats?account=$accountId');
-              } else {
-                context.push('/stats');
-              }
-            },
-          ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: Colors.black),
-            onSelected: (value) {
-              switch (value) {
-                case 'accounts':
-                  context.push('/accounts').then((_) => controller.refresh());
-                  break;
-                case 'settings':
-                  context.push('/settings').then((_) => controller.refresh());
-                  break;
-                case 'logout':
-                  ref.read(authControllerProvider.notifier).signOut();
-                  break;
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'accounts',
-                child: Row(
-                  children: [
-                    Icon(Icons.account_balance, color: Colors.black54),
-                    SizedBox(width: 8),
-                    Text('Gérer les comptes'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'settings',
-                child: Row(
-                  children: [
-                    Icon(Icons.settings, color: Colors.black54),
-                    SizedBox(width: 8),
-                    Text('Paramètres'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'logout',
-                child: Row(
-                  children: [
-                    Icon(Icons.logout, color: Colors.red),
-                    SizedBox(width: 8),
-                    Text('Déconnexion', style: TextStyle(color: Colors.red)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
+        actions: _buildAppBarActions(
+          context: context,
+          state: state,
+          controller: controller,
+          isCompact: isCompact,
+          showRail: showRail,
+        ),
       ),
       body: GestureDetector(
-        onHorizontalDragEnd: isMobile
+        onHorizontalDragEnd: isCompact
             ? (details) => _swipeAccount(details)
             : null,
         child: RefreshIndicator(
           onRefresh: _onRefresh,
-          child: Column(
+          child: useSplitLayout
+              ? _buildExpandedDetailLayout(
+                  context: context,
+                  state: state,
+                  filteredTransactions: filteredTransactions,
+                  realIncome: realIncome,
+                  realExpense: realExpense,
+                  projectedIncome: projectedIncome,
+                  projectedExpense: projectedExpense,
+                )
+              : Column(
             children: [
               const PwaInstallBanner(),
               Expanded(
@@ -471,9 +335,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                     ),
                     slivers: [
                       SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
+                        child: ResponsiveContent(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
                             children: [
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -769,18 +634,48 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           ),
                         ),
                       ),
+                      ),
                       // 5. Success State: Transactions or Account Cards
                       if (state.selectedAccount == null)
-                        // GLOBAL VIEW: Show per-account cards
-                        SliverList(
-                          delegate: SliverChildBuilderDelegate((
-                            context,
-                            index,
-                          ) {
-                            final account = state.accounts[index];
-                            return AccountGlobalCard(account: account);
-                          }, childCount: state.accounts.length),
-                        )
+                        context.isExpanded && state.accounts.isNotEmpty
+                            ? SliverToBoxAdapter(
+                                child: ResponsiveContent(
+                                  child: Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      8,
+                                      0,
+                                      8,
+                                      8,
+                                    ),
+                                    child: GridView.builder(
+                                      shrinkWrap: true,
+                                      physics:
+                                          const NeverScrollableScrollPhysics(),
+                                      gridDelegate:
+                                          const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 2,
+                                        mainAxisExtent: 460,
+                                        crossAxisSpacing: 8,
+                                        mainAxisSpacing: 8,
+                                      ),
+                                      itemCount: state.accounts.length,
+                                      itemBuilder: (context, index) =>
+                                          AccountGlobalCard(
+                                        account: state.accounts[index],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : SliverList(
+                                delegate: SliverChildBuilderDelegate((
+                                  context,
+                                  index,
+                                ) {
+                                  final account = state.accounts[index];
+                                  return AccountGlobalCard(account: account);
+                                }, childCount: state.accounts.length),
+                              )
                       else ...[
                         SliverToBoxAdapter(
                           child: AccountStatsCompact(
@@ -833,6 +728,585 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               child: const Icon(Icons.add),
             )
           : null,
+    );
+  }
+
+  List<Widget> _buildAppBarActions({
+    required BuildContext context,
+    required dynamic state,
+    required dynamic controller,
+    required bool isCompact,
+    required bool showRail,
+  }) {
+    final actions = <Widget>[];
+
+    if (state.selectedAccount != null) {
+      if (isCompact) {
+        actions.add(
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'Rechercher',
+            onPressed: () =>
+                _showSearchDialog(context, controller, state.searchQuery),
+          ),
+        );
+      } else {
+        actions.add(
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 200),
+            child: SizedBox(
+              height: 40,
+              child: TextField(
+                onChanged: (value) => controller.setSearchQuery(value),
+                decoration: InputDecoration(
+                  hintText: 'Rechercher...',
+                  hintStyle: const TextStyle(fontSize: 14),
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  suffixIcon: state.searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 16),
+                          onPressed: () => controller.setSearchQuery(''),
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[200],
+                  contentPadding: EdgeInsets.zero,
+                ),
+                style: const TextStyle(fontSize: 14),
+              ),
+            ),
+          ),
+        );
+        actions.add(
+          IconButton(
+            icon: Icon(
+              Icons.home_outlined,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            tooltip: 'Tous les comptes',
+            onPressed: () {
+              ref.read(dashboardControllerProvider.notifier).selectAccount(null);
+            },
+          ),
+        );
+        actions.add(
+          IconButton(
+            icon: Icon(
+              state.showAllTransactions
+                  ? Icons.visibility_outlined
+                  : Icons.visibility_off_outlined,
+              color: state.showAllTransactions
+                  ? AppColors.warning
+                  : Theme.of(context).colorScheme.primary,
+            ),
+            tooltip: state.showAllTransactions
+                ? 'Voir mois en cours'
+                : 'Voir tout l\'historique',
+            onPressed: () {
+              ref
+                  .read(dashboardControllerProvider.notifier)
+                  .toggleShowAllTransactions();
+            },
+          ),
+        );
+      }
+    }
+
+    if (!showRail) {
+      actions.add(
+        Consumer(
+          builder: (context, ref, child) {
+            final inboxState = ref.watch(inboxControllerProvider);
+            final count = inboxState.items.length;
+            return IconButton(
+              icon: Badge.count(
+                count: count,
+                isLabelVisible: count > 0,
+                child: Icon(
+                  Icons.move_to_inbox_rounded,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              tooltip: 'Réceptions externes',
+              onPressed: () {
+                context.push('/inbox').then((_) {
+                  ref.read(inboxControllerProvider.notifier).refresh();
+                });
+              },
+            );
+          },
+        ),
+      );
+      actions.add(
+        IconButton(
+          icon: Icon(
+            Icons.bar_chart_rounded,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          tooltip: 'Statistiques',
+          onPressed: () {
+            final accountId = state.selectedAccount?.id;
+            if (accountId != null) {
+              context.push('/stats?account=$accountId');
+            } else {
+              context.push('/stats');
+            }
+          },
+        ),
+      );
+    }
+
+    actions.add(
+      PopupMenuButton<String>(
+        icon: const Icon(Icons.more_vert, color: Colors.black),
+        onSelected: (value) {
+          switch (value) {
+            case 'search':
+              _showSearchDialog(context, controller, state.searchQuery);
+            case 'home':
+              ref.read(dashboardControllerProvider.notifier).selectAccount(null);
+            case 'visibility':
+              ref
+                  .read(dashboardControllerProvider.notifier)
+                  .toggleShowAllTransactions();
+            case 'inbox':
+              context.push('/inbox').then((_) {
+                ref.read(inboxControllerProvider.notifier).refresh();
+              });
+            case 'stats':
+              final accountId = state.selectedAccount?.id;
+              if (accountId != null) {
+                context.push('/stats?account=$accountId');
+              } else {
+                context.push('/stats');
+              }
+            case 'accounts':
+              context.push('/accounts').then((_) => controller.refresh());
+            case 'settings':
+              context.push('/settings').then((_) => controller.refresh());
+            case 'logout':
+              ref.read(authControllerProvider.notifier).signOut();
+          }
+        },
+        itemBuilder: (context) {
+          final items = <PopupMenuEntry<String>>[];
+          if (isCompact && state.selectedAccount != null) {
+            items.addAll([
+              const PopupMenuItem(
+                value: 'home',
+                child: Row(
+                  children: [
+                    Icon(Icons.home_outlined, color: Colors.black54),
+                    SizedBox(width: 8),
+                    Text('Tous les comptes'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'visibility',
+                child: Row(
+                  children: [
+                    Icon(
+                      state.showAllTransactions
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                      color: Colors.black54,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      state.showAllTransactions
+                          ? 'Voir mois en cours'
+                          : 'Voir tout l\'historique',
+                    ),
+                  ],
+                ),
+              ),
+            ]);
+          }
+          items.addAll([
+            const PopupMenuItem(
+              value: 'accounts',
+              child: Row(
+                children: [
+                  Icon(Icons.account_balance, color: Colors.black54),
+                  SizedBox(width: 8),
+                  Text('Gérer les comptes'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'settings',
+              child: Row(
+                children: [
+                  Icon(Icons.settings, color: Colors.black54),
+                  SizedBox(width: 8),
+                  Text('Paramètres'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'logout',
+              child: Row(
+                children: [
+                  Icon(Icons.logout, color: Colors.red),
+                  SizedBox(width: 8),
+                  Text('Déconnexion', style: TextStyle(color: Colors.red)),
+                ],
+              ),
+            ),
+          ]);
+          return items;
+        },
+      ),
+    );
+
+    return actions;
+  }
+
+  void _showSearchDialog(
+    BuildContext context,
+    dynamic controller,
+    String currentQuery,
+  ) {
+    final textController = TextEditingController(text: currentQuery);
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Rechercher'),
+        content: TextField(
+          controller: textController,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Libellé, montant…'),
+          onChanged: controller.setSearchQuery,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              controller.setSearchQuery('');
+              Navigator.pop(ctx);
+            },
+            child: const Text('Effacer'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Fermer'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpandedDetailLayout({
+    required BuildContext context,
+    required dynamic state,
+    required List<dynamic> filteredTransactions,
+    required double realIncome,
+    required double realExpense,
+    required double projectedIncome,
+    required double projectedExpense,
+  }) {
+    final controller = ref.read(dashboardControllerProvider.notifier);
+
+    return Column(
+      children: [
+        const PwaInstallBanner(),
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 5,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(16),
+                  child: ResponsiveContent(
+                    maxWidth: 560,
+                    child: Column(
+                      children: [
+                        Text(
+                          DateFormat('EEEE d MMMM yyyy', 'fr_FR')
+                              .format(DateTime.now()),
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Colors.grey[600],
+                                fontStyle: FontStyle.italic,
+                              ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Période : ${DateFormat('MMMM yyyy', 'fr_FR').format(DateTime.now())}${state.showAllTransactions ? ' (filtre actif)' : ' — mois en cours'}',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: Colors.grey[600]),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        _buildBalanceCard(
+                          context: context,
+                          state: state,
+                          controller: controller,
+                          realIncome: realIncome,
+                          realExpense: realExpense,
+                          projectedIncome: projectedIncome,
+                          projectedExpense: projectedExpense,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const VerticalDivider(width: 1, thickness: 1),
+              Expanded(
+                flex: 6,
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: AccountStatsCompact(
+                        account: state.selectedAccount!,
+                      ),
+                    ),
+                    TransactionList(transactions: filteredTransactions),
+                    if (state.hasMore || state.isLoadingMore)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Center(
+                            child: state.isLoadingMore
+                                ? const SizedBox(
+                                    width: 28,
+                                    height: 28,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : OutlinedButton.icon(
+                                    onPressed: controller.loadMoreTransactions,
+                                    icon: const Icon(Icons.expand_more),
+                                    label: const Text('Charger plus'),
+                                  ),
+                          ),
+                        ),
+                      ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 80)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBalanceCard({
+    required BuildContext context,
+    required dynamic state,
+    required dynamic controller,
+    required double realIncome,
+    required double realExpense,
+    required double projectedIncome,
+    required double projectedExpense,
+  }) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: Colors.white,
+      surfaceTintColor: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          children: [
+            Text(
+              'Solde actuel (${state.selectedAccount!.name})',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+            ),
+            if (state.linkedBankAccount != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Correspondance : ${state.linkedBankAccount!['iban']}',
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  formatCurrency(state.effectiveBalance),
+                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                        color: state.effectiveBalance >= 0
+                            ? Colors.black
+                            : Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                if (state.linkedBankAccount != null) ...[
+                  const SizedBox(width: 8),
+                  state.isSyncingBalance
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : IconButton(
+                          icon: Icon(
+                            Icons.sync,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          tooltip: 'Actualiser le solde',
+                          onPressed: controller.syncExternalBalance,
+                        ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Theme.of(context)
+                    .colorScheme
+                    .primaryContainer
+                    .withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.trending_up,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Prévisionnel (fin de mois) : ',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    formatCurrency(state.projectedBalance),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Réel (Mois)',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '+${formatCurrency(realIncome)}',
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        '-${formatCurrency(realExpense)}',
+                        style: const TextStyle(
+                          color: Colors.red,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 40,
+                  color: Colors.grey[300],
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Prévu (Mois)',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '+${formatCurrency(projectedIncome)}',
+                        style: TextStyle(
+                          color: Colors.green[700],
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '-${formatCurrency(projectedExpense)}',
+                        style: TextStyle(
+                          color: Colors.red[700],
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Consumer(
+              builder: (context, ref, _) {
+                final historyAsync = ref.watch(
+                  monthlyHistoryProvider(state.selectedAccount?.id),
+                );
+                return historyAsync.when(
+                  data: (history) => HistoryBarChart(
+                    history: history,
+                    title: '6 derniers mois',
+                  ),
+                  loading: () => const SizedBox(
+                    height: 24,
+                    child: Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                  error: (_, _) => const SizedBox.shrink(),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 

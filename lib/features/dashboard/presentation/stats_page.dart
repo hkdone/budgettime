@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'stats_controller.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/app_theme.dart';
+import '../../../core/utils/responsive_breakpoints.dart';
+import '../../../core/widgets/responsive_content.dart';
 import '../../categories/domain/category.dart';
 import '../../members/presentation/member_controller.dart';
 import '../../categories/presentation/category_controller.dart';
@@ -81,6 +83,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                   ref.read(statsControllerProvider.notifier).refresh(),
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
+                child: ResponsiveContent(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -89,7 +92,9 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                     if (state.visibleStatsByAccount.isEmpty)
                       const Padding(
                         padding: EdgeInsets.all(32),
-                        child: Center(child: Text('Aucune donnée pour cette période')),
+                        child: Center(
+                          child: Text('Aucune donnée pour cette période'),
+                        ),
                       )
                     else
                       ...state.visibleStatsByAccount.entries.map((entry) {
@@ -103,6 +108,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                       }),
                   ],
                 ),
+              ),
               ),
             ),
             bottomNavigationBar: BottomAppBar(
@@ -346,7 +352,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
           _sectionTitle(sectionTitle),
           LayoutBuilder(
             builder: (context, constraints) {
-              final isWide = constraints.maxWidth > 800;
+              final isWide = constraints.maxWidth >= Breakpoints.compact;
               if (isWide) {
                 return Row(
                   children: [
@@ -371,7 +377,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
               }
               return Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 500),
+                  constraints: BoxConstraints(maxWidth: Breakpoints.chartMaxWidth),
                   child: GenericBreakdownPieChart(
                     data: isReal ? realData : projectedData,
                     nameLookup: lookup,
@@ -457,7 +463,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
         _sectionTitle('Revenus par membre'),
         Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 500),
+            constraints: BoxConstraints(maxWidth: Breakpoints.chartMaxWidth),
             child: memberChart(
               realData: stats.realIncomeByMember,
               projectedData: stats.projectedIncomeByMember,
@@ -469,7 +475,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
         _sectionTitle('Dépenses par membre'),
         Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 500),
+            constraints: BoxConstraints(maxWidth: Breakpoints.chartMaxWidth),
             child: memberChart(
               realData: stats.realExpenseByMember,
               projectedData: stats.projectedExpenseByMember,
