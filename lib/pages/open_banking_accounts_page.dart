@@ -98,12 +98,13 @@ class _OpenBankingAccountsPageState extends ConsumerState<OpenBankingAccountsPag
       final result = await _bankingService.discoverConnections();
       final added = result['added'] ?? 0;
       final total = result['found'] ?? 0;
+      final relinked = result['relinked'] ?? 0;
 
       if (localContext.mounted) {
         ScaffoldMessenger.of(localContext).showSnackBar(
           SnackBar(
             content: Text(
-              'Découverte terminée : $total liaisons trouvées, $added nouvelles ajoutées.',
+              'Découverte : $total sessions, $added nouveaux comptes, $relinked re-liaisons IBAN.',
               style: const TextStyle(color: Colors.white),
             ),
             backgroundColor: Colors.green,

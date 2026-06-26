@@ -297,8 +297,8 @@ func main() {
 				return e.JSON(403, map[string]any{"error": "Accès refusé"})
 			}
 
-			// Optionnel : Supprimer aussi les comptes associés ?
-			// Probablement oui pour garder propre.
+			// Conserver les IBAN sur les comptes locaux avant suppression des liaisons.
+			persistBankMappingsBeforeSessionDelete(app, id)
 			app.DB().Delete("bank_accounts", dbx.HashExp{"connection_id": id}).Execute()
 
 			if err := app.Delete(record); err != nil {
@@ -337,6 +337,7 @@ func main() {
 			client := &http.Client{Timeout: 10 * time.Second}
 			collectionAcc, _ := app.FindCollectionByNameOrId("bank_accounts")
 			totalAdded := 0
+			totalRelinked := 0
 
 			for _, conn := range connections {
 				req, _ := http.NewRequest("GET", "https://api.enablebanking.com/accounts", nil)
@@ -359,19 +360,7 @@ func main() {
 				defer resp.Body.Close()
 
 				var accResult struct {
-					Accounts []struct {
-						Uid       string `json:"uid"`
-						AccountId struct {
-							Iban string `json:"iban"`
-							Bban string `json:"bban"`
-						} `json:"account_id"`
-						AllAccountIds []struct {
-							Identification string `json:"identification"`
-							SchemeName     string `json:"scheme_name"`
-						} `json:"all_account_ids"`
-						Name     string `json:"name"`
-						Currency string `json:"currency"`
-					} `json:"accounts"`
+					Accounts []enableBankAccount `json:"accounts"`
 				}
 				body, _ := io.ReadAll(resp.Body)
 				fmt.Printf("[BudgetTime] Discovery Raw Body: %s\n", string(body))
@@ -380,49 +369,25 @@ func main() {
 				}
 
 				for _, acc := range accResult.Accounts {
-					// Vérifier si le compte existe déjà
-					var exists int
-					app.DB().Select("count(*)").From("bank_accounts").
-						Where(dbx.HashExp{"remote_account_id": acc.Uid}).Row(&exists)
-
-					if exists == 0 && collectionAcc != nil {
-						recordAcc := core.NewRecord(collectionAcc)
-						recordAcc.Set("connection_id", conn.Id)
-						recordAcc.Set("remote_account_id", acc.Uid)
-						// Priorité IBAN > BBAN > AllAccountIds > Name > UID
-						displayLabel := acc.Name
-						ibanValue := acc.AccountId.Iban
-						if ibanValue == "" {
-							ibanValue = acc.AccountId.Bban
-						}
-						if ibanValue == "" {
-							for _, alt := range acc.AllAccountIds {
-								if alt.SchemeName == "IBAN" || alt.SchemeName == "BBAN" {
-									ibanValue = alt.Identification
-									break
-								}
-							}
-						}
-
-						if ibanValue != "" {
-							if displayLabel != "" {
-								displayLabel += " - " + ibanValue
-							} else {
-								displayLabel = ibanValue
-							}
-						}
-						recordAcc.Set("iban", displayLabel)
-						if err := app.Save(recordAcc); err == nil {
-							totalAdded++
-						}
+					added, relinked, syncErr := syncEnableBankAccount(app, collectionAcc, conn.Id, userId, acc)
+					if syncErr != nil {
+						fmt.Printf("[BudgetTime] Discover sync error: %v\n", syncErr)
+						continue
+					}
+					if added {
+						totalAdded++
+					}
+					if relinked {
+						totalRelinked++
 					}
 				}
 			}
 
 			return e.JSON(200, map[string]any{
-				"found":   len(connections),
-				"added":   totalAdded,
-				"message": fmt.Sprintf("Découverte terminée : %d liaisons trouvées, %d nouveaux comptes ajoutés.", len(connections), totalAdded),
+				"found":    len(connections),
+				"added":    totalAdded,
+				"relinked": totalRelinked,
+				"message":  fmt.Sprintf("Découverte terminée : %d sessions, %d nouveaux comptes, %d re-liaisons IBAN.", len(connections), totalAdded, totalRelinked),
 			})
 		})
 
@@ -558,19 +523,7 @@ func main() {
 			var sessionResult struct {
 				SessionId string `json:"session_id"`
 				Status    string `json:"status"`
-				Accounts  []struct {
-					Uid       string `json:"uid"`
-					AccountId struct {
-						Iban string `json:"iban"`
-						Bban string `json:"bban"`
-					} `json:"account_id"`
-					AllAccountIds []struct {
-						Identification string `json:"identification"`
-						SchemeName     string `json:"scheme_name"`
-					} `json:"all_account_ids"`
-					Name     string `json:"name"`
-					Currency string `json:"currency"`
-				} `json:"accounts"`
+				Accounts  []enableBankAccount `json:"accounts"`
 			}
 			if err := json.Unmarshal(body, &sessionResult); err != nil {
 				return e.JSON(500, map[string]any{"error": "Failed to parse EnableBanking response", "details": err.Error()})
@@ -600,67 +553,12 @@ func main() {
 			collectionAcc, err := app.FindCollectionByNameOrId("bank_accounts")
 			if err == nil {
 				for _, acc := range sessionResult.Accounts {
-					if acc.Uid == "" {
+					_, _, syncErr := syncEnableBankAccount(app, collectionAcc, recordConn.Id, userId, acc)
+					if syncErr != nil {
+						fmt.Printf("[BudgetTime] Callback sync error: %v\n", syncErr)
 						continue
 					}
-					recordAcc := core.NewRecord(collectionAcc)
-					recordAcc.Set("connection_id", recordConn.Id)
-					recordAcc.Set("remote_account_id", acc.Uid)
-					// Construction d'un label explicite : Nom + IBAN
-					displayLabel := acc.Name
-					ibanValue := acc.AccountId.Iban
-					if ibanValue == "" {
-						ibanValue = acc.AccountId.Bban
-					}
-
-					// Fallback sur all_account_ids si IBAN absent de account_id
-					if ibanValue == "" {
-						for _, alt := range acc.AllAccountIds {
-							if alt.SchemeName == "IBAN" || alt.SchemeName == "BBAN" {
-								ibanValue = alt.Identification
-								break
-							}
-						}
-					}
-
-					fmt.Printf("[BudgetTime] Account ID: %s, Name: %s, Extracted IBAN: %s\n", acc.Uid, acc.Name, ibanValue)
-
-					if ibanValue != "" {
-						if displayLabel != "" {
-							displayLabel += " - " + ibanValue
-						} else {
-							displayLabel = ibanValue
-						}
-					}
-
-					if displayLabel == "" {
-						displayLabel = acc.Uid
-					}
-
-					// On ne tronque plus, on garde le label complet (Nom + IBAN)
-
-					// --- AUTO-LIAISON ---
-					if ibanValue != "" {
-						var matchedAccount struct {
-							Id string `db:"id"`
-						}
-						errFind := app.DB().Select("id").
-							From("accounts").
-							Where(dbx.HashExp{"external_id": ibanValue}).
-							Limit(1).
-							One(&matchedAccount)
-
-						if errFind == nil && matchedAccount.Id != "" {
-							fmt.Printf("[BudgetTime] Auto-liaison trouvée: IBAN %s correspond au compte local %s\n", ibanValue, matchedAccount.Id)
-							recordAcc.Set("local_account_id", matchedAccount.Id)
-						}
-					}
-					// --------------------
-
-					recordAcc.Set("iban", displayLabel)
-					if err := app.Save(recordAcc); err == nil {
-						compteCount++
-					}
+					compteCount++
 				}
 			}
 			fmt.Printf("[BudgetTime] %d comptes sauvegardés (Total détectés: %d)\n", compteCount, len(sessionResult.Accounts))

@@ -85,6 +85,7 @@ if (Test-Path budgettime/pb_migrations) {
 # Copy Go source files for Home Assistant multi-stage build
 Write-Host "Copying Go source files for HA multi-stage build..."
 Copy-Item main.go budgettime/
+Copy-Item banking_link.go budgettime/
 Copy-Item go.mod budgettime/
 Copy-Item go.sum budgettime/
 if (Test-Path docker-compose.yml) {
@@ -96,7 +97,7 @@ Write-Host "Building Custom PocketBase Server for Synology NAS (Linux AMD64)..."
 $env:CGO_ENABLED = "0"
 $env:GOOS = "linux"
 $env:GOARCH = "amd64"
-go build -o budgettime/pocketbase main.go
+go build -o budgettime/pocketbase .
 $env:CGO_ENABLED = ""
 $env:GOOS = ""
 $env:GOARCH = ""

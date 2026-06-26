@@ -10,11 +10,11 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copier le code source
-COPY main.go ./
+# Copier le code source Go
+COPY *.go ./
 
-# Compilation statique du backend (CGO_ENABLED=0 garantit une compatibilité totale sans libs externes)
-RUN CGO_ENABLED=0 go build -o /pocketbase main.go
+# Compilation statique du backend
+RUN CGO_ENABLED=0 go build -o /pocketbase .
 
 # ÉTAPE 2 : Image Runtime (Légère et Rapide) 
 FROM alpine:latest
