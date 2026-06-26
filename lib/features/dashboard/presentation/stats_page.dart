@@ -4,53 +4,74 @@ import 'package:go_router/go_router.dart';
 import 'stats_controller.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/app_theme.dart';
-import '../../transactions/domain/categories.dart';
-
-import 'package:fl_chart/fl_chart.dart';
+import '../../categories/domain/category.dart';
+import '../../members/presentation/member_controller.dart';
+import '../../categories/presentation/category_controller.dart';
+import 'widgets/statistics_widgets.dart';
 
 class StatsPage extends ConsumerStatefulWidget {
-  const StatsPage({super.key});
+  final String? initialAccountId;
+
+  const StatsPage({super.key, this.initialAccountId});
 
   @override
   ConsumerState<StatsPage> createState() => _StatsPageState();
 }
 
 class _StatsPageState extends ConsumerState<StatsPage> {
-  String _viewMode = 'projected'; // 'real' or 'projected'
+  String _viewMode = 'projected';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.initialAccountId != null) {
+        ref
+            .read(statsControllerProvider.notifier)
+            .setFilterAccount(widget.initialAccountId);
+      }
+    });
+  }
+
+  List<int> get _yearOptions {
+    final current = DateTime.now().year;
+    return [for (var y = current - 5; y <= current; y++) y];
+  }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(statsControllerProvider);
+    final membersAsync = ref.watch(memberControllerProvider);
+    final categoriesAsync = ref.watch(categoryControllerProvider);
+    final customCategories = categoriesAsync.maybeWhen(
+      data: (cats) => cats.where((c) => !c.isSystem).toList(),
+      orElse: () => <Category>[],
+    );
 
     return state.isLoading
         ? const Scaffold(body: Center(child: CircularProgressIndicator()))
         : Scaffold(
             appBar: AppBar(
-              title: const Text('Analyse Annuelle'),
+              title: const Text('Analyse'),
               actions: [
                 IconButton(
                   onPressed: () => context.push('/stats-trend'),
                   icon: const Icon(Icons.show_chart),
-                  tooltip: 'Tendances pluriannuelles',
+                  tooltip: 'Tendances historiques',
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: DropdownButton<int>(
-                    value: state.selectedYear,
+                    value: _yearOptions.contains(state.selectedYear)
+                        ? state.selectedYear
+                        : _yearOptions.last,
                     onChanged: (y) {
                       if (y != null) {
-                        ref
-                            .read(statsControllerProvider.notifier)
-                            .changeYear(y);
+                        ref.read(statsControllerProvider.notifier).changeYear(y);
                       }
                     },
-                    items: [for (int i = 0; i < 6; i++) DateTime.now().year + i]
-                        .map((y) {
-                          return DropdownMenuItem(
-                            value: y,
-                            child: Text(y.toString()),
-                          );
-                        })
+                    items: _yearOptions
+                        .map((y) => DropdownMenuItem(value: y, child: Text('$y')))
                         .toList(),
                   ),
                 ),
@@ -62,89 +83,23 @@ class _StatsPageState extends ConsumerState<StatsPage> {
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    _buildFilters(state),
                     _buildGlobalSummary(state),
-                    if (state.statsByAccount.isEmpty)
+                    if (state.visibleStatsByAccount.isEmpty)
                       const Padding(
-                        padding: EdgeInsets.all(32.0),
-                        child: Center(
-                          child: Text('Aucune donnée pour cette année'),
-                        ),
+                        padding: EdgeInsets.all(32),
+                        child: Center(child: Text('Aucune donnée pour cette période')),
                       )
                     else
-                      ...state.statsByAccount.entries.map((entry) {
-                        final accountId = entry.key;
-                        final stats = entry.value;
-                        final accountName =
-                            state.accountNames[accountId] ?? 'Compte';
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.account_balance,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    accountName,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleLarge
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.primary,
-                                        ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Divider(indent: 16, endIndent: 16),
-
-                            // Dual View: Category Expenses (Real vs Projected)
-                            _buildSectionTitle('Dépenses par Catégorie'),
-                            _buildDualCharts(
-                              realData: stats.realExpenseByCategory,
-                              projectedData: stats.projectedExpenseByCategory,
-                              viewMode: _viewMode,
-                              baseColor: AppColors.chartExpense,
-                            ),
-
-                            // Dual View: Member Income (Real vs Projected)
-                            _buildSectionTitle('Revenus par Membre'),
-                            _buildDualCharts(
-                              realData: stats.realIncomeByMember,
-                              projectedData: stats.projectedIncomeByMember,
-                              viewMode: _viewMode,
-                              baseColor: AppColors.chartIncome,
-                            ),
-
-                            // Single View: Member Expenses (Projected)
-                            _buildSectionTitle(
-                              'Dépenses par Membre (Prévisionnel)',
-                            ),
-                            Center(
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(
-                                  maxWidth: 500,
-                                ),
-                                child: _buildPieChart(
-                                  stats.projectedExpenseByMember,
-                                  AppColors.chartMemberExpense,
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 32),
-                          ],
+                      ...state.visibleStatsByAccount.entries.map((entry) {
+                        return _buildAccountSection(
+                          state: state,
+                          accountId: entry.key,
+                          stats: entry.value,
+                          membersAsync: membersAsync,
+                          customCategories: customCategories,
                         );
                       }),
                   ],
@@ -169,14 +124,97 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                   ],
                   selected: {_viewMode},
                   onSelectionChanged: (val) {
-                    setState(() {
-                      _viewMode = val.first;
-                    });
+                    setState(() => _viewMode = val.first);
                   },
                 ),
               ),
             ),
           );
+  }
+
+  Widget _buildFilters(StatsState state) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            state.periodLabel(),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+          const SizedBox(height: 8),
+          SegmentedButton<StatsGranularity>(
+            segments: const [
+              ButtonSegment(value: StatsGranularity.year, label: Text('Année')),
+              ButtonSegment(
+                value: StatsGranularity.quarter,
+                label: Text('Trimestre'),
+              ),
+              ButtonSegment(value: StatsGranularity.month, label: Text('Mois')),
+            ],
+            selected: {state.granularity},
+            onSelectionChanged: (val) {
+              ref
+                  .read(statsControllerProvider.notifier)
+                  .changeGranularity(val.first);
+            },
+          ),
+          if (state.granularity == StatsGranularity.month) ...[
+            const SizedBox(height: 8),
+            DropdownButton<int>(
+              isExpanded: true,
+              value: state.selectedMonth,
+              items: List.generate(12, (i) {
+                final m = i + 1;
+                return DropdownMenuItem(value: m, child: Text('Mois $m'));
+              }),
+              onChanged: (m) {
+                if (m != null) {
+                  ref.read(statsControllerProvider.notifier).changeMonth(m);
+                }
+              },
+            ),
+          ],
+          if (state.granularity == StatsGranularity.quarter) ...[
+            const SizedBox(height: 8),
+            DropdownButton<int>(
+              isExpanded: true,
+              value: state.selectedQuarter,
+              items: const [
+                DropdownMenuItem(value: 1, child: Text('T1 (Jan–Mar)')),
+                DropdownMenuItem(value: 2, child: Text('T2 (Avr–Juin)')),
+                DropdownMenuItem(value: 3, child: Text('T3 (Juil–Sep)')),
+                DropdownMenuItem(value: 4, child: Text('T4 (Oct–Déc)')),
+              ],
+              onChanged: (q) {
+                if (q != null) {
+                  ref.read(statsControllerProvider.notifier).changeQuarter(q);
+                }
+              },
+            ),
+          ],
+          if (state.filterAccountId != null) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                Chip(
+                  label: Text(
+                    state.accountNames[state.filterAccountId] ?? 'Compte filtré',
+                  ),
+                  deleteIcon: const Icon(Icons.close, size: 16),
+                  onDeleted: () {
+                    ref
+                        .read(statsControllerProvider.notifier)
+                        .setFilterAccount(null);
+                  },
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   Widget _buildGlobalSummary(StatsState state) {
@@ -185,13 +223,10 @@ class _StatsPageState extends ConsumerState<StatsPage> {
     double totalProjectedIncome = 0;
     double totalProjectedExpense = 0;
 
-    for (final stats in state.statsByAccount.values) {
-      // Helper to sum excluding transfers
-      double sumSafe(Map<String, double> map) {
-        return map.entries
-            .where((e) => e.key != 'transfer')
-            .fold(0.0, (a, b) => a + b.value);
-      }
+    for (final stats in state.visibleStatsByAccount.values) {
+      double sumSafe(Map<String, double> map) => map.entries
+          .where((e) => e.key != 'transfer')
+          .fold(0.0, (a, b) => a + b.value);
 
       totalRealIncome += sumSafe(stats.realIncomeByCategory);
       totalRealExpense += sumSafe(stats.realExpenseByCategory);
@@ -211,7 +246,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
         child: Column(
           children: [
             Text(
-              'Bilan Global ${state.selectedYear}',
+              'Bilan — ${state.periodLabel()}',
               style: const TextStyle(
                 fontSize: 16,
                 color: Colors.grey,
@@ -263,11 +298,7 @@ class _StatsPageState extends ConsumerState<StatsPage> {
       children: [
         Text(
           label,
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.bold,
-            fontSize: 13,
-          ),
+          style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13),
         ),
         const SizedBox(height: 8),
         Text(
@@ -283,206 +314,187 @@ class _StatsPageState extends ConsumerState<StatsPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(Icons.arrow_upward, size: 12, color: Colors.green),
-            Text(
-              formatCurrency(income),
-              style: const TextStyle(fontSize: 11, color: Colors.green),
-            ),
+            Text(formatCurrency(income), style: const TextStyle(fontSize: 11, color: Colors.green)),
             const SizedBox(width: 8),
             const Icon(Icons.arrow_downward, size: 12, color: Colors.red),
-            Text(
-              formatCurrency(expense),
-              style: const TextStyle(fontSize: 11, color: Colors.red),
-            ),
+            Text(formatCurrency(expense), style: const TextStyle(fontSize: 11, color: Colors.red)),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-      child: Text(
-        title,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-      ),
-    );
-  }
-
-  Widget _buildDualCharts({
-    required Map<String, double> realData,
-    required Map<String, double> projectedData,
-    required String viewMode,
-    required Color baseColor,
+  Widget _buildAccountSection({
+    required StatsState state,
+    required String accountId,
+    required AccountStats stats,
+    required AsyncValue membersAsync,
+    required List<Category> customCategories,
   }) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth > 800;
+    final accountName = state.accountNames[accountId] ?? 'Compte';
+    final isReal = _viewMode == 'real';
+    final lookup = {...state.categoryNames, ...state.memberNames};
 
-        if (isWide) {
-          return Row(
-            children: [
-              Expanded(
-                child: _buildPieChart(realData, baseColor, title: 'Réel'),
-              ),
-              Expanded(
-                child: _buildPieChart(
-                  projectedData,
-                  baseColor,
-                  title: 'Prévisionnel',
-                ),
-              ),
-            ],
-          );
-        } else {
-          return Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 500),
-              child: _buildPieChart(
-                viewMode == 'real' ? realData : projectedData,
-                baseColor,
-              ),
-            ),
-          );
-        }
-      },
-    );
-  }
-
-  Widget _buildPieChart(
-    Map<String, double> data,
-    Color baseColor, {
-    String? title,
-  }) {
-    final state = ref.read(statsControllerProvider);
-    if (data.isEmpty) {
-      return SizedBox(
-        height: 150,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (title != null)
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
+    Widget dualOrSingle({
+      required Map<String, double> realData,
+      required Map<String, double> projectedData,
+      required Color color,
+      required String sectionTitle,
+    }) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitle(sectionTitle),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 800;
+              if (isWide) {
+                return Row(
+                  children: [
+                    Expanded(
+                      child: GenericBreakdownPieChart(
+                        data: realData,
+                        nameLookup: lookup,
+                        baseColor: color,
+                        title: 'Réel',
+                      ),
+                    ),
+                    Expanded(
+                      child: GenericBreakdownPieChart(
+                        data: projectedData,
+                        nameLookup: lookup,
+                        baseColor: color,
+                        title: 'Prévisionnel',
+                      ),
+                    ),
+                  ],
+                );
+              }
+              return Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 500),
+                  child: GenericBreakdownPieChart(
+                    data: isReal ? realData : projectedData,
+                    nameLookup: lookup,
+                    baseColor: color,
+                    title: isReal ? 'Réel' : 'Prévisionnel',
                   ),
                 ),
-              const Text(
-                'Aucune donnée',
-                style: TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-            ],
+              );
+            },
           ),
+        ],
+      );
+    }
+
+    Widget memberChart({
+      required Map<String, double> realData,
+      required Map<String, double> projectedData,
+      required String title,
+      required Color color,
+    }) {
+      final data = isReal ? realData : projectedData;
+      final total = data.values.fold(0.0, (a, b) => a + b);
+      return membersAsync.maybeWhen(
+        data: (members) {
+          final memberStats = data.entries
+              .map(
+                (e) => MemberStats(
+                  memberId: e.key,
+                  amount: e.value,
+                  percentage: total > 0 ? (e.value / total) * 100 : 0,
+                ),
+              )
+              .toList()
+            ..sort((a, b) => b.amount.compareTo(a.amount));
+          return MemberPieChart(
+            stats: memberStats,
+            members: members,
+            totalAmount: total,
+            title: '$title (${isReal ? 'Réel' : 'Prévisionnel'})',
+          );
+        },
+        orElse: () => GenericBreakdownPieChart(
+          data: data,
+          nameLookup: state.memberNames,
+          baseColor: color,
+          title: title,
         ),
       );
     }
 
-    final total = data.values.fold(0.0, (a, b) => a + b);
-    final sortedEntries = data.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    final List<Color> palette = [
-      baseColor,
-      baseColor.withValues(alpha: 0.8),
-      baseColor.withValues(alpha: 0.6),
-      baseColor.withValues(alpha: 0.4),
-      baseColor.withValues(alpha: 0.2),
-      ...AppColors.chartPalette.map((c) => c.withValues(alpha: 0.5)),
-    ];
-
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (title != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8.0),
-            child: Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-        SizedBox(
-          height: 180,
-          child: PieChart(
-            PieChartData(
-              sectionsSpace: 2,
-              centerSpaceRadius: 35,
-              sections: sortedEntries.asMap().entries.map((entry) {
-                final index = entry.key;
-                final val = entry.value;
-                final percentage = (val.value / total) * 100;
-
-                return PieChartSectionData(
-                  color: palette[index % palette.length],
-                  value: val.value,
-                  title: percentage > 10
-                      ? '${percentage.toStringAsFixed(0)}%'
-                      : '',
-                  radius: 45,
-                  titleStyle: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 4,
-            children: sortedEntries.asMap().entries.map((entry) {
-              final index = entry.key;
-              final val = entry.value;
-
-              // Map ID to Name
-              String displayName = val.key;
-              if (state.memberNames.containsKey(val.key)) {
-                displayName = state.memberNames[val.key]!;
-              } else if (state.categoryNames.containsKey(val.key)) {
-                displayName = state.categoryNames[val.key]!;
-              } else {
-                // Try to find in global categories list
-                try {
-                  displayName = kTransactionCategories
-                      .firstWhere((c) => c.id == val.key)
-                      .name;
-                } catch (_) {
-                  // Fallback to name-cased ID if it's the old 'Recurrence' string
-                  if (val.key == 'Recurrence') {
-                    displayName = 'Récurrence';
-                  }
-                }
-              }
-
-              return Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: palette[index % palette.length],
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '$displayName: ${formatCurrency(val.value)}',
-                    style: const TextStyle(fontSize: 10),
-                  ),
-                ],
-              );
-            }).toList(),
+          padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+          child: Row(
+            children: [
+              Icon(Icons.account_balance, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                accountName,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ],
           ),
         ),
+        const Divider(indent: 16, endIndent: 16),
+        dualOrSingle(
+          realData: _withoutTransfer(stats.realExpenseByCategory),
+          projectedData: _withoutTransfer(stats.projectedExpenseByCategory),
+          color: AppColors.chartExpense,
+          sectionTitle: 'Dépenses par catégorie',
+        ),
+        dualOrSingle(
+          realData: _withoutTransfer(stats.realIncomeByCategory),
+          projectedData: _withoutTransfer(stats.projectedIncomeByCategory),
+          color: AppColors.chartIncome,
+          sectionTitle: 'Revenus par catégorie',
+        ),
+        _sectionTitle('Revenus par membre'),
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: memberChart(
+              realData: stats.realIncomeByMember,
+              projectedData: stats.projectedIncomeByMember,
+              title: 'Revenus par membre',
+              color: AppColors.chartIncome,
+            ),
+          ),
+        ),
+        _sectionTitle('Dépenses par membre'),
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: memberChart(
+              realData: stats.realExpenseByMember,
+              projectedData: stats.projectedExpenseByMember,
+              title: 'Dépenses par membre',
+              color: AppColors.chartMemberExpense,
+            ),
+          ),
+        ),
+        const SizedBox(height: 32),
       ],
+    );
+  }
+
+  Map<String, double> _withoutTransfer(Map<String, double> data) {
+    return Map.fromEntries(data.entries.where((e) => e.key != 'transfer'));
+  }
+
+  Widget _sectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Text(
+        title,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
     );
   }
 }

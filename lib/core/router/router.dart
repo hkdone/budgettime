@@ -106,7 +106,13 @@ final router = GoRouter(
     ),
     GoRoute(
       path: '/stats',
-      pageBuilder: (context, state) => _buildPage(state, const StatsPage()),
+      pageBuilder: (context, state) {
+        final accountId = state.uri.queryParameters['account'];
+        return _buildPage(
+          state,
+          StatsPage(initialAccountId: accountId),
+        );
+      },
     ),
     GoRoute(
       path: '/stats-trend',

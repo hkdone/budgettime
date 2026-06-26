@@ -9,7 +9,10 @@ import '../../auth/presentation/auth_controller.dart';
 import 'dashboard_controller.dart';
 import '../../transactions/presentation/transaction_list.dart';
 import 'widgets/account_global_card.dart';
+import 'widgets/account_stats_compact.dart';
 import 'widgets/pwa_install_banner.dart';
+import 'widgets/statistics_widgets.dart';
+import 'dashboard_stats_providers.dart';
 import 'package:budgettime/core/utils/formatters.dart';
 import 'package:budgettime/core/utils/app_theme.dart';
 import '../../../services/open_banking_service.dart';
@@ -366,17 +369,21 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               );
             },
           ),
-          if (state.selectedAccount == null)
-            IconButton(
-              icon: Icon(
-                Icons.bar_chart_rounded,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              tooltip: 'Statistiques Annuelles',
-              onPressed: () {
-                context.push('/stats');
-              },
+          IconButton(
+            icon: Icon(
+              Icons.bar_chart_rounded,
+              color: Theme.of(context).colorScheme.primary,
             ),
+            tooltip: 'Statistiques',
+            onPressed: () {
+              final accountId = state.selectedAccount?.id;
+              if (accountId != null) {
+                context.push('/stats?account=$accountId');
+              } else {
+                context.push('/stats');
+              }
+            },
+          ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.black),
             onSelected: (value) {
@@ -503,6 +510,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                     ),
                                   ),
                                 ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Période : ${DateFormat('MMMM yyyy', 'fr_FR').format(DateTime.now())}${state.showAllTransactions ? ' (filtre actif)' : ' — mois en cours'}',
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(color: Colors.grey[600]),
+                                textAlign: TextAlign.center,
                               ),
                               const SizedBox(height: 8),
                               Card(
@@ -720,6 +734,33 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                           ),
                                         ],
                                       ),
+                                      const SizedBox(height: 20),
+                                      Consumer(
+                                        builder: (context, ref, _) {
+                                          final historyAsync = ref.watch(
+                                            monthlyHistoryProvider(
+                                              state.selectedAccount?.id,
+                                            ),
+                                          );
+                                          return historyAsync.when(
+                                            data: (history) => HistoryBarChart(
+                                              history: history,
+                                              title: '6 derniers mois',
+                                            ),
+                                            loading: () => const SizedBox(
+                                              height: 24,
+                                              child: Center(
+                                                child:
+                                                    CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                ),
+                                              ),
+                                            ),
+                                            error: (_, _) =>
+                                                const SizedBox.shrink(),
+                                          );
+                                        },
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -740,9 +781,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                             return AccountGlobalCard(account: account);
                           }, childCount: state.accounts.length),
                         )
-                      else
-                        // DETAIL VIEW: Show transaction list for the selected account
+                      else ...[
+                        SliverToBoxAdapter(
+                          child: AccountStatsCompact(
+                            account: state.selectedAccount!,
+                          ),
+                        ),
                         TransactionList(transactions: filteredTransactions),
+                      ],
                       // Load more button (only in detail view when more pages are available)
                       if (state.selectedAccount != null &&
                           (state.hasMore || state.isLoadingMore))

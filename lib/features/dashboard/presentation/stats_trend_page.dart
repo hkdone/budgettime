@@ -2,130 +2,143 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'stats_controller.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/app_theme.dart';
+import 'widgets/statistics_widgets.dart';
 
-class StatsTrendPage extends ConsumerWidget {
+class StatsTrendPage extends ConsumerStatefulWidget {
   const StatsTrendPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StatsTrendPage> createState() => _StatsTrendPageState();
+}
+
+class _StatsTrendPageState extends ConsumerState<StatsTrendPage> {
+  int _tabIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(statsControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Tendances Annuelles')),
+      appBar: AppBar(title: const Text('Tendances historiques')),
       body: state.isLoading
           ? const Center(child: CircularProgressIndicator())
-          : state.yearlyTrends.isEmpty
-          ? const Center(child: Text('Aucune donnée disponible'))
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Évolution du Reste à Vivre',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: SegmentedButton<int>(
+                    segments: const [
+                      ButtonSegment(value: 0, label: Text('Par année')),
+                      ButtonSegment(value: 1, label: Text('Par mois')),
+                    ],
+                    selected: {_tabIndex},
+                    onSelectionChanged: (v) => setState(() => _tabIndex = v.first),
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Cumul annuel (Revenus - Dépenses)',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                  const SizedBox(height: 24),
-                  Expanded(child: _buildTrendChart(state.yearlyTrends)),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Détails par année',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    flex: 2,
-                    child: ListView.builder(
-                      itemCount: state.yearlyTrends.length,
-                      itemBuilder: (context, index) {
-                        final trend = state.yearlyTrends[index];
-
-                        YearlyTrend? previousTrend;
-                        if (index > 0) {
-                          previousTrend = state.yearlyTrends[index - 1];
-                        }
-
-                        return _buildYearlyCard(trend, previousTrend);
-                      },
-                    ),
-                  ),
-                ],
-              ),
+                ),
+                Expanded(
+                  child: _tabIndex == 0
+                      ? _buildYearlyTab(state)
+                      : _buildMonthlyTab(state),
+                ),
+              ],
             ),
     );
   }
 
-  Widget _buildTrendChart(List<YearlyTrend> trends) {
-    if (trends.isEmpty) return const SizedBox();
+  Widget _buildYearlyTab(StatsState state) {
+    if (state.yearlyTrends.isEmpty) {
+      return const Center(child: Text('Aucune donnée disponible'));
+    }
 
-    final maxBalance = trends
-        .map((e) => e.balance.abs())
-        .reduce((a, b) => a > b ? a : b);
-    final chartMax = maxBalance == 0 ? 100.0 : maxBalance * 1.2;
+    final yearlyAsMonthly = state.yearlyTrends
+        .map(
+          (t) => MonthlyStats(
+            month: DateTime(t.year, 1, 1),
+            income: t.income,
+            expense: t.expense,
+          ),
+        )
+        .toList();
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final chartHeight = constraints.maxHeight > 0
-            ? constraints.maxHeight
-            : 250.0;
+    return RefreshIndicator(
+      onRefresh: () async =>
+          ref.read(statsControllerProvider.notifier).refresh(),
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const Text(
+            'Historique — Reste à vivre annuel',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Revenus − Dépenses (hors virements)',
+            style: TextStyle(color: Colors.grey),
+          ),
+          const SizedBox(height: 16),
+          SignedYearlyBarChart(
+            trends: yearlyAsMonthly,
+            title: '6 dernières années',
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Détail par année',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          ...state.yearlyTrends.asMap().entries.map((entry) {
+            final index = entry.key;
+            final trend = entry.value;
+            final previous = index > 0 ? state.yearlyTrends[index - 1] : null;
+            return _buildYearlyCard(trend, previous);
+          }),
+        ],
+      ),
+    );
+  }
 
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: trends.map((trend) {
-            final heightFactor = (trend.balance.abs() / chartMax).clamp(
-              0.05,
-              1.0,
-            );
-            final isPositive = trend.balance >= 0;
-
-            return Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4.0),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        '${(trend.balance / 1000).toStringAsFixed(1)}k',
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+  Widget _buildMonthlyTab(StatsState state) {
+    return RefreshIndicator(
+      onRefresh: () async =>
+          ref.read(statsControllerProvider.notifier).refresh(),
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text(
+            'Mois par mois — ${state.selectedYear}',
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          MonthlyBalanceBarChart(
+            months: state.monthlyTrendsForYear,
+          ),
+          const SizedBox(height: 24),
+          ...state.monthlyTrendsForYear.map((m) {
+            return Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                title: Text(
+                  '${m.month.month}/${m.month.year}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(
+                  '+${formatCurrency(m.income)}  ·  -${formatCurrency(m.expense)}',
+                ),
+                trailing: Text(
+                  formatCurrency(m.balance),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: m.balance >= 0
+                        ? AppColors.chartIncome
+                        : AppColors.chartExpense,
                   ),
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    height: (chartHeight - 40) * heightFactor,
-                    decoration: BoxDecoration(
-                      color: isPositive
-                          ? Colors.green.withValues(alpha: 0.7)
-                          : Colors.red.withValues(alpha: 0.7),
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(4),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    trend.year.toString(),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
+                ),
               ),
             );
-          }).toList(),
-        );
-      },
+          }),
+        ],
+      ),
     );
   }
 
@@ -140,31 +153,37 @@ class StatsTrendPage extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  trend.year.toString(),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    trend.year.toString(),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                Text(
-                  'Solde: ${formatCurrency(trend.balance)}',
-                  style: TextStyle(
-                    color: trend.balance >= 0
-                        ? Colors.green[700]
-                        : Colors.red[700],
-                    fontWeight: FontWeight.w500,
+                  Text(
+                    'Solde: ${formatCurrency(trend.balance)}',
+                    style: TextStyle(
+                      color: trend.balance >= 0
+                          ? Colors.green[700]
+                          : Colors.red[700],
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    '+${formatCurrency(trend.income)}  ·  -${formatCurrency(trend.expense)}',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
             ),
-            const Spacer(),
             if (percentChange != null)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -184,13 +203,12 @@ class StatsTrendPage extends ConsumerWidget {
                         style: TextStyle(
                           color: percentChange >= 0 ? Colors.green : Colors.red,
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
                         ),
                       ),
                     ],
                   ),
                   const Text(
-                    'vs l\'an dernier',
+                    'vs année précédente',
                     style: TextStyle(fontSize: 10, color: Colors.grey),
                   ),
                 ],

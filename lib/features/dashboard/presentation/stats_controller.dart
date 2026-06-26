@@ -4,6 +4,9 @@ import '../../transactions/domain/transaction_repository.dart';
 import '../../../core/start_app.dart';
 import '../../transactions/domain/categories.dart';
 import '../../recurrences/data/recurrence_repository_impl.dart';
+import '../presentation/widgets/statistics_widgets.dart';
+
+enum StatsGranularity { year, quarter, month }
 
 class YearlyTrend {
   final int year;
@@ -43,19 +46,29 @@ class AccountStats {
 
 class StatsState {
   final bool isLoading;
-  final Map<String, AccountStats> statsByAccount; // accountId -> AccountStats
-  final Map<String, String> accountNames; // accountId -> name
+  final Map<String, AccountStats> statsByAccount;
+  final Map<String, String> accountNames;
   final List<YearlyTrend> yearlyTrends;
+  final List<MonthlyStats> monthlyTrendsForYear;
   final int selectedYear;
-  final Map<String, String> memberNames; // memberId -> name
-  final Map<String, String> categoryNames; // categoryId -> name
+  final StatsGranularity granularity;
+  final int selectedMonth;
+  final int selectedQuarter;
+  final String? filterAccountId;
+  final Map<String, String> memberNames;
+  final Map<String, String> categoryNames;
 
   StatsState({
     this.isLoading = false,
     this.statsByAccount = const {},
     this.accountNames = const {},
     this.yearlyTrends = const [],
+    this.monthlyTrendsForYear = const [],
     this.selectedYear = 0,
+    this.granularity = StatsGranularity.year,
+    this.selectedMonth = 1,
+    this.selectedQuarter = 1,
+    this.filterAccountId,
     this.memberNames = const {},
     this.categoryNames = const {},
   });
@@ -65,7 +78,13 @@ class StatsState {
     Map<String, AccountStats>? statsByAccount,
     Map<String, String>? accountNames,
     List<YearlyTrend>? yearlyTrends,
+    List<MonthlyStats>? monthlyTrendsForYear,
     int? selectedYear,
+    StatsGranularity? granularity,
+    int? selectedMonth,
+    int? selectedQuarter,
+    String? filterAccountId,
+    bool clearFilterAccount = false,
     Map<String, String>? memberNames,
     Map<String, String>? categoryNames,
   }) {
@@ -74,10 +93,49 @@ class StatsState {
       statsByAccount: statsByAccount ?? this.statsByAccount,
       accountNames: accountNames ?? this.accountNames,
       yearlyTrends: yearlyTrends ?? this.yearlyTrends,
+      monthlyTrendsForYear: monthlyTrendsForYear ?? this.monthlyTrendsForYear,
       selectedYear: selectedYear ?? this.selectedYear,
+      granularity: granularity ?? this.granularity,
+      selectedMonth: selectedMonth ?? this.selectedMonth,
+      selectedQuarter: selectedQuarter ?? this.selectedQuarter,
+      filterAccountId: clearFilterAccount
+          ? null
+          : (filterAccountId ?? this.filterAccountId),
       memberNames: memberNames ?? this.memberNames,
       categoryNames: categoryNames ?? this.categoryNames,
     );
+  }
+
+  Map<String, AccountStats> get visibleStatsByAccount {
+    if (filterAccountId == null) return statsByAccount;
+    final stats = statsByAccount[filterAccountId];
+    if (stats == null) return {};
+    return {filterAccountId!: stats};
+  }
+
+  String periodLabel() {
+    switch (granularity) {
+      case StatsGranularity.year:
+        return 'Année $selectedYear';
+      case StatsGranularity.quarter:
+        return 'T$selectedQuarter $selectedYear';
+      case StatsGranularity.month:
+        const months = [
+          'Janvier',
+          'Février',
+          'Mars',
+          'Avril',
+          'Mai',
+          'Juin',
+          'Juillet',
+          'Août',
+          'Septembre',
+          'Octobre',
+          'Novembre',
+          'Décembre',
+        ];
+        return '${months[selectedMonth - 1]} $selectedYear';
+    }
   }
 }
 
@@ -86,22 +144,56 @@ class StatsController extends StateNotifier<StatsState> {
   final Ref _ref;
 
   StatsController(this._transactionRepo, this._ref)
-    : super(StatsState(selectedYear: DateTime.now().year)) {
+    : super(
+        StatsState(
+          selectedYear: DateTime.now().year,
+          selectedMonth: DateTime.now().month,
+          selectedQuarter: ((DateTime.now().month - 1) ~/ 3) + 1,
+        ),
+      ) {
     loadStats();
     fetchYearlyTrends();
+  }
+
+  (DateTime, DateTime) _periodBounds() {
+    switch (state.granularity) {
+      case StatsGranularity.year:
+        return (
+          DateTime(state.selectedYear, 1, 1, 0, 0, 0),
+          DateTime(state.selectedYear, 12, 31, 23, 59, 59),
+        );
+      case StatsGranularity.quarter:
+        final startMonth = (state.selectedQuarter - 1) * 3 + 1;
+        final endMonth = startMonth + 2;
+        return (
+          DateTime(state.selectedYear, startMonth, 1, 0, 0, 0),
+          DateTime(state.selectedYear, endMonth + 1, 0, 23, 59, 59),
+        );
+      case StatsGranularity.month:
+        return (
+          DateTime(state.selectedYear, state.selectedMonth, 1, 0, 0, 0),
+          DateTime(
+            state.selectedYear,
+            state.selectedMonth + 1,
+            0,
+            23,
+            59,
+            59,
+          ),
+        );
+    }
   }
 
   Future<void> loadStats() async {
     state = state.copyWith(isLoading: true);
 
-    // Retour au calendrier civil pour l'analyse annuelle (plus intuitif)
-    final start = DateTime(state.selectedYear, 1, 1, 0, 0, 0);
-    final end = DateTime(state.selectedYear, 12, 31, 23, 59, 59);
+    final (start, end) = _periodBounds();
 
     try {
       final transactions = await _transactionRepo.getTransactions(
         start: start,
         end: end,
+        accountId: state.filterAccountId,
       );
 
       final statsByAccount = <String, AccountStats>{};
@@ -110,12 +202,10 @@ class StatsController extends StateNotifier<StatsState> {
       final categoryNames = <String, String>{};
       final recurrenceCategoryMap = <String, String>{};
 
-      // 1. Pre-populate category names from hardcoded list
       for (final cat in kTransactionCategories) {
         categoryNames[cat.id] = cat.name;
       }
 
-      // 1b. Also add custom categories from DB so deleted ones still show their name
       try {
         final catRepo = _ref.read(categoryRepositoryProvider);
         final customCats = await catRepo.getCategories();
@@ -123,12 +213,9 @@ class StatsController extends StateNotifier<StatsState> {
           categoryNames.putIfAbsent(cat.id, () => cat.name);
         }
       } catch (e) {
-        debugPrint(
-          'Warning: Could not fetch custom categories in StatsController: $e',
-        );
+        debugPrint('Warning: Could not fetch custom categories: $e');
       }
 
-      // 2. Fetch all members to ensure complete mapping
       try {
         final memberRepo = _ref.read(memberRepositoryProvider);
         final members = await memberRepo.getMembers();
@@ -136,10 +223,9 @@ class StatsController extends StateNotifier<StatsState> {
           memberNames[m.id] = m.name;
         }
       } catch (e) {
-        debugPrint('Warning: Could not fetch members in StatsController: $e');
+        debugPrint('Warning: Could not fetch members: $e');
       }
 
-      // 3. Fetch all recurrences to map orphan categories
       try {
         final recurrenceRepo = _ref.read(recurrenceRepositoryProvider);
         final recurrences = await recurrenceRepo.getRecurrences();
@@ -149,9 +235,7 @@ class StatsController extends StateNotifier<StatsState> {
           }
         }
       } catch (e) {
-        debugPrint(
-          'Warning: Could not fetch recurrences in StatsController: $e',
-        );
+        debugPrint('Warning: Could not fetch recurrences: $e');
       }
 
       memberNames.putIfAbsent('common', () => 'Commun');
@@ -210,6 +294,36 @@ class StatsController extends StateNotifier<StatsState> {
     await fetchYearlyTrends();
   }
 
+  void setFilterAccount(String? accountId) {
+    state = state.copyWith(
+      filterAccountId: accountId,
+      clearFilterAccount: accountId == null,
+    );
+    loadStats();
+    fetchYearlyTrends();
+  }
+
+  void changeYear(int year) {
+    state = state.copyWith(selectedYear: year);
+    loadStats();
+    fetchYearlyTrends();
+  }
+
+  void changeGranularity(StatsGranularity granularity) {
+    state = state.copyWith(granularity: granularity);
+    loadStats();
+  }
+
+  void changeMonth(int month) {
+    state = state.copyWith(selectedMonth: month);
+    loadStats();
+  }
+
+  void changeQuarter(int quarter) {
+    state = state.copyWith(selectedQuarter: quarter);
+    loadStats();
+  }
+
   void _processTransactionForAccount({
     required Map<String, dynamic> t,
     required String accountId,
@@ -221,18 +335,8 @@ class StatsController extends StateNotifier<StatsState> {
     required bool isOutgoing,
   }) {
     if (!statsByAccount.containsKey(accountId)) {
-      statsByAccount[accountId] = AccountStats(
-        realIncomeByCategory: {},
-        projectedIncomeByCategory: {},
-        realExpenseByCategory: {},
-        projectedExpenseByCategory: {},
-        realIncomeByMember: {},
-        projectedIncomeByMember: {},
-        realExpenseByMember: {},
-        projectedExpenseByMember: {},
-      );
+      statsByAccount[accountId] = AccountStats();
 
-      // Try to find account name in expand
       if (t['expand'] != null) {
         if (isOutgoing && t['expand']['account'] != null) {
           final dynamic expAcc = t['expand']['account'];
@@ -259,7 +363,6 @@ class StatsController extends StateNotifier<StatsState> {
       categoryId = t['category'].toString();
     }
 
-    // Retroactive mapping: if category is technical/generic, try to find it via recurrence
     if (categoryId == 'Recurrence' ||
         categoryId == 'other' ||
         categoryId == 'Recurrence'.toLowerCase()) {
@@ -279,11 +382,9 @@ class StatsController extends StateNotifier<StatsState> {
     }
     memberNames.putIfAbsent('common', () => 'Commun');
 
-    // Type logic
     final bool isIncome;
     if (t['target_account'] != null &&
         t['target_account'].toString().isNotEmpty) {
-      // It's a transfer
       isIncome = !isOutgoing;
     } else {
       isIncome = t['type'] == 'income';
@@ -314,61 +415,82 @@ class StatsController extends StateNotifier<StatsState> {
     }
   }
 
-  void changeYear(int year) {
-    state = state.copyWith(selectedYear: year);
-    loadStats();
-    fetchYearlyTrends();
-  }
-
   Future<void> fetchYearlyTrends() async {
-    final startYear = state.selectedYear;
-    final List<YearlyTrend> trends = [];
+    final currentYear = DateTime.now().year;
+    const yearsBack = 5;
+    final startYear = currentYear - yearsBack;
 
     try {
-      // Fetch current year + 5 years ahead
-      for (int i = 0; i < 6; i++) {
-        final year = startYear + i;
-        final start = DateTime(year, 1, 1);
-        final end = DateTime(year, 12, 31, 23, 59, 59);
+      final start = DateTime(startYear, 1, 1);
+      final end = DateTime(currentYear, 12, 31, 23, 59, 59);
 
-        final transactions = await _transactionRepo.getTransactions(
-          start: start,
-          end: end,
-        );
+      final transactions = await _transactionRepo.getTransactions(
+        start: start,
+        end: end,
+        accountId: state.filterAccountId,
+      );
 
-        double yearIncome = 0;
-        double yearExpense = 0;
+      final incomeByYear = <int, double>{};
+      final expenseByYear = <int, double>{};
+      final incomeByMonth = <int, double>{};
+      final expenseByMonth = <int, double>{};
 
-        for (final t in transactions) {
-          // Technical Filter: Hide purely technical adjustments
-          final label = t['label']?.toString().toLowerCase() ?? '';
-          if (label.contains('solde') || label.contains('ajustement')) continue;
+      for (final t in transactions) {
+        final label = t['label']?.toString().toLowerCase() ?? '';
+        if (label.contains('solde') || label.contains('ajustement')) continue;
 
-          // Transfer logic: Neutralize transfers for global yearly trends
-          final String? tTargetAccount = t['target_account'];
-          if (tTargetAccount != null && tTargetAccount.isNotEmpty) {
-            continue; // Skip transfers for global yearly trends
-          }
-
-          final amount = (t['amount'] as num).toDouble();
-          if (t['type'] == 'income') {
-            yearIncome += amount;
-          } else {
-            yearExpense += amount;
-          }
+        if (t['target_account'] != null &&
+            t['target_account'].toString().isNotEmpty) {
+          continue;
         }
 
+        final date = DateTime.parse(t['date']);
+        final year = date.year;
+        final month = date.month;
+        final amount = (t['amount'] as num).toDouble();
+
+        if (t['type'] == 'income') {
+          incomeByYear[year] = (incomeByYear[year] ?? 0) + amount;
+          if (year == state.selectedYear) {
+            incomeByMonth[month] = (incomeByMonth[month] ?? 0) + amount;
+          }
+        } else {
+          expenseByYear[year] = (expenseByYear[year] ?? 0) + amount;
+          if (year == state.selectedYear) {
+            expenseByMonth[month] = (expenseByMonth[month] ?? 0) + amount;
+          }
+        }
+      }
+
+      final trends = <YearlyTrend>[];
+      for (var year = startYear; year <= currentYear; year++) {
+        final income = incomeByYear[year] ?? 0;
+        final expense = expenseByYear[year] ?? 0;
         trends.add(
           YearlyTrend(
             year: year,
-            income: yearIncome,
-            expense: yearExpense,
-            balance: yearIncome - yearExpense,
+            income: income,
+            expense: expense,
+            balance: income - expense,
           ),
         );
       }
 
-      state = state.copyWith(yearlyTrends: trends);
+      final monthly = <MonthlyStats>[];
+      for (var m = 1; m <= 12; m++) {
+        monthly.add(
+          MonthlyStats(
+            month: DateTime(state.selectedYear, m, 1),
+            income: incomeByMonth[m] ?? 0,
+            expense: expenseByMonth[m] ?? 0,
+          ),
+        );
+      }
+
+      state = state.copyWith(
+        yearlyTrends: trends,
+        monthlyTrendsForYear: monthly,
+      );
     } catch (e, stack) {
       debugPrint('Error in fetchYearlyTrends: $e\n$stack');
     }
