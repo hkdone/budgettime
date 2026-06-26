@@ -832,7 +832,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       }
     }
 
-    if (!showRail) {
+    if (!showRail && !isCompact) {
       actions.add(
         Consumer(
           builder: (context, ref, child) {

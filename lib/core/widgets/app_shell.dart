@@ -4,16 +4,26 @@ import 'package:go_router/go_router.dart';
 import '../utils/responsive_breakpoints.dart';
 import '../../features/inbox/presentation/inbox_controller.dart';
 
-/// Navigation latérale sur grand écran ; invisible sur mobile.
+/// Navigation latérale (≥600 px) ou barre du bas (<600 px).
 class AppShell extends ConsumerWidget {
   final Widget child;
 
   const AppShell({super.key, required this.child});
 
+  static bool showsMobileNav(String location) {
+    final path = Uri.parse(location).path;
+    if (path == '/') return true;
+    if (path.startsWith('/stats')) return true;
+    if (path == '/inbox') return true;
+    if (path == '/settings') return true;
+    return false;
+  }
+
   int _selectedIndex(String location) {
-    if (location.startsWith('/stats')) return 1;
-    if (location.startsWith('/inbox')) return 2;
-    if (location.startsWith('/settings')) return 3;
+    final path = Uri.parse(location).path;
+    if (path.startsWith('/stats')) return 1;
+    if (path == '/inbox') return 2;
+    if (path == '/settings') return 3;
     return 0;
   }
 
@@ -32,17 +42,62 @@ class AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (context.isCompact) {
-      return child;
-    }
-
     final location = GoRouterState.of(context).uri.toString();
     final inboxCount = ref.watch(inboxControllerProvider).items.length;
+    final selectedIndex = _selectedIndex(location);
+
+    if (context.isCompact) {
+      final showNav = showsMobileNav(location);
+      return Column(
+        children: [
+          Expanded(child: child),
+          if (showNav)
+            SafeArea(
+              top: false,
+              child: NavigationBar(
+                selectedIndex: selectedIndex,
+                onDestinationSelected: (i) =>
+                    _onDestinationSelected(context, i),
+                destinations: [
+                  const NavigationDestination(
+                    icon: Icon(Icons.home_outlined),
+                    selectedIcon: Icon(Icons.home),
+                    label: 'Accueil',
+                  ),
+                  const NavigationDestination(
+                    icon: Icon(Icons.bar_chart_outlined),
+                    selectedIcon: Icon(Icons.bar_chart),
+                    label: 'Analyse',
+                  ),
+                  NavigationDestination(
+                    icon: Badge.count(
+                      count: inboxCount,
+                      isLabelVisible: inboxCount > 0,
+                      child: const Icon(Icons.inbox_outlined),
+                    ),
+                    selectedIcon: Badge.count(
+                      count: inboxCount,
+                      isLabelVisible: inboxCount > 0,
+                      child: const Icon(Icons.inbox),
+                    ),
+                    label: 'Inbox',
+                  ),
+                  const NavigationDestination(
+                    icon: Icon(Icons.settings_outlined),
+                    selectedIcon: Icon(Icons.settings),
+                    label: 'Paramètres',
+                  ),
+                ],
+              ),
+            ),
+        ],
+      );
+    }
 
     return Row(
       children: [
         NavigationRail(
-          selectedIndex: _selectedIndex(location),
+          selectedIndex: selectedIndex,
           onDestinationSelected: (i) => _onDestinationSelected(context, i),
           labelType: context.isExpanded
               ? NavigationRailLabelType.all

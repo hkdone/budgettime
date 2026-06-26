@@ -87,6 +87,30 @@ class _StatsPageState extends ConsumerState<StatsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (context.isCompact) ...[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                        child: SegmentedButton<String>(
+                          segments: const [
+                            ButtonSegment(
+                              value: 'real',
+                              label: Text('Réel'),
+                              icon: Icon(Icons.check_circle_outline),
+                            ),
+                            ButtonSegment(
+                              value: 'projected',
+                              label: Text('Prévisionnel'),
+                              icon: Icon(Icons.event_available),
+                            ),
+                          ],
+                          selected: {_viewMode},
+                          onSelectionChanged: (val) {
+                            setState(() => _viewMode = val.first);
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                     _buildFilters(state),
                     _buildGlobalSummary(state),
                     if (state.visibleStatsByAccount.isEmpty)
@@ -111,29 +135,31 @@ class _StatsPageState extends ConsumerState<StatsPage> {
               ),
               ),
             ),
-            bottomNavigationBar: BottomAppBar(
-              height: 70,
-              child: Center(
-                child: SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(
-                      value: 'real',
-                      label: Text('Réel'),
-                      icon: Icon(Icons.check_circle_outline),
+            bottomNavigationBar: context.isCompact
+                ? null
+                : BottomAppBar(
+                    height: 70,
+                    child: Center(
+                      child: SegmentedButton<String>(
+                        segments: const [
+                          ButtonSegment(
+                            value: 'real',
+                            label: Text('Réel'),
+                            icon: Icon(Icons.check_circle_outline),
+                          ),
+                          ButtonSegment(
+                            value: 'projected',
+                            label: Text('Prévisionnel'),
+                            icon: Icon(Icons.event_available),
+                          ),
+                        ],
+                        selected: {_viewMode},
+                        onSelectionChanged: (val) {
+                          setState(() => _viewMode = val.first);
+                        },
+                      ),
                     ),
-                    ButtonSegment(
-                      value: 'projected',
-                      label: Text('Prévisionnel'),
-                      icon: Icon(Icons.event_available),
-                    ),
-                  ],
-                  selected: {_viewMode},
-                  onSelectionChanged: (val) {
-                    setState(() => _viewMode = val.first);
-                  },
-                ),
-              ),
-            ),
+                  ),
           );
   }
 
