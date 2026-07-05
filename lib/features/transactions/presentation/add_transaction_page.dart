@@ -12,6 +12,7 @@ import '../../categories/presentation/category_controller.dart';
 import '../../recurrences/domain/recurrence.dart';
 import '../../accounts/presentation/account_controller.dart';
 import '../../members/presentation/member_controller.dart';
+import '../../inbox/presentation/inbox_controller.dart';
 import '../domain/reconciliation_match.dart';
 import '../domain/transaction_origin.dart';
 
@@ -307,6 +308,11 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
   Future<void> _submit({required bool stayOnPage}) async {
     if (_formKey.currentState!.validate()) {
       if (widget.transactionToEdit?['fromInbox'] == true &&
+          _isLoadingReconciliations) {
+        return;
+      }
+
+      if (widget.transactionToEdit?['fromInbox'] == true &&
           !_isLoadingReconciliations &&
           _matchingReconciliations.isNotEmpty &&
           _selectedReconciliationId == null) {
@@ -536,6 +542,11 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
         }
 
         await ref.read(dashboardControllerProvider.notifier).refresh();
+
+        final inboxItemId = widget.transactionToEdit?['inboxItemId'] as String?;
+        if (inboxItemId != null) {
+          await ref.read(inboxControllerProvider.notifier).deleteItem(inboxItemId);
+        }
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1123,7 +1134,9 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   FilledButton(
-                    onPressed: _isLoading
+                    onPressed: _isLoading ||
+                            (widget.transactionToEdit?['fromInbox'] == true &&
+                                _isLoadingReconciliations)
                         ? null
                         : () => _submit(stayOnPage: false),
                     child: _isLoading
@@ -1132,12 +1145,19 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                             width: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text('Enregistrer'),
+                        : Text(
+                            widget.transactionToEdit?['fromInbox'] == true &&
+                                    _isLoadingReconciliations
+                                ? 'Analyse rapprochement…'
+                                : 'Enregistrer',
+                          ),
                   ),
                   if (!isEditing) ...[
                     const SizedBox(height: 8),
                     OutlinedButton(
-                      onPressed: _isLoading
+                      onPressed: _isLoading ||
+                              (widget.transactionToEdit?['fromInbox'] == true &&
+                                  _isLoadingReconciliations)
                           ? null
                           : () => _submit(stayOnPage: true),
                       child: const Text('Enregistrer et Nouveau'),

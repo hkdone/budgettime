@@ -20,6 +20,7 @@ class ExternalInboxPage extends ConsumerStatefulWidget {
 class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
   bool _showDebug = false;
   String? _selectedItemId;
+  final Set<String> _processingItemIds = {};
 
   @override
   Widget build(BuildContext context) {
@@ -173,9 +174,12 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
         final item = items[index];
         final match = matchPreviews[item.id];
         final isSelected = selectedId == item.id;
+        final isProcessing = _processingItemIds.contains(item.id);
 
         if (compact) {
-          return Material(
+          return Opacity(
+            opacity: isProcessing ? 0.5 : 1,
+            child: Material(
             color: isSelected
                 ? Theme.of(context).colorScheme.primaryContainer
                 : match != null
@@ -183,14 +187,21 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
                 : null,
             child: ListTile(
               selected: isSelected,
+              enabled: !isProcessing,
               leading: CircleAvatar(
                 backgroundColor: match != null
                     ? Colors.orange.withValues(alpha: 0.15)
                     : Colors.blue.withValues(alpha: 0.1),
-                child: Icon(
-                  match != null ? Icons.link : Icons.account_balance_wallet,
-                  color: match != null ? Colors.orange : Colors.blue,
-                ),
+                child: isProcessing
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(
+                        match != null ? Icons.link : Icons.account_balance_wallet,
+                        color: match != null ? Colors.orange : Colors.blue,
+                      ),
               ),
               title: Text(
                 item.label,
@@ -210,12 +221,15 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
                       ),
                     )
                   : null,
-              onTap: () => onSelect?.call(item),
+              onTap: isProcessing ? null : () => onSelect?.call(item),
             ),
+          ),
           );
         }
 
-        return Card(
+        return Opacity(
+          opacity: isProcessing ? 0.5 : 1,
+          child: Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           clipBehavior: Clip.antiAlias,
           color: match != null
@@ -224,14 +238,21 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
           child: Column(
             children: [
               ListTile(
+                enabled: !isProcessing,
                 leading: CircleAvatar(
                   backgroundColor: match != null
                       ? Colors.orange.withValues(alpha: 0.15)
                       : Colors.blue.withValues(alpha: 0.1),
-                  child: Icon(
-                    match != null ? Icons.link : Icons.account_balance_wallet,
-                    color: match != null ? Colors.orange : Colors.blue,
-                  ),
+                  child: isProcessing
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(
+                          match != null ? Icons.link : Icons.account_balance_wallet,
+                          color: match != null ? Colors.orange : Colors.blue,
+                        ),
                 ),
                 title: Text(
                   item.label,
@@ -266,7 +287,7 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
                         ),
                       )
                     : null,
-                onTap: () => _processItem(item),
+                onTap: isProcessing ? null : () => _processItem(item),
               ),
               if (_showDebug) _buildDebugPanel(item),
               Padding(
@@ -279,22 +300,32 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton.icon(
-                      onPressed: () => _confirmDelete(item),
+                      onPressed: isProcessing ? null : () => _confirmDelete(item),
                       icon: const Icon(Icons.delete_outline, size: 18),
                       label: const Text('Ignorer'),
                       style: TextButton.styleFrom(foregroundColor: Colors.grey),
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
-                      onPressed: () => _processItem(item),
-                      icon: const Icon(Icons.add, size: 18),
-                      label: const Text('Valider'),
+                      onPressed: isProcessing ? null : () => _processItem(item),
+                      icon: isProcessing
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.add, size: 18),
+                      label: Text(isProcessing ? 'En cours…' : 'Valider'),
                     ),
                   ],
                 ),
               ),
             ],
           ),
+        ),
         );
       },
     );
@@ -302,6 +333,7 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
 
   Widget _buildItemDetail(InboxItem item) {
     final match = ref.watch(inboxControllerProvider).matchPreviews[item.id];
+    final isProcessing = _processingItemIds.contains(item.id);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -350,15 +382,24 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
           Row(
             children: [
               OutlinedButton.icon(
-                onPressed: () => _confirmDelete(item),
+                onPressed: isProcessing ? null : () => _confirmDelete(item),
                 icon: const Icon(Icons.delete_outline),
                 label: const Text('Ignorer'),
               ),
               const SizedBox(width: 12),
               FilledButton.icon(
-                onPressed: () => _processItem(item),
-                icon: const Icon(Icons.add),
-                label: const Text('Valider'),
+                onPressed: isProcessing ? null : () => _processItem(item),
+                icon: isProcessing
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.add),
+                label: Text(isProcessing ? 'En cours…' : 'Valider'),
               ),
             ],
           ),
@@ -445,6 +486,10 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
   }
 
   void _processItem(InboxItem item) {
+    if (_processingItemIds.contains(item.id)) return;
+
+    setState(() => _processingItemIds.add(item.id));
+
     // 1. Get preview data from the controller
     final previewData = ref
         .read(inboxControllerProvider.notifier)
@@ -466,6 +511,7 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
         'status': 'effective',
       'id': null,
       'fromInbox': true,
+      'inboxItemId': item.id,
       // Auto-Mapping du compte
       if (item.metadata != null && item.metadata!['local_account_id'] != null)
         'account': item.metadata!['local_account_id'],
@@ -473,9 +519,11 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
 
     // 3. Navigate
     context.push('/add-transaction', extra: transactionData).then((success) {
+      if (!mounted) return;
+      setState(() => _processingItemIds.remove(item.id));
       if (success == true) {
         ref.read(inboxControllerProvider.notifier).deleteItem(item.id);
-        if (mounted) setState(() => _selectedItemId = null);
+        setState(() => _selectedItemId = null);
       }
     });
   }

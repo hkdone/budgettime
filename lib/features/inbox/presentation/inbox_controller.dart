@@ -178,11 +178,24 @@ class InboxController extends StateNotifier<InboxState> {
   }
 
   Future<void> deleteItem(String id) async {
+    final previousItems = state.items;
+    final previousPreviews = state.matchPreviews;
+
+    // Retrait immédiat de l'UI (évite les double-clics pendant le refresh).
+    state = state.copyWith(
+      items: state.items.where((i) => i.id != id).toList(),
+      matchPreviews: Map<String, InboxMatchPreview>.from(state.matchPreviews)
+        ..remove(id),
+    );
+
     try {
       await _repository.markAsProcessed(id);
-      await refresh();
     } catch (e) {
-      state = state.copyWith(error: e.toString());
+      state = state.copyWith(
+        items: previousItems,
+        matchPreviews: previousPreviews,
+        error: e.toString(),
+      );
     }
   }
 
