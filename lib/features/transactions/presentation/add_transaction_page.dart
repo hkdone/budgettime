@@ -546,6 +546,8 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
         final inboxItemId = widget.transactionToEdit?['inboxItemId'] as String?;
         if (inboxItemId != null) {
           await ref.read(inboxControllerProvider.notifier).deleteItem(inboxItemId);
+          // En plus du retrait optimiste, on resynchronise la liste inbox.
+          await ref.read(inboxControllerProvider.notifier).refresh();
         }
 
         if (mounted) {

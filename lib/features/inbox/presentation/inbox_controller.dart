@@ -190,6 +190,9 @@ class InboxController extends StateNotifier<InboxState> {
 
     try {
       await _repository.markAsProcessed(id);
+      // Rafraîchit en arrière-plan pour resynchroniser proprement la liste
+      // (utile si d'autres items ont changé côté serveur).
+      Future.microtask(() => refresh());
     } catch (e) {
       state = state.copyWith(
         items: previousItems,

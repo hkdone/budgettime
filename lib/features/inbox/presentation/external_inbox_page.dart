@@ -96,35 +96,35 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
       body: state.isLoading
           ? const Center(child: CircularProgressIndicator())
           : state.items.isEmpty
-          ? _buildEmptyState()
-          : useSplitView
-          ? Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SizedBox(
-                  width: 360,
-                  child: _buildInboxList(
-                    state.items,
-                    compact: true,
-                    selectedId: _selectedItemId,
-                    onSelect: (item) =>
-                        setState(() => _selectedItemId = item.id),
-                  ),
-                ),
-                const VerticalDivider(width: 1, thickness: 1),
-                Expanded(
-                  child: selectedItem != null
-                      ? _buildItemDetail(selectedItem)
-                      : Center(
-                          child: Text(
-                            'Sélectionnez une réception',
-                            style: TextStyle(color: Colors.grey[600]),
+              ? _buildEmptyState()
+              : useSplitView
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SizedBox(
+                          width: 360,
+                          child: _buildInboxList(
+                            state.items,
+                            compact: true,
+                            selectedId: _selectedItemId,
+                            onSelect: (item) =>
+                                setState(() => _selectedItemId = item.id),
                           ),
                         ),
-                ),
-              ],
-            )
-          : _buildInboxList(state.items),
+                        const VerticalDivider(width: 1, thickness: 1),
+                        Expanded(
+                          child: selectedItem != null
+                              ? _buildItemDetail(selectedItem)
+                              : Center(
+                                  child: Text(
+                                    'Sélectionnez une réception',
+                                    style: TextStyle(color: Colors.grey[600]),
+                                  ),
+                                ),
+                        ),
+                      ],
+                    )
+                  : _buildInboxList(state.items),
     );
   }
 
@@ -180,64 +180,13 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
           return Opacity(
             opacity: isProcessing ? 0.5 : 1,
             child: Material(
-            color: isSelected
-                ? Theme.of(context).colorScheme.primaryContainer
-                : match != null
-                ? Colors.orange.withValues(alpha: 0.06)
-                : null,
-            child: ListTile(
-              selected: isSelected,
-              enabled: !isProcessing,
-              leading: CircleAvatar(
-                backgroundColor: match != null
-                    ? Colors.orange.withValues(alpha: 0.15)
-                    : Colors.blue.withValues(alpha: 0.1),
-                child: isProcessing
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(
-                        match != null ? Icons.link : Icons.account_balance_wallet,
-                        color: match != null ? Colors.orange : Colors.blue,
-                      ),
-              ),
-              title: Text(
-                item.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                DateFormat('dd/MM/yyyy HH:mm').format(item.date),
-              ),
-              trailing: item.amount != 0
-                  ? Text(
-                      formatCurrency(item.amount),
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: item.amount >= 0 ? Colors.green : Colors.red,
-                      ),
-                    )
-                  : null,
-              onTap: isProcessing ? null : () => onSelect?.call(item),
-            ),
-          ),
-          );
-        }
-
-        return Opacity(
-          opacity: isProcessing ? 0.5 : 1,
-          child: Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          clipBehavior: Clip.antiAlias,
-          color: match != null
-              ? Colors.orange.withValues(alpha: 0.06)
-              : null,
-          child: Column(
-            children: [
-              ListTile(
+              color: isSelected
+                  ? Theme.of(context).colorScheme.primaryContainer
+                  : match != null
+                      ? Colors.orange.withValues(alpha: 0.06)
+                      : null,
+              child: ListTile(
+                selected: isSelected,
                 enabled: !isProcessing,
                 leading: CircleAvatar(
                   backgroundColor: match != null
@@ -250,82 +199,139 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : Icon(
-                          match != null ? Icons.link : Icons.account_balance_wallet,
+                          match != null
+                              ? Icons.link
+                              : Icons.account_balance_wallet,
                           color: match != null ? Colors.orange : Colors.blue,
                         ),
                 ),
                 title: Text(
                   item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      DateFormat('dd/MM/yyyy HH:mm').format(item.date),
-                    ),
-                    if (match != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        _matchSubtitle(match),
-                        style: TextStyle(
-                          color: Colors.orange[800],
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ],
+                subtitle: Text(
+                  DateFormat('dd/MM/yyyy HH:mm').format(item.date),
                 ),
                 trailing: item.amount != 0
                     ? Text(
                         formatCurrency(item.amount),
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
                           color: item.amount >= 0 ? Colors.green : Colors.red,
                         ),
                       )
                     : null,
-                onTap: isProcessing ? null : () => _processItem(item),
+                onTap: isProcessing ? null : () => onSelect?.call(item),
               ),
-              if (_showDebug) _buildDebugPanel(item),
-              Padding(
-                padding: const EdgeInsets.only(
-                  right: 12.0,
-                  bottom: 12.0,
-                  left: 12.0,
+            ),
+          );
+        }
+
+        return Opacity(
+          opacity: isProcessing ? 0.5 : 1,
+          child: Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            clipBehavior: Clip.antiAlias,
+            color: match != null ? Colors.orange.withValues(alpha: 0.06) : null,
+            child: Column(
+              children: [
+                ListTile(
+                  enabled: !isProcessing,
+                  leading: CircleAvatar(
+                    backgroundColor: match != null
+                        ? Colors.orange.withValues(alpha: 0.15)
+                        : Colors.blue.withValues(alpha: 0.1),
+                    child: isProcessing
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            match != null
+                                ? Icons.link
+                                : Icons.account_balance_wallet,
+                            color: match != null ? Colors.orange : Colors.blue,
+                          ),
+                  ),
+                  title: Text(
+                    item.label,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        DateFormat('dd/MM/yyyy HH:mm').format(item.date),
+                      ),
+                      if (match != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          _matchSubtitle(match),
+                          style: TextStyle(
+                            color: Colors.orange[800],
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  trailing: item.amount != 0
+                      ? Text(
+                          formatCurrency(item.amount),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: item.amount >= 0 ? Colors.green : Colors.red,
+                          ),
+                        )
+                      : null,
+                  onTap: isProcessing ? null : () => _processItem(item),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton.icon(
-                      onPressed: isProcessing ? null : () => _confirmDelete(item),
-                      icon: const Icon(Icons.delete_outline, size: 18),
-                      label: const Text('Ignorer'),
-                      style: TextButton.styleFrom(foregroundColor: Colors.grey),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton.icon(
-                      onPressed: isProcessing ? null : () => _processItem(item),
-                      icon: isProcessing
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.add, size: 18),
-                      label: Text(isProcessing ? 'En cours…' : 'Valider'),
-                    ),
-                  ],
+                if (_showDebug) _buildDebugPanel(item),
+                Padding(
+                  padding: const EdgeInsets.only(
+                    right: 12.0,
+                    bottom: 12.0,
+                    left: 12.0,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        onPressed:
+                            isProcessing ? null : () => _confirmDelete(item),
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        label: const Text('Ignorer'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed:
+                            isProcessing ? null : () => _processItem(item),
+                        icon: isProcessing
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.add, size: 18),
+                        label: Text(isProcessing ? 'En cours…' : 'Valider'),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
         );
       },
     );
@@ -523,6 +529,8 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
       setState(() => _processingItemIds.remove(item.id));
       if (success == true) {
         ref.read(inboxControllerProvider.notifier).deleteItem(item.id);
+        // Sécurise l'UI (certains retours peuvent être lents à propager)
+        ref.read(inboxControllerProvider.notifier).refresh();
         setState(() => _selectedItemId = null);
       }
     });
