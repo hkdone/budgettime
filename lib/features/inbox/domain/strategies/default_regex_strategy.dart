@@ -46,6 +46,7 @@ class DefaultRegexStrategy implements InboxProcessingStrategy {
         )[0], // Or extract date from text
         'category': 'Autre',
         'is_automatic': true,
+        'status': 'projected',
       };
     }
     return null;

@@ -30,6 +30,7 @@ class LaBanquePostaleSmsParser implements InboxProcessingStrategy {
         'type': 'expense',
         'date': DateTime.now().toIso8601String(),
         'category': 'Autre',
+        'status': 'projected',
       };
     }
     return null;
@@ -53,6 +54,7 @@ class LaBanquePostaleAppParser implements InboxProcessingStrategy {
       'type': 'expense',
       'date': DateTime.now().toIso8601String(),
       'category': 'Autre',
+      'status': 'projected',
     };
   }
 }

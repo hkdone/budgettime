@@ -10,6 +10,12 @@ import 'package:budgettime/core/utils/formatters.dart';
 import 'package:budgettime/core/utils/responsive_breakpoints.dart';
 import '../../../services/open_banking_service.dart';
 
+/// Sync Enable Banking → réel ; notifications captées (Home Assistant) → prévisionnel.
+String _defaultInboxTransactionStatus(InboxItem item) {
+  final isBankSync = item.metadata?['local_account_id'] != null;
+  return isBankSync ? 'effective' : 'projected';
+}
+
 class ExternalInboxPage extends ConsumerStatefulWidget {
   const ExternalInboxPage({super.key});
 
@@ -512,9 +518,9 @@ class _ExternalInboxPageState extends ConsumerState<ExternalInboxPage> {
         'type': item.amount >= 0 ? 'income' : 'expense',
       },
       // Ensure we don't have an ID that would trigger an "Edit"
-      // Le parser peut avoir défini 'status' (ex: 'projected' pour CM Pay) — on ne l'écrase que si absent
+      // Sync bancaire → réel ; notifications HA → prévisionnel (sauf si le parser a déjà fixé le statut)
       if (previewData == null || !previewData.containsKey('status'))
-        'status': 'effective',
+        'status': _defaultInboxTransactionStatus(item),
       'id': null,
       'fromInbox': true,
       'inboxItemId': item.id,

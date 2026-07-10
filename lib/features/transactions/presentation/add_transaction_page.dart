@@ -122,7 +122,6 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
 
       if (t['fromInbox'] == true) {
         _pendingInboxReconciliation = true;
-        _status = 'effective';
       }
     }
   }

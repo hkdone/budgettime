@@ -58512,7 +58512,7 @@ g=k==null?a2:B.c.hv(k)
 if(g==null)g="CM Achat"
 k=A.jA(i)
 if(k==null)k=0
-return A.a5(["amount",-k,"label",g,"type","expense","date",new A.bd(Date.now(),0,!1).pm(),"category","Autre","is_automatic",!0],t.N,t.z)}return a2},
+return A.a5(["amount",-k,"label",g,"type","expense","date",new A.bd(Date.now(),0,!1).pm(),"category","Autre","status","projected","is_automatic",!0],t.N,t.z)}return a2},
 $ivX:1}
 A.Xs.prototype={
 Ge(a){var s=A.bM(a.i(0,"raw_payload"))
@@ -58532,7 +58532,7 @@ o=r}n=A.jA(o==null?"0.0":o)
 if(n==null)n=0
 if(B.c.n(p,"virement"))B.c.n(p,"emis")
 r=m.length>50?B.c.a6(m,0,50):m
-return A.a5(["amount",n,"label",r,"type","expense","date",new A.bd(Date.now(),0,!1).TE().j(0).split(".")[0],"category","Autre","is_automatic",!0],t.N,t.z)}return null},
+return A.a5(["amount",n,"label",r,"type","expense","date",new A.bd(Date.now(),0,!1).TE().j(0).split(".")[0],"category","Autre","is_automatic",!0,"status","projected"],t.N,t.z)}return null},
 $ivX:1}
 A.ZI.prototype={
 Ge(a){var s=A.bM(a.i(0,"raw_payload"))
@@ -58551,7 +58551,7 @@ o=r==null?null:B.c.hv(r)
 if(o==null)o="LBP Paiement"
 r=A.jA(p)
 if(r==null)r=0
-return A.a5(["amount",-r,"label",o,"type","expense","date",new A.bd(Date.now(),0,!1).pm(),"category","Autre"],t.N,t.z)}return null},
+return A.a5(["amount",-r,"label",o,"type","expense","date",new A.bd(Date.now(),0,!1).pm(),"category","Autre","status","projected"],t.N,t.z)}return null},
 $ivX:1}
 A.ZH.prototype={
 Ge(a){var s=t.nA.a(a.i(0,"metadata"))
@@ -58559,7 +58559,7 @@ return s!=null&&J.c(J.R(s,"type"),"LBP_APP")?1:0},
 H3(a){var s=t.a.a(a.i(0,"metadata")),r=J.ac(s),q=A.dh(r.i(s,"amount"))
 r=r.i(s,"merchant")
 if(r==null)r="LBP App Notification"
-return A.a5(["amount",-q,"label",r,"type","expense","date",new A.bd(Date.now(),0,!1).pm(),"category","Autre"],t.N,t.z)},
+return A.a5(["amount",-q,"label",r,"type","expense","date",new A.bd(Date.now(),0,!1).pm(),"category","Autre","status","projected"],t.N,t.z)},
 $ivX:1}
 A.GY.prototype={
 a9(){return new A.abe(A.b0(t.N))}}
@@ -58625,8 +58625,8 @@ if(n)p.L(0,s)
 if(o){o=a.d
 m=a.b.pm()
 l=o>=0?"income":"expense"
-p.L(0,A.a5(["amount",o,"label",a.c,"date",m,"type",l],r,q))}if(!n||!s.az(0,"status"))p.m(0,"status","effective")
-p.m(0,"id",null)
+p.L(0,A.a5(["amount",o,"label",a.c,"date",m,"type",l],r,q))}if(!n||!s.az(0,"status")){r=a.w
+p.m(0,"status",(r==null?null:J.R(r,j))!=null?"effective":"projected")}p.m(0,"id",null)
 p.m(0,"fromInbox",!0)
 p.m(0,"inboxItemId",i)
 i=a.w
@@ -60826,8 +60826,7 @@ if(r.i(s,"date")!=null)n.ay=A.fN(r.i(s,"date"))
 if(r.i(s,f)!=null)n.as=r.i(s,f)
 if(r.i(s,e)!=null)n.ax=r.i(s,e)
 if(r.i(s,g)!=null)n.cy=r.i(s,g)
-if(J.c(r.i(s,"fromInbox"),!0)){n.fr=!0
-n.cy="effective"}}},
+if(J.c(r.i(s,"fromInbox"),!0))n.fr=!0}},
 c4(){var s=this
 s.dg()
 if(s.fr){s.fr=!1
