@@ -7,6 +7,7 @@ import '../../../core/services/database_service.dart';
 import '../../../core/utils/responsive_breakpoints.dart';
 import 'auth_controller.dart';
 import 'widgets/login_credentials_fields.dart';
+import '../../../core/widgets/app_version_label.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -265,8 +266,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           child: const Text('Interface Admin (PocketBase)'),
         ),
         const SizedBox(height: 24),
-        const Text(
-          'v2.4.18-test1',
+        const AppVersionLabel(
           style: TextStyle(color: Colors.grey, fontSize: 12),
           textAlign: TextAlign.center,
         ),

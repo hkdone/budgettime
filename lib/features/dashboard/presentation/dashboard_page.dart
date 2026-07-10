@@ -18,6 +18,7 @@ import 'package:budgettime/core/utils/responsive_breakpoints.dart';
 import 'package:budgettime/core/widgets/responsive_content.dart';
 import '../../../services/open_banking_service.dart';
 import '../../settings/presentation/settings_controller.dart';
+import 'package:budgettime/core/widgets/app_version_label.dart';
 
 class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
@@ -366,8 +367,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                                       color: Colors.grey[200],
                                       borderRadius: BorderRadius.circular(12),
                                     ),
-                                    child: const Text(
-                                      'v2.4.18-test1',
+                                    child: AppVersionLabel(
                                       style: TextStyle(
                                         fontSize: 10,
                                         color: AppColors.textSecondary,
